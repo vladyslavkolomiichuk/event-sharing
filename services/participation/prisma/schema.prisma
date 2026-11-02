@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RegistrationStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+enum MembershipStatus {
+  JOINED
+  LEFT
+  CANCELLED
+}
+
+model RegistrationPolicy {
+  eventId       String             @id @db.Uuid
+  organizerId   String             @db.Uuid
+  version       Int
+  status        RegistrationStatus
+  capacity      Int
+  occupied      Int                @default(0)
+  updatedAt     DateTime           @updatedAt @db.Timestamptz(3)
+
+  memberships Membership[]
+
+  @@map("registration_policy")
+}
+
+model Membership {
+  eventId  String           @db.Uuid
+  userId   String           @db.Uuid
+  status   MembershipStatus @default(JOINED)
+  joinedAt DateTime         @default(now()) @db.Timestamptz(3)
+  leftAt   DateTime?        @db.Timestamptz(3)
+
+  policy RegistrationPolicy @relation(fields: [eventId], references: [eventId])
+
+  @@id([eventId, userId])
+  @@index([userId, status])
+  @@map("membership")
+}
+
+model InboxEvent {
+  id          String   @id @db.Uuid
+  eventType   String
+  processedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("inbox_event")
+}
+
+model PendingPolicyEvent {
+  id            String   @id @db.Uuid
+  aggregateId   String   @db.Uuid
+  policyVersion Int
+  payload       Json
+  receivedAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([aggregateId, policyVersion])
+  @@map("pending_policy_event")
+}
+
+model OutboxEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  position    BigInt    @unique @default(autoincrement())
+  aggregateId String    @db.Uuid
+  eventType   String
+  payload     Json
+  occurredAt  DateTime  @default(now()) @db.Timestamptz(3)
+  publishedAt DateTime? @db.Timestamptz(3)
+  attempts    Int       @default(0)
+
+  @@index([publishedAt, occurredAt])
+  @@map("outbox_event")
+}

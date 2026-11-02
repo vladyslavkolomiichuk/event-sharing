@@ -1,0 +1,477 @@
+'use client';
+
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { EventSearchQuery, SearchEvent } from '@event-sharing/contracts';
+import { searchClient } from '@/lib/api/SearchClient';
+import { eventsClient, type Category } from '@/lib/api/EventsClient';
+import { usersClient } from '@/lib/api/UsersClient';
+import { placesClient } from '@/lib/api/PlacesClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
+import {
+  MapView,
+  type MapMarker,
+  type MapPoint,
+} from '@/components/map/MapView';
+import { ExploreEventItem } from './ExploreEventItem';
+import { EventSearchToolbar } from './EventSearchToolbar';
+import { EventLocationFilters } from './EventLocationFilters';
+import { EventViewSwitch } from './EventViewSwitch';
+import { Button } from '@/components/ui/button';
+import { Loading } from '@/components/feedback/Loading';
+
+const worldCenter: MapPoint = { latitude: 20, longitude: 0 };
+
+export function EventsExplore() {
+  const { user, loading: authLoading } = useAuth();
+  const { show } = useToast();
+  const [items, setItems] = useState<SearchEvent[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [text, setText] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [status, setStatus] = useState('');
+  const [startFrom, setStartFrom] = useState('');
+  const [startTo, setStartTo] = useState('');
+  const [sort, setSort] = useState<'start_time' | 'distance' | 'relevance'>(
+    'start_time',
+  );
+  const [radiusKm, setRadiusKm] = useState(15);
+  const [center, setCenter] = useState<MapPoint>(worldCenter);
+  const [profileCenter, setProfileCenter] = useState<MapPoint | null>(null);
+  const [zoom, setZoom] = useState(2);
+  const [mapCity, setMapCity] = useState('');
+  const [anchor, setAnchor] = useState<MapPoint | null>(null);
+  const [userLocation, setUserLocation] = useState<MapPoint | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [cityCenters, setCityCenters] = useState<Record<string, MapPoint>>({});
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<'list' | 'map'>('list');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const requestId = useRef(0);
+  const locationRequestId = useRef(0);
+  const locationSelected = useRef(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchText(text.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [text]);
+
+  useEffect(() => {
+    if (!searchText && sort === 'relevance') setSort('start_time');
+  }, [searchText, sort]);
+
+  useEffect(() => {
+    if (!user) return;
+    eventsClient
+      .categories()
+      .then(setCategories)
+      .catch(() => show('Could not load categories.', 'error'));
+  }, [user?.id, show]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    usersClient
+      .me()
+      .then(async (profile) => {
+        if (!profile.city) return;
+        const [place] = await placesClient.search(profile.city, 'city');
+        if (cancelled || !place) return;
+        const point = { latitude: place.latitude, longitude: place.longitude };
+        setProfileCenter(point);
+        if (!locationSelected.current) {
+          setCenter(point);
+          setZoom(11);
+          setMapCity(profile.city);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const load = useCallback(
+    async (next?: string) => {
+      if (!user) return;
+      const current = ++requestId.current;
+      setLoading(true);
+      setError('');
+      const query: EventSearchQuery = {
+        sort: sort === 'distance' && !anchor ? 'start_time' : sort,
+        limit: 20,
+        ...(searchText ? { text: searchText } : {}),
+        ...(categoryId ? { categoryId } : {}),
+        ...(status ? { status: status as EventSearchQuery['status'] } : {}),
+        ...(startFrom
+          ? { startFrom: new Date(`${startFrom}T00:00:00`).toISOString() }
+          : {}),
+        ...(startTo
+          ? { startTo: new Date(`${startTo}T23:59:59`).toISOString() }
+          : {}),
+        ...(anchor
+          ? {
+              latitude: anchor.latitude,
+              longitude: anchor.longitude,
+              radiusMeters: radiusKm * 1000,
+            }
+          : {}),
+        ...(next ? { cursor: next } : {}),
+      };
+      try {
+        const page = await searchClient.events(query);
+        if (current !== requestId.current) return;
+        setItems((previous) =>
+          next ? [...previous, ...page.items] : page.items,
+        );
+        setCursor(page.nextCursor);
+      } catch (cause) {
+        if (current !== requestId.current) return;
+        const message =
+          cause instanceof Error ? cause.message : 'Could not search events.';
+        setError(message);
+        show(message, 'error');
+      } finally {
+        if (current === requestId.current) setLoading(false);
+      }
+    },
+    [
+      user?.id,
+      searchText,
+      categoryId,
+      status,
+      startFrom,
+      startTo,
+      sort,
+      anchor,
+      radiusKm,
+      show,
+    ],
+  );
+
+  useEffect(() => {
+    setItems([]);
+    setCursor(null);
+    void load();
+    return () => {
+      requestId.current++;
+    };
+  }, [load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const regions = [
+      ...new Set(
+        items
+          .filter((item) => item.location.latitude === null)
+          .map((item) => item.location.region)
+          .filter((region): region is string => Boolean(region)),
+      ),
+    ];
+    async function resolveCities() {
+      for (const region of regions) {
+        if (cancelled || cityCenters[region]) continue;
+        try {
+          const [place] = await placesClient.search(region, 'city');
+          if (!cancelled && place)
+            setCityCenters((previous) => ({
+              ...previous,
+              [region]: {
+                latitude: place.latitude,
+                longitude: place.longitude,
+              },
+            }));
+        } catch {
+          // Results remain available without an approximate map pin.
+        }
+      }
+    }
+    void resolveCities();
+    return () => {
+      cancelled = true;
+    };
+  }, [items, cityCenters]);
+
+  const markers = useMemo<MapMarker[]>(() => {
+    const publicPins = items
+      .filter(
+        (item) =>
+          item.location.latitude !== null && item.location.longitude !== null,
+      )
+      .map((item) => ({
+        id: item.id,
+        label: item.title,
+        latitude: item.location.latitude!,
+        longitude: item.location.longitude!,
+        selected: selectedId === item.id,
+      }));
+    const privateRegions = new Map<string, number>();
+    for (const item of items) {
+      if (item.location.latitude === null && item.location.region)
+        privateRegions.set(
+          item.location.region,
+          (privateRegions.get(item.location.region) ?? 0) + 1,
+        );
+    }
+    const approximatePins = [...privateRegions].flatMap(([region, count]) =>
+      cityCenters[region]
+        ? [
+            {
+              id: `city:${region}`,
+              label: `${count} events near ${region}; approximate city location`,
+              ...cityCenters[region],
+              approximate: true,
+              selected: selectedRegion === region,
+              count,
+            },
+          ]
+        : [],
+    );
+    return [
+      ...publicPins,
+      ...approximatePins,
+      ...(userLocation
+        ? [
+            {
+              id: 'your-position',
+              label: 'Your position, visible only to you',
+              ...userLocation,
+              user: true,
+            },
+          ]
+        : []),
+    ];
+  }, [items, cityCenters, selectedId, selectedRegion, userLocation]);
+
+  function chooseCity(point: MapPoint, label: string) {
+    locationRequestId.current++;
+    locationSelected.current = true;
+    setAnchor(point);
+    setUserLocation(null);
+    setAccuracy(null);
+    setMapCity(label);
+    setCenter(point);
+    setZoom(11);
+    setSort('distance');
+  }
+
+  function changeCity(value: string) {
+    locationRequestId.current++;
+    locationSelected.current = true;
+    setMapCity(value);
+    setAnchor(null);
+    setUserLocation(null);
+    setAccuracy(null);
+    if (sort === 'distance') setSort('start_time');
+  }
+
+  function useMyLocation() {
+    if (!window.isSecureContext || !navigator.geolocation) {
+      show(
+        'Location requires HTTPS or localhost. Search by city instead.',
+        'warning',
+      );
+      return;
+    }
+    const currentRequest = ++locationRequestId.current;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (currentRequest !== locationRequestId.current) return;
+        const point = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+        locationSelected.current = true;
+        setUserLocation(point);
+        setAccuracy(Math.round(position.coords.accuracy));
+        setAnchor(point);
+        setMapCity('');
+        setCenter(point);
+        setZoom(12);
+        setSort('distance');
+        show('Nearby events are now shown around your position.', 'success');
+      },
+      (failure) => {
+        if (currentRequest !== locationRequestId.current) return;
+        show(
+          failure.code === 1
+            ? 'Location access was declined. You can search by city instead.'
+            : 'Your location is unavailable. You can search by city instead.',
+          'warning',
+        );
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+    );
+  }
+
+  function clearLocation() {
+    locationRequestId.current++;
+    locationSelected.current = false;
+    setUserLocation(null);
+    setAccuracy(null);
+    setAnchor(null);
+    setMapCity('');
+    setSort('start_time');
+    setCenter(profileCenter ?? worldCenter);
+    setZoom(profileCenter ? 11 : 2);
+  }
+
+  function selectEvent(item: SearchEvent) {
+    setSelectedId(item.id);
+    setSelectedRegion(null);
+    const point =
+      item.location.latitude !== null && item.location.longitude !== null
+        ? {
+            latitude: item.location.latitude,
+            longitude: item.location.longitude,
+          }
+        : item.location.region
+          ? cityCenters[item.location.region]
+          : null;
+    if (point) {
+      setCenter(point);
+      setZoom(12);
+      setMobileView('map');
+    } else show('This event has no map position yet.', 'info');
+  }
+
+  function selectMarker(id: string) {
+    if (id.startsWith('city:')) {
+      const region = id.slice(5);
+      setSelectedRegion(region);
+      setSelectedId(null);
+    } else {
+      setSelectedId(id);
+      setSelectedRegion(null);
+      requestAnimationFrame(() =>
+        document
+          .getElementById(`event-result-${id}`)
+          ?.scrollIntoView({ block: 'nearest' }),
+      );
+    }
+    setMobileView('list');
+  }
+
+  if (authLoading) return <Loading />;
+  if (!user)
+    return (
+      <div className="rounded-xl border border-neutral-200 bg-white p-8">
+        <p className="mb-5 text-neutral-600">
+          Sign in to search events and view their map.
+        </p>
+        <Button asChild>
+          <Link href="/sign-in">Sign in</Link>
+        </Button>
+      </div>
+    );
+
+  return (
+    <div className="space-y-4">
+      <EventSearchToolbar
+        text={text}
+        onTextChange={setText}
+        categories={categories}
+        categoryId={categoryId}
+        onCategoryChange={setCategoryId}
+        sort={sort}
+        onSortChange={setSort}
+        canSortByDistance={Boolean(anchor)}
+        canSortByRelevance={Boolean(searchText)}
+        onUseLocation={useMyLocation}
+      />
+      <EventLocationFilters
+        city={mapCity}
+        onCityChange={changeCity}
+        onCitySelect={chooseCity}
+        locationActive={Boolean(anchor)}
+        radiusKm={radiusKm}
+        onRadiusChange={setRadiusKm}
+        startFrom={startFrom}
+        onStartFromChange={setStartFrom}
+        startTo={startTo}
+        onStartToChange={setStartTo}
+        status={status}
+        onStatusChange={setStatus}
+        onClearLocation={clearLocation}
+      />
+      <EventViewSwitch view={mobileView} onChange={setMobileView} />
+      <div className="grid gap-4 lg:grid-cols-[minmax(340px,440px)_minmax(0,1fr)]">
+        <section
+          aria-label="Search results"
+          className={`flex h-[min(70dvh,760px)] min-h-[440px] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white ${mobileView === 'map' ? 'hidden lg:flex' : 'flex'}`}
+        >
+          <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
+            <h2 className="text-lg font-semibold">Events</h2>
+            <span className="text-sm text-neutral-500">
+              {items.length} shown
+            </span>
+          </div>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+            {loading && !items.length ? (
+              <Loading label="Searching events…" />
+            ) : items.length ? (
+              items.map((item) => (
+                <ExploreEventItem
+                  key={item.id}
+                  event={item}
+                  selected={
+                    selectedId === item.id ||
+                    Boolean(
+                      selectedRegion && selectedRegion === item.location.region,
+                    )
+                  }
+                  onSelect={() => selectEvent(item)}
+                />
+              ))
+            ) : (
+              <p className="p-4 text-sm text-neutral-600">
+                {error
+                  ? 'Search is temporarily unavailable.'
+                  : 'No events match these filters. Try a wider area or another date.'}
+              </p>
+            )}
+            {cursor && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={loading}
+                onClick={() => void load(cursor)}
+              >
+                {loading ? 'Loading…' : 'Load more'}
+              </Button>
+            )}
+          </div>
+        </section>
+        <section
+          aria-label="Event map"
+          className={`${mobileView === 'list' ? 'hidden lg:block' : 'block'}`}
+        >
+          <MapView
+            center={center}
+            zoom={zoom}
+            markers={markers}
+            onMarkerClick={selectMarker}
+            visible={mobileView === 'map'}
+            className="h-[min(70dvh,760px)] min-h-[440px]"
+          />
+        </section>
+      </div>
+      <p className="text-xs leading-5 text-neutral-600">
+        Your position is requested only when you choose “Use my location”. It is
+        not saved to your profile or search history; the search service receives
+        it for the current request. The map provider receives tile requests for
+        the area you view. Private venues appear at approximate city positions.
+        Map tiles: OpenFreeMap and OpenStreetMap; city suggestions: Photon.
+        {accuracy !== null &&
+          userLocation &&
+          ` Position accuracy: about ${accuracy} m.`}
+      </p>
+    </div>
+  );
+}

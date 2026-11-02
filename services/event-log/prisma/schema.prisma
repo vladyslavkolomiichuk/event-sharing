@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model EventLogEntry {
+  id             String   @id @db.Uuid
+  eventType      String
+  producer       String
+  topic          String
+  partition      Int
+  offset         BigInt
+  occurredAt     DateTime @db.Timestamptz(3)
+  receivedAt     DateTime @default(now()) @db.Timestamptz(3)
+  actorId        String?  @db.Uuid
+  subjectUserId  String?  @db.Uuid
+  relatedEventId String?  @db.Uuid
+  summary        String
+  details        Json
+
+  @@unique([topic, partition, offset])
+  @@index([occurredAt, id])
+  @@index([eventType, occurredAt])
+  @@index([actorId, occurredAt])
+  @@index([subjectUserId, occurredAt])
+  @@index([relatedEventId, occurredAt])
+  @@map("event_log_entry")
+}
+
+model InboxEvent {
+  id          String   @id @db.Uuid
+  processedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("inbox_event")
+}
+
+model ConsumerProgress {
+  topic       String
+  partition   Int
+  lastOffset  BigInt
+  receivedAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@id([topic, partition])
+  @@map("consumer_progress")
+}

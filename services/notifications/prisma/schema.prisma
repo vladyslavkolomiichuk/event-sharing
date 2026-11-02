@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model InboxEvent {
+  id          String   @id @db.Uuid
+  eventType   String
+  processedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("inbox_event")
+}
+
+model PendingSnapshotEvent {
+  id              String   @id @db.Uuid
+  previousEventId String   @db.Uuid
+  envelope        String
+  receivedAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([previousEventId])
+  @@map("pending_snapshot_event")
+}
+
+model PendingMembershipEvent {
+  id         String   @id @db.Uuid
+  eventId    String   @db.Uuid
+  userId     String   @db.Uuid
+  envelope   String
+  receivedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([eventId])
+  @@index([userId])
+  @@map("pending_membership_event")
+}
+
+model EmailDelivery {
+  id            String    @id @db.Uuid
+  payload       Json
+  status        String    @default("PENDING")
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(now()) @db.Timestamptz(3)
+  expiresAt     DateTime  @db.Timestamptz(3)
+  sentAt        DateTime? @db.Timestamptz(3)
+  lastError     String?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([status, nextAttemptAt])
+  @@map("email_delivery")
+}
+
+model UserProjection {
+  id                   String   @id @db.Uuid
+  name                 String
+  role                 String
+  notificationsEnabled Boolean  @default(true)
+  updatedAt            DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([role])
+  @@map("user_projection")
+}
+
+model EventProjection {
+  id          String   @id @db.Uuid
+  organizerId String   @db.Uuid
+  title       String
+  status      String
+  version     Int
+  lastSourceEventId String @db.Uuid
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([organizerId])
+  @@map("event_projection")
+}
+
+model MembershipProjection {
+  eventId String  @db.Uuid
+  userId  String  @db.Uuid
+  active  Boolean
+
+  @@id([eventId, userId])
+  @@index([userId])
+  @@map("membership_projection")
+}
+
+model InAppNotification {
+  id            String    @id @default(uuid()) @db.Uuid
+  recipientId   String    @db.Uuid
+  type          String
+  title         String
+  body          String
+  href          String
+  senderId      String?   @db.Uuid
+  eventId       String?   @db.Uuid
+  messageId     String?   @db.Uuid
+  sourceEventId String?   @db.Uuid
+  readAt        DateTime? @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@unique([recipientId, sourceEventId, type])
+  @@index([recipientId, createdAt, id])
+  @@index([recipientId, readAt])
+  @@map("in_app_notification")
+}
+
+model InAppMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  senderId       String   @db.Uuid
+  eventId        String?  @db.Uuid
+  body           String
+  recipientCount Int
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([senderId, createdAt])
+  @@map("in_app_message")
+}
+
+model OutboxEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  position    BigInt    @unique @default(autoincrement())
+  aggregateId String    @db.Uuid
+  eventType   String
+  payload     Json
+  occurredAt  DateTime  @default(now()) @db.Timestamptz(3)
+  publishedAt DateTime? @db.Timestamptz(3)
+  attempts    Int       @default(0)
+
+  @@index([publishedAt, occurredAt])
+  @@map("outbox_event")
+}

@@ -1,0 +1,10 @@
+CREATE TABLE "inbox_event" ("id" UUID NOT NULL PRIMARY KEY, "eventType" TEXT NOT NULL, "processedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE "event_projection" ("id" UUID NOT NULL PRIMARY KEY, "organizerId" UUID NOT NULL, "title" TEXT NOT NULL, "status" TEXT NOT NULL, "chatEnabled" BOOLEAN NOT NULL DEFAULT false, "version" INTEGER NOT NULL);
+CREATE TABLE "membership_projection" ("eventId" UUID NOT NULL, "userId" UUID NOT NULL, "active" BOOLEAN NOT NULL, CONSTRAINT "membership_projection_pkey" PRIMARY KEY ("eventId", "userId"));
+CREATE TABLE "user_projection" ("id" UUID NOT NULL PRIMARY KEY, "name" TEXT NOT NULL);
+CREATE TABLE "chat_room" ("id" UUID NOT NULL PRIMARY KEY, "eventId" UUID NOT NULL, "name" TEXT NOT NULL, "createdBy" UUID NOT NULL, "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "archivedAt" TIMESTAMPTZ(3));
+CREATE INDEX "chat_room_eventId_createdAt_idx" ON "chat_room"("eventId", "createdAt");
+CREATE UNIQUE INDEX "chat_room_eventId_name_key" ON "chat_room"("eventId", "name");
+CREATE TABLE "chat_message" ("id" UUID NOT NULL PRIMARY KEY, "roomId" UUID NOT NULL, "eventId" UUID NOT NULL, "senderId" UUID NOT NULL, "body" TEXT NOT NULL, "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "chat_message_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "chat_room"("id") ON DELETE RESTRICT ON UPDATE CASCADE);
+CREATE INDEX "chat_message_roomId_createdAt_id_idx" ON "chat_message"("roomId", "createdAt", "id");
+CREATE INDEX "chat_message_senderId_createdAt_idx" ON "chat_message"("senderId", "createdAt");

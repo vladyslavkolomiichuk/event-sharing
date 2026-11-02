@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model EventProjection {
+  id           String   @id @db.Uuid
+  organizerId  String   @db.Uuid
+  categoryId   String?  @db.Uuid
+  categoryName String?
+  title        String
+  description  String
+  startTime    DateTime @db.Timestamptz(3)
+  endTime      DateTime @db.Timestamptz(3)
+  status       String
+  region       String?
+  visibility   String
+  address      String?
+  latitude     Float?
+  longitude    Float?
+  location     Unsupported("geography(Point,4326)")? @default(dbgenerated())
+  version      Int
+  updatedAt    DateTime @db.Timestamptz(3)
+
+  @@index([startTime, id])
+  @@index([categoryId, startTime])
+  @@index([organizerId, startTime])
+  @@map("event_projection")
+}
+
+model InboxEvent {
+  id          String   @id @db.Uuid
+  eventType   String
+  processedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("inbox_event")
+}
+
+model PendingSnapshotEvent {
+  id              String   @id @db.Uuid
+  previousEventId String   @db.Uuid
+  envelope        String
+  receivedAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([previousEventId])
+  @@map("pending_snapshot_event")
+}
+
+model OutboxEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  position    BigInt    @unique @default(autoincrement())
+  eventType   String
+  payload     Json
+  occurredAt  DateTime  @default(now()) @db.Timestamptz(3)
+  publishedAt DateTime? @db.Timestamptz(3)
+  attempts    Int       @default(0)
+
+  @@index([publishedAt, occurredAt])
+  @@map("outbox_event")
+}

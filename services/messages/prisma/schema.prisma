@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model InboxEvent {
+  id          String   @id @db.Uuid
+  eventType   String
+  processedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("inbox_event")
+}
+
+model PendingSnapshotEvent {
+  id              String   @id @db.Uuid
+  previousEventId String   @db.Uuid
+  envelope        String
+  receivedAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([previousEventId])
+  @@map("pending_snapshot_event")
+}
+
+model EventProjection {
+  id          String  @id @db.Uuid
+  organizerId String  @db.Uuid
+  title       String
+  status      String
+  chatEnabled Boolean @default(false)
+  version     Int
+
+  @@map("event_projection")
+}
+
+model MembershipProjection {
+  eventId  String   @db.Uuid
+  userId   String   @db.Uuid
+  active   Boolean
+  joinedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@id([eventId, userId])
+  @@map("membership_projection")
+}
+
+model UserProjection {
+  id   String @id @db.Uuid
+  name String
+
+  @@map("user_projection")
+}
+
+model ChatRoom {
+  id         String          @id @default(uuid()) @db.Uuid
+  eventId    String          @db.Uuid
+  name       String
+  createdBy  String          @db.Uuid
+  createdAt  DateTime        @default(now()) @db.Timestamptz(3)
+  archivedAt DateTime?       @db.Timestamptz(3)
+  messages   ChatMessage[]
+  reads      ChatReadState[]
+
+  @@unique([eventId, name])
+  @@index([eventId, createdAt])
+  @@map("chat_room")
+}
+
+model ChatReadState {
+  roomId            String   @db.Uuid
+  userId            String   @db.Uuid
+  lastReadAt        DateTime @db.Timestamptz(3)
+  lastReadMessageId String   @db.Uuid
+  room              ChatRoom @relation(fields: [roomId], references: [id])
+
+  @@id([roomId, userId])
+  @@map("chat_read_state")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  roomId    String   @db.Uuid
+  eventId   String   @db.Uuid
+  senderId  String   @db.Uuid
+  body      String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  room      ChatRoom @relation(fields: [roomId], references: [id])
+
+  @@index([roomId, createdAt, id])
+  @@index([senderId, createdAt])
+  @@map("chat_message")
+}

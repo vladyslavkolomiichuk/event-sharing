@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Event Sharing PostgreSQL",
+      "Group": "Event Sharing",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "event_sharing",
+      "SSLMode": "prefer"
+    }
+  }
+}
