@@ -517,7 +517,7 @@ export class EventRepository {
         if (!['PUBLISHED', 'ONGOING'].includes(event.status)) return;
 
         if (event.endTime <= now) {
-          if (event.registrationStatus === 'OPEN') {
+          if (event.policyVersion > 0) {
             await this.requestPolicy(
               transaction,
               event,
@@ -603,6 +603,13 @@ export class EventRepository {
     event: EventWithCategory,
     eventType: EventSnapshotType,
   ): Promise<void> {
+    const participants =
+      event.status === 'COMPLETED'
+        ? await transaction.participantAccess.findMany({
+            where: { eventId: event.id, active: true },
+            select: { userId: true },
+          })
+        : [];
     const snapshot = await transaction.outboxEvent.create({
       data: {
         aggregateId: event.id,
@@ -610,6 +617,13 @@ export class EventRepository {
         payload: {
           ...this.responses.publicSnapshot(event),
           previousSnapshotEventId: event.lastSnapshotEventId,
+          ...(event.status === 'COMPLETED'
+            ? {
+                completedParticipantIds: participants.map(
+                  (item) => item.userId,
+                ),
+              }
+            : {}),
         },
       },
     });

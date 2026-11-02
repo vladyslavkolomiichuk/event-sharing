@@ -7,6 +7,7 @@ export const InAppNotificationSchema = z.strictObject({
     'EVENT_APPROVED',
     'EVENT_REJECTED',
     'EVENT_CANCELLED',
+    'EVENT_COMPLETED',
     'PARTICIPANT_JOINED',
     'DIRECT_MESSAGE',
     'EVENT_MESSAGE',

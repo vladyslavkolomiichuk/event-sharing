@@ -240,7 +240,9 @@ export class NotificationEventService {
           version: data.version,
           lastSourceEventId: event.eventId,
         });
-        if (previous?.status === data.status) return 'processed';
+        if (previous?.status === data.status && data.status !== 'COMPLETED') {
+          return 'processed';
+        }
 
         const href = `/events/${data.id}`;
         let items: NotificationInput[] = [];
@@ -285,6 +287,23 @@ export class NotificationEventService {
             type: 'EVENT_CANCELLED',
             title: 'Event cancelled',
             body: `${data.title} was cancelled.`,
+            href,
+            eventId: data.id,
+            sourceEventId: event.eventId,
+          }));
+        } else if (
+          data.status === 'COMPLETED' &&
+          data.completedParticipantIds
+        ) {
+          const recipientIds = new Set([
+            data.organizerId,
+            ...data.completedParticipantIds,
+          ]);
+          items = [...recipientIds].map((recipientId) => ({
+            recipientId,
+            type: 'EVENT_COMPLETED',
+            title: 'Event completed',
+            body: `${data.title} has ended.`,
             href,
             eventId: data.id,
             sourceEventId: event.eventId,
