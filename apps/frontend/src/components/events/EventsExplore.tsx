@@ -9,6 +9,7 @@ import { usersClient } from '@/lib/api/UsersClient';
 import { placesClient } from '@/lib/api/PlacesClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useSearchPreference } from '@/contexts/SearchPreferenceContext';
 import {
   MapView,
   type MapMarker,
@@ -26,6 +27,8 @@ const worldCenter: MapPoint = { latitude: 20, longitude: 0 };
 export function EventsExplore() {
   const { user, loading: authLoading } = useAuth();
   const { show } = useToast();
+  const { mode, permission, position, chooseMode, requestPosition } =
+    useSearchPreference();
   const [items, setItems] = useState<SearchEvent[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -40,7 +43,6 @@ export function EventsExplore() {
   );
   const [radiusKm, setRadiusKm] = useState(15);
   const [center, setCenter] = useState<MapPoint>(worldCenter);
-  const [profileCenter, setProfileCenter] = useState<MapPoint | null>(null);
   const [zoom, setZoom] = useState(2);
   const [mapCity, setMapCity] = useState('');
   const [anchor, setAnchor] = useState<MapPoint | null>(null);
@@ -74,7 +76,25 @@ export function EventsExplore() {
   }, [user?.id, show]);
 
   useEffect(() => {
+    locationRequestId.current++;
+    locationSelected.current = false;
+    setUserLocation(null);
+    setAccuracy(null);
+    setAnchor(null);
+    setCenter(worldCenter);
+    setZoom(2);
+  }, [user?.id]);
+
+  useEffect(() => {
     if (!user) return;
+    if (mode === 'ANYWHERE') {
+      if (!locationSelected.current) {
+        setCenter(worldCenter);
+        setZoom(2);
+      }
+      return;
+    }
+    if (mode === 'DEVICE') return;
     let cancelled = false;
     usersClient
       .me()
@@ -83,18 +103,48 @@ export function EventsExplore() {
         const [place] = await placesClient.search(profile.city, 'city');
         if (cancelled || !place) return;
         const point = { latitude: place.latitude, longitude: place.longitude };
-        setProfileCenter(point);
         if (!locationSelected.current) {
           setCenter(point);
           setZoom(11);
           setMapCity(profile.city);
+          if (mode === 'CITY') {
+            setAnchor(point);
+            setSort('distance');
+          }
         }
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user?.id, mode]);
+
+  useEffect(() => {
+    if (mode !== 'DEVICE' || !position || locationSelected.current) return;
+    const point = {
+      latitude: position.latitude,
+      longitude: position.longitude,
+    };
+    locationSelected.current = true;
+    setUserLocation(point);
+    setAccuracy(position.accuracy);
+    setAnchor(point);
+    setCenter(point);
+    setZoom(12);
+    setSort('distance');
+  }, [mode, position]);
+
+  useEffect(() => {
+    if (
+      !user ||
+      mode !== 'DEVICE' ||
+      permission !== 'granted' ||
+      position ||
+      locationSelected.current
+    )
+      return;
+    void requestPosition().catch(() => {});
+  }, [user?.id, mode, permission, position, requestPosition]);
 
   const load = useCallback(
     async (next?: string) => {
@@ -119,6 +169,7 @@ export function EventsExplore() {
               latitude: anchor.latitude,
               longitude: anchor.longitude,
               radiusMeters: radiusKm * 1000,
+              locationSource: userLocation ? 'DEVICE' : 'CITY',
             }
           : {}),
         ...(next ? { cursor: next } : {}),
@@ -149,6 +200,7 @@ export function EventsExplore() {
       startTo,
       sort,
       anchor,
+      userLocation,
       radiusKm,
       show,
     ],
@@ -248,8 +300,21 @@ export function EventsExplore() {
     ];
   }, [items, cityCenters, selectedId, selectedRegion, userLocation]);
 
-  function chooseCity(point: MapPoint, label: string) {
-    locationRequestId.current++;
+  async function chooseCity(point: MapPoint, label: string) {
+    const currentRequest = ++locationRequestId.current;
+    try {
+      await chooseMode('CITY');
+    } catch (cause) {
+      if (currentRequest !== locationRequestId.current) return;
+      show(
+        cause instanceof Error
+          ? cause.message
+          : 'Could not save search method.',
+        'error',
+      );
+      return;
+    }
+    if (currentRequest !== locationRequestId.current) return;
     locationSelected.current = true;
     setAnchor(point);
     setUserLocation(null);
@@ -270,55 +335,57 @@ export function EventsExplore() {
     if (sort === 'distance') setSort('start_time');
   }
 
-  function useMyLocation() {
-    if (!window.isSecureContext || !navigator.geolocation) {
+  async function useMyLocation() {
+    const currentRequest = ++locationRequestId.current;
+    try {
+      const found = await requestPosition();
+      if (currentRequest !== locationRequestId.current) return;
+      await chooseMode('DEVICE');
+      if (currentRequest !== locationRequestId.current) return;
+      const point = { latitude: found.latitude, longitude: found.longitude };
+      locationSelected.current = true;
+      setUserLocation(point);
+      setAccuracy(found.accuracy);
+      setAnchor(point);
+      setMapCity('');
+      setCenter(point);
+      setZoom(12);
+      setSort('distance');
+      show('Nearby events are now shown around your position.', 'success');
+    } catch (cause) {
+      if (currentRequest !== locationRequestId.current) return;
       show(
-        'Location requires HTTPS or localhost. Search by city instead.',
+        cause instanceof Error
+          ? cause.message
+          : 'Your location is unavailable.',
         'warning',
+      );
+    }
+  }
+
+  async function clearLocation() {
+    const currentRequest = ++locationRequestId.current;
+    try {
+      await chooseMode('ANYWHERE');
+    } catch (cause) {
+      if (currentRequest !== locationRequestId.current) return;
+      show(
+        cause instanceof Error
+          ? cause.message
+          : 'Could not save search method.',
+        'error',
       );
       return;
     }
-    const currentRequest = ++locationRequestId.current;
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (currentRequest !== locationRequestId.current) return;
-        const point = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        locationSelected.current = true;
-        setUserLocation(point);
-        setAccuracy(Math.round(position.coords.accuracy));
-        setAnchor(point);
-        setMapCity('');
-        setCenter(point);
-        setZoom(12);
-        setSort('distance');
-        show('Nearby events are now shown around your position.', 'success');
-      },
-      (failure) => {
-        if (currentRequest !== locationRequestId.current) return;
-        show(
-          failure.code === 1
-            ? 'Location access was declined. You can search by city instead.'
-            : 'Your location is unavailable. You can search by city instead.',
-          'warning',
-        );
-      },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
-    );
-  }
-
-  function clearLocation() {
-    locationRequestId.current++;
+    if (currentRequest !== locationRequestId.current) return;
     locationSelected.current = false;
     setUserLocation(null);
     setAccuracy(null);
     setAnchor(null);
     setMapCity('');
     setSort('start_time');
-    setCenter(profileCenter ?? worldCenter);
-    setZoom(profileCenter ? 11 : 2);
+    setCenter(worldCenter);
+    setZoom(2);
   }
 
   function selectEvent(item: SearchEvent) {
@@ -382,12 +449,18 @@ export function EventsExplore() {
         onSortChange={setSort}
         canSortByDistance={Boolean(anchor)}
         canSortByRelevance={Boolean(searchText)}
-        onUseLocation={useMyLocation}
+        onUseLocation={() => void useMyLocation()}
       />
+      {mode === 'DEVICE' && permission !== 'granted' && !userLocation && (
+        <p className="rounded-xl border border-neutral-200 bg-white p-4 text-sm text-neutral-700">
+          Current location is paused. Choose “Use my location” to try again, or
+          search around a city. Browser permission: {permission}.
+        </p>
+      )}
       <EventLocationFilters
         city={mapCity}
         onCityChange={changeCity}
-        onCitySelect={chooseCity}
+        onCitySelect={(point, label) => void chooseCity(point, label)}
         locationActive={Boolean(anchor)}
         radiusKm={radiusKm}
         onRadiusChange={setRadiusKm}
@@ -397,7 +470,7 @@ export function EventsExplore() {
         onStartToChange={setStartTo}
         status={status}
         onStatusChange={setStatus}
-        onClearLocation={clearLocation}
+        onClearLocation={() => void clearLocation()}
       />
       <EventViewSwitch view={mobileView} onChange={setMobileView} />
       <div className="grid gap-4 lg:grid-cols-[minmax(340px,440px)_minmax(0,1fr)]">

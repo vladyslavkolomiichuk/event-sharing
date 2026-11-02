@@ -17,5 +17,6 @@ export const requireInternalJwt: RequestHandler = async (
 ) => {
   const claims = await verifier.verify(request.get('authorization'));
   if (!claims) return next(new UnauthorizedError());
+  request.authenticatedUser = { id: claims.sub };
   next();
 };

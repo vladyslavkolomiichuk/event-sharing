@@ -7,6 +7,14 @@ datasource db {
   provider = "postgresql"
 }
 
+model SearchPreference {
+  userId    String   @id @db.Uuid
+  mode      String
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("search_preference")
+}
+
 model EventProjection {
   id           String   @id @db.Uuid
   organizerId  String   @db.Uuid

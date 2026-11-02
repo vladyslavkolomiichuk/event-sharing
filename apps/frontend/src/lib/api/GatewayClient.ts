@@ -42,6 +42,13 @@ export class GatewayClient {
     });
   }
 
+  put<T>(path: string, data: unknown): Promise<T> {
+    return this.request<T>(path, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   patch<T>(path: string, data: unknown): Promise<T> {
     return this.request<T>(path, {
       method: 'PATCH',
