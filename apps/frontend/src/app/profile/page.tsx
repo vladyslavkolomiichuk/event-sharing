@@ -1,6 +1,7 @@
 import { RequireAuth } from '@/components/auth/RequireAuth';
 import { ProfileForm } from '@/components/profile/ProfileForm';
 import { AccountSecurity } from '@/components/profile/AccountSecurity';
+import { IdentityForm } from '@/components/profile/IdentityForm';
 export default function ProfilePage() {
   return (
     <RequireAuth>
@@ -14,6 +15,7 @@ export default function ProfilePage() {
             Manage your public details and privacy preferences.
           </p>
         </div>
+        <IdentityForm />
         <ProfileForm />
         <AccountSecurity />
       </div>

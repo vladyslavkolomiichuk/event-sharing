@@ -1,9 +1,10 @@
-import type { UserRole } from '@event-sharing/contracts';
+import type { UpdateIdentity, UserRole } from '@event-sharing/contracts';
 import { gateway } from './GatewayClient';
 
 export type SessionUser = {
   id: string;
   name: string;
+  username: string;
   email: string;
   role: UserRole;
 };
@@ -47,6 +48,12 @@ export class AuthClient {
     return gateway.post('/auth/change-email', { newEmail, callbackURL });
   }
 
+  updateIdentity(
+    input: UpdateIdentity,
+  ): Promise<{ id: string; name: string; username: string }> {
+    return gateway.patch('/auth/identity', input);
+  }
+
   requestPasswordReset(email: string, redirectTo: string): Promise<unknown> {
     return gateway.post('/auth/request-password-reset', { email, redirectTo });
   }
@@ -55,8 +62,11 @@ export class AuthClient {
     return gateway.post('/auth/reset-password', { token, newPassword });
   }
 
-  changeRole(userId: string, role: UserRole): Promise<unknown> {
-    return gateway.patch(`/auth/admin/users/${userId}/role`, { role });
+  changeRole(username: string, role: UserRole): Promise<unknown> {
+    return gateway.patch(
+      `/auth/admin/users/${encodeURIComponent(username)}/role`,
+      { role },
+    );
   }
 }
 

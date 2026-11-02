@@ -7,6 +7,7 @@ export function userProfileRoutes(controller: UserProfileController): Router {
   router.patch('/me', controller.updateMe);
   router.get('/', controller.listPublic);
   router.get('/search', controller.searchPublic);
+  router.get('/by-username/:username', controller.getByUsername);
   router.get('/:userId', controller.getPublic);
   return router;
 }

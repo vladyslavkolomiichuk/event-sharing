@@ -3,9 +3,11 @@ import { HealthResponseSchema } from '@event-sharing/contracts';
 import type { ReadinessCheck } from '@event-sharing/common';
 import { toNodeHandler } from 'better-auth/node';
 import { UserRoleController } from './controllers/UserRoleController.js';
+import { UserIdentityController } from './controllers/UserIdentityController.js';
 import { accountMailAvailable, auth } from './lib/auth.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFound } from './middleware/not-found.js';
+import { requireUserSession } from './middleware/require-user-session.js';
 import { requireTrustedOrigin } from './middleware/require-trusted-origin.js';
 import { UserRoleRepository } from './repositories/UserRoleRepository.js';
 import { userRoleRoutes } from './routes/user-role.routes.js';
@@ -22,6 +24,13 @@ export function createApp(readinessCheck: ReadinessCheck): Express {
     requireTrustedOrigin,
     express.json(),
     userRoleRoutes(roleController),
+  );
+  app.patch(
+    '/auth/identity',
+    requireTrustedOrigin,
+    express.json(),
+    requireUserSession,
+    new UserIdentityController().update,
   );
   app.get('/auth/account-capabilities', (_request, response) => {
     response.status(200).json({ emailDeliveryAvailable: accountMailAvailable });

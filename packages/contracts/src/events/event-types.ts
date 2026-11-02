@@ -5,6 +5,7 @@ export const EVENT_TYPES = {
   userRoleChanged: 'user.role.changed',
   userProfileUpdated: 'user.profile.updated',
   userNameUpdated: 'user.name.updated',
+  userUsernameUpdated: 'user.username.updated',
   eventCreated: 'event.created',
   eventUpdated: 'event.updated',
   eventCancelled: 'event.cancelled',

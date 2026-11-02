@@ -3,6 +3,7 @@ import {
   EVENT_TYPES,
   UserRegisteredPayloadSchema,
   UserNameUpdatedPayloadSchema,
+  UserUsernameUpdatedPayloadSchema,
   UserRoleChangedPayloadSchema,
 } from '@event-sharing/contracts';
 import {
@@ -73,6 +74,7 @@ export class IdentityEventConsumer {
             payload.userId,
             event.eventType,
             payload.name,
+            payload.username,
           );
           EventTrace.received(
             'Users',
@@ -89,6 +91,23 @@ export class IdentityEventConsumer {
             event.eventId,
             payload.userId,
             payload.name,
+            event.eventType,
+          );
+          EventTrace.received(
+            'Users',
+            EVENT_TOPICS.identity,
+            event,
+            changed ? 'processed' : 'duplicate',
+          );
+          return;
+        }
+
+        if (event.eventType === EVENT_TYPES.userUsernameUpdated) {
+          const payload = UserUsernameUpdatedPayloadSchema.parse(event.payload);
+          const changed = await this.repository.updateUsername(
+            event.eventId,
+            payload.userId,
+            payload.username,
             event.eventType,
           );
           EventTrace.received(

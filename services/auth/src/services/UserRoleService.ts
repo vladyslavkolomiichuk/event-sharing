@@ -10,21 +10,21 @@ export class UserRoleService {
   async changeRole(
     actorId: string,
     actorRole: UserRole,
-    userId: string,
+    username: string,
     role: UserRole,
   ): Promise<{ id: string; role: UserRole }> {
     if (actorRole !== 'ADMIN') {
       throw new ForbiddenError();
     }
 
-    if (actorId === userId && role !== 'ADMIN') {
+    const user = await this.repository.findByUsername(username);
+    if (!user) throw new UserNotFoundError();
+
+    if (actorId === user.id && role !== 'ADMIN') {
       throw new SelfDemotionError();
     }
 
-    const user = await this.repository.updateRole(userId, role);
-    if (!user) {
-      throw new UserNotFoundError();
-    }
+    await this.repository.updateRole(user.id, role);
 
     return { id: user.id, role };
   }

@@ -14,6 +14,12 @@ export class UsersClient {
     return gateway.get(`/api/users/${userId}`);
   }
 
+  getByUsername(username: string): Promise<UserProfilePublic> {
+    return gateway.get(
+      `/api/users/by-username/${encodeURIComponent(username)}`,
+    );
+  }
+
   getMany(userIds: string[]): Promise<UserProfilePublic[]> {
     if (userIds.length === 0) return Promise.resolve([]);
     const ids = [...new Set(userIds)];

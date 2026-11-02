@@ -3,6 +3,7 @@ import {
   UserProfileUpdatedPayloadSchema,
   type UpdateUserProfile,
 } from '@event-sharing/contracts';
+import { randomUUID } from 'node:crypto';
 import type {
   Prisma,
   UserPreference,
@@ -42,7 +43,12 @@ export class UserProfileRepository {
 
   async findByName(name: string): Promise<UserProfileSnapshot[]> {
     const matches = await prisma.userProfile.findMany({
-      where: { name: { contains: name, mode: 'insensitive' } },
+      where: {
+        OR: [
+          { name: { contains: name, mode: 'insensitive' } },
+          { username: { contains: name.toLowerCase() } },
+        ],
+      },
       select: { userId: true },
       orderBy: { name: 'asc' },
       take: 20,
@@ -59,11 +65,17 @@ export class UserProfileRepository {
     });
   }
 
+  async findByUsername(username: string): Promise<UserProfileSnapshot | null> {
+    const profile = await prisma.userProfile.findFirst({ where: { username } });
+    return profile ? this.findById(profile.userId) : null;
+  }
+
   async provision(
     eventId: string,
     userId: string,
     eventType: typeof EVENT_TYPES.userRegistered,
     name?: string,
+    username?: string,
   ): Promise<boolean> {
     return prisma.$transaction(async (transaction) => {
       const inbox = await transaction.inboxEvent.createMany({
@@ -73,13 +85,24 @@ export class UserProfileRepository {
       if (inbox.count === 0) return false;
 
       await transaction.userProfile.createMany({
-        data: { userId, name: name ?? 'Member' },
+        data: {
+          userId,
+          name: name ?? 'Member',
+          username:
+            username ?? `user_${randomUUID().replaceAll('-', '').slice(0, 24)}`,
+        },
         skipDuplicates: true,
       });
       if (name) {
         await transaction.userProfile.update({
           where: { userId },
           data: { name },
+        });
+      }
+      if (username) {
+        await transaction.userProfile.update({
+          where: { userId },
+          data: { username },
         });
       }
       await transaction.userPreference.createMany({
@@ -105,6 +128,26 @@ export class UserProfileRepository {
       await transaction.userProfile.updateMany({
         where: { userId },
         data: { name },
+      });
+      return true;
+    });
+  }
+
+  async updateUsername(
+    eventId: string,
+    userId: string,
+    username: string,
+    eventType: typeof EVENT_TYPES.userUsernameUpdated,
+  ): Promise<boolean> {
+    return prisma.$transaction(async (transaction) => {
+      const inbox = await transaction.inboxEvent.createMany({
+        data: { id: eventId, eventType },
+        skipDuplicates: true,
+      });
+      if (inbox.count === 0) return false;
+      await transaction.userProfile.updateMany({
+        where: { userId },
+        data: { username },
       });
       return true;
     });

@@ -4,6 +4,7 @@ import {
   EventEnvelopeSchema,
   UserRegisteredPayloadSchema,
   UserNameUpdatedPayloadSchema,
+  UserUsernameUpdatedPayloadSchema,
   UserRoleChangedPayloadSchema,
 } from '@event-sharing/contracts';
 import {
@@ -35,6 +36,7 @@ export class IdentityOutboxWorker extends AbstractOutboxWorker<IdentityOutboxEve
           in: [
             EVENT_TYPES.userRegistered,
             EVENT_TYPES.userNameUpdated,
+            EVENT_TYPES.userUsernameUpdated,
             EVENT_TYPES.userRoleChanged,
           ],
         },
@@ -51,6 +53,8 @@ export class IdentityOutboxWorker extends AbstractOutboxWorker<IdentityOutboxEve
       payload = UserRegisteredPayloadSchema.parse(event.payload);
     } else if (event.eventType === EVENT_TYPES.userNameUpdated) {
       payload = UserNameUpdatedPayloadSchema.parse(event.payload);
+    } else if (event.eventType === EVENT_TYPES.userUsernameUpdated) {
+      payload = UserUsernameUpdatedPayloadSchema.parse(event.payload);
     } else if (event.eventType === EVENT_TYPES.userRoleChanged) {
       payload = UserRoleChangedPayloadSchema.parse(event.payload);
     } else {

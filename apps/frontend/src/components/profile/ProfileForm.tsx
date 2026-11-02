@@ -12,8 +12,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { PlaceAutocomplete } from '@/components/map/PlaceAutocomplete';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function ProfileForm() {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfilePrivate | null>(null);
   const [avatarUrl, setAvatarUrl] = useState('');
   const [bio, setBio] = useState('');
@@ -91,7 +93,9 @@ export function ProfileForm() {
         <h2>Public profile</h2>
         <div>
           <label>Name</label>
-          <p className="text-sm text-neutral-600">{profile.name}</p>
+          <p className="text-sm text-neutral-600">
+            {user?.name ?? profile.name}
+          </p>
         </div>
         <div>
           <label htmlFor="avatar">Avatar URL</label>

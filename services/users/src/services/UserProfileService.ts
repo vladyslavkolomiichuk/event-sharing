@@ -24,6 +24,12 @@ export class UserProfileService {
     return this.toPublic(await this.getSnapshot(userId));
   }
 
+  async getPublicByUsername(username: string): Promise<UserProfilePublic> {
+    const snapshot = await this.repository.findByUsername(username);
+    if (!snapshot) throw new ProfileNotFoundError();
+    return this.toPublic(snapshot);
+  }
+
   async getPublicMany(userIds: string[]): Promise<UserProfilePublic[]> {
     const snapshots = await this.repository.findManyByIds(userIds);
     return snapshots.map((snapshot) => this.toPublic(snapshot));
@@ -45,6 +51,7 @@ export class UserProfileService {
     return UserProfilePublicSchema.parse({
       userId: profile.userId,
       name: profile.name,
+      username: profile.username,
       avatarUrl: profile.avatarUrl,
       bio: profile.bio,
       phone: preferences.showPhone ? profile.phone : null,
@@ -76,6 +83,7 @@ export class UserProfileService {
     return UserProfilePrivateSchema.parse({
       userId: profile.userId,
       name: profile.name,
+      username: profile.username,
       avatarUrl: profile.avatarUrl,
       bio: profile.bio,
       phone: profile.phone,

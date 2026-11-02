@@ -179,6 +179,15 @@ export class ChatProjectionRepository {
     if (result === 'processed') {
       try {
         if (
+          event.producer === 'auth' &&
+          event.eventType === EVENT_TYPES.userNameUpdated
+        ) {
+          const { userId } = UserNameUpdatedPayloadSchema.parse(event.payload);
+          for (const eventId of await this.chats.eventsWithUser(userId)) {
+            this.onChanged(await this.chats.participants(eventId), eventId);
+          }
+        }
+        if (
           event.producer === 'events' &&
           isEventSnapshotType(event.eventType)
         ) {

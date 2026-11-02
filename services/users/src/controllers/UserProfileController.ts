@@ -1,4 +1,7 @@
-import { UpdateUserProfileSchema } from '@event-sharing/contracts';
+import {
+  UpdateUserProfileSchema,
+  UsernameSchema,
+} from '@event-sharing/contracts';
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
 import { UnauthorizedError } from '../domain/errors/UnauthorizedError.js';
@@ -17,6 +20,11 @@ export class UserProfileController {
   getPublic: RequestHandler = async (request, response) => {
     const userId = z.uuid().parse(request.params.userId);
     response.status(200).json(await this.service.getPublic(userId));
+  };
+
+  getByUsername: RequestHandler = async (request, response) => {
+    const username = UsernameSchema.parse(request.params.username);
+    response.status(200).json(await this.service.getPublicByUsername(username));
   };
 
   listPublic: RequestHandler = async (request, response) => {

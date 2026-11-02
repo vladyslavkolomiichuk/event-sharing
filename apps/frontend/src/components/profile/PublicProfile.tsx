@@ -102,6 +102,7 @@ export function PublicProfile({ userId }: { userId: string }) {
               Public profile
             </p>
             <h1>{profile.name}</h1>
+            <p className="text-neutral-500">@{profile.username}</p>
             <p className="mt-2 text-sm text-neutral-500">
               Member since{' '}
               {new Date(profile.createdAt).toLocaleDateString('en-US', {

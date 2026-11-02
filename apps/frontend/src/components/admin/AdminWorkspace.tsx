@@ -78,7 +78,7 @@ export function AdminWorkspace() {
     setError('');
     setNotice('');
     try {
-      await authClient.changeRole(selectedUser.userId, role);
+      await authClient.changeRole(selectedUser.username, role);
       setNotice('Role updated. The user may need to refresh their session.');
       setSelectedUser(null);
       setUserName('');
@@ -162,11 +162,11 @@ export function AdminWorkspace() {
       <section className="space-y-5 rounded-xl border border-neutral-200 bg-white p-7">
         <h2>User roles</h2>
         <p className="text-sm text-neutral-600">
-          Find a user by name, select the profile, and assign a role.
+          Find a user by name or username, then assign a role.
         </p>
         <form onSubmit={findUsers} className="flex gap-2">
           <div>
-            <label htmlFor="user-name">Name</label>
+            <label htmlFor="user-name">Name or username</label>
             <Input
               id="user-name"
               required
@@ -174,7 +174,7 @@ export function AdminWorkspace() {
               maxLength={100}
               value={userName}
               onChange={(event) => setUserName(event.target.value)}
-              placeholder="Search by name"
+              placeholder="Search by name or username"
             />
           </div>
           <Button className="self-end" disabled={busy}>
@@ -191,6 +191,9 @@ export function AdminWorkspace() {
                   onClick={() => setSelectedUser(person)}
                 >
                   <span className="font-semibold">{person.name}</span>
+                  <span className="ml-2 text-sm text-neutral-500">
+                    @{person.username}
+                  </span>
                   <span className="ml-2 text-sm text-neutral-500">
                     {person.city || 'City not shared'}
                   </span>

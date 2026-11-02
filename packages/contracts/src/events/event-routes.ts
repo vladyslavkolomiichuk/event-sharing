@@ -15,6 +15,10 @@ export const EVENT_ROUTES = {
     producer: 'auth',
     topic: EVENT_TOPICS.identity,
   },
+  [EVENT_TYPES.userUsernameUpdated]: {
+    producer: 'auth',
+    topic: EVENT_TOPICS.identity,
+  },
   [EVENT_TYPES.userProfileUpdated]: {
     producer: 'users',
     topic: EVENT_TOPICS.users,

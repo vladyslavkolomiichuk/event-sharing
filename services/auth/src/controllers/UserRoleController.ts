@@ -1,13 +1,8 @@
-import { UserRoleSchema } from '@event-sharing/contracts';
+import { UserRoleSchema, UsernameSchema } from '@event-sharing/contracts';
 import type { RequestHandler } from 'express';
-import { z } from 'zod';
 import { UnauthorizedError } from '../domain/errors/UnauthorizedError.js';
 import { UpdateUserRoleSchema } from '../schemas/update-user-role.schema.js';
 import type { UserRoleService } from '../services/UserRoleService.js';
-
-const UserIdParamsSchema = z.strictObject({
-  userId: z.uuid(),
-});
 
 export class UserRoleController {
   constructor(private readonly service: UserRoleService) {}
@@ -18,12 +13,12 @@ export class UserRoleController {
       throw new UnauthorizedError();
     }
 
-    const { userId } = UserIdParamsSchema.parse(request.params);
+    const username = UsernameSchema.parse(request.params.username);
     const { role } = UpdateUserRoleSchema.parse(request.body);
     const updated = await this.service.changeRole(
       actor.id,
       UserRoleSchema.parse(actor.role),
-      userId,
+      username,
       role,
     );
 

@@ -6,6 +6,31 @@ import { MessageRateLimitError } from '../domain/errors/MessageRateLimitError.js
 import { ResourceNotFoundError } from '../domain/errors/ResourceNotFoundError.js';
 
 export class ChatRepository {
+  async eventsWithUser(userId: string): Promise<string[]> {
+    const [organized, memberships, messages] = await Promise.all([
+      prisma.eventProjection.findMany({
+        where: { organizerId: userId, chatEnabled: true },
+        select: { id: true },
+      }),
+      prisma.membershipProjection.findMany({
+        where: { userId, active: true },
+        select: { eventId: true },
+      }),
+      prisma.chatMessage.findMany({
+        where: { senderId: userId },
+        select: { eventId: true },
+        distinct: ['eventId'],
+      }),
+    ]);
+    return [
+      ...new Set([
+        ...organized.map((event) => event.id),
+        ...memberships.map((membership) => membership.eventId),
+        ...messages.map((message) => message.eventId),
+      ]),
+    ];
+  }
+
   async participants(eventId: string): Promise<string[]> {
     const [event, members] = await Promise.all([
       this.event(eventId),

@@ -3,7 +3,6 @@ import type { UserProfilePublic } from '@event-sharing/contracts';
 import { ProfileAvatar } from './ProfileAvatar';
 
 export function UserProfileLink({
-  userId,
   profile,
 }: {
   userId: string;
@@ -17,7 +16,7 @@ export function UserProfileLink({
 
   return (
     <Link
-      href={`/users/${userId}`}
+      href={`/u/${profile.username}`}
       className="inline-flex items-center gap-3 font-semibold hover:underline"
     >
       <ProfileAvatar name={profile.name} avatarUrl={profile.avatarUrl} />

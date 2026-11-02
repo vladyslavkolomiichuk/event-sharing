@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { jwt } from 'better-auth/plugins';
 import { MailMessageCipher } from '@event-sharing/messaging';
+import { DisplayNameSchema } from '@event-sharing/contracts';
 import { env } from '../config/env.js';
 import { prisma } from '../database/client.js';
 import { MailRequestRepository } from '../repositories/MailRequestRepository.js';
@@ -28,10 +29,24 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        before: async (user) => ({ data: { ...user, image: null } }),
+        before: async (user) => ({
+          data: {
+            ...user,
+            name: DisplayNameSchema.parse(user.name),
+            image: null,
+          },
+        }),
       },
       update: {
-        before: async (user) => ({ data: { ...user, image: null } }),
+        before: async (user) => ({
+          data: {
+            ...user,
+            ...(user.name !== undefined
+              ? { name: DisplayNameSchema.parse(user.name) }
+              : {}),
+            image: null,
+          },
+        }),
       },
     },
   },
@@ -53,6 +68,11 @@ export const auth = betterAuth({
         : {}),
     },
     additionalFields: {
+      username: {
+        type: 'string',
+        required: false,
+        input: false,
+      },
       role: {
         type: ['USER', 'ORGANIZER', 'ADMIN'],
         required: false,
