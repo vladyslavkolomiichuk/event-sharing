@@ -18,6 +18,7 @@ export class SmtpEmailClient {
       host: settings.host,
       port: settings.port,
       secure: settings.secure,
+      requireTLS: !settings.secure,
       auth: settings.user
         ? { user: settings.user, pass: settings.password }
         : undefined,
