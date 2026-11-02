@@ -20,19 +20,17 @@ const allowedFrom: Record<EventAction, EventStatus[]> = {
   approve: ['MODERATION'],
   reject: ['MODERATION'],
   publish: ['APPROVED'],
-  open: ['PUBLISHED', 'REGISTRATION_CLOSED'],
-  close: ['REGISTRATION_OPEN'],
-  start: ['REGISTRATION_CLOSED'],
-  complete: ['IN_PROGRESS'],
+  open: ['PUBLISHED', 'ONGOING'],
+  close: ['PUBLISHED', 'ONGOING'],
+  start: ['PUBLISHED'],
+  complete: ['PUBLISHED', 'ONGOING'],
   cancel: [
     'DRAFT',
     'MODERATION',
     'REJECTED',
     'APPROVED',
     'PUBLISHED',
-    'REGISTRATION_OPEN',
-    'REGISTRATION_CLOSED',
-    'IN_PROGRESS',
+    'ONGOING',
   ],
   archive: ['COMPLETED', 'CANCELLED', 'REJECTED'],
 };
@@ -61,16 +59,7 @@ export class EventLifecyclePolicy {
   }
 
   assertEditable(status: EventStatus): void {
-    if (
-      ![
-        'DRAFT',
-        'REJECTED',
-        'APPROVED',
-        'PUBLISHED',
-        'REGISTRATION_OPEN',
-        'REGISTRATION_CLOSED',
-      ].includes(status)
-    ) {
+    if (!['DRAFT', 'REJECTED', 'APPROVED', 'PUBLISHED'].includes(status)) {
       throw new EventConflictError(
         'EVENT_NOT_EDITABLE',
         'The event cannot be edited in its current status.',

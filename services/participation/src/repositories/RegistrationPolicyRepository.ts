@@ -118,6 +118,14 @@ export class RegistrationPolicyRepository {
         return 'rejected';
       }
       if (
+        request.status === 'OPEN' &&
+        request.endTime &&
+        new Date(request.endTime) <= new Date()
+      ) {
+        await this.reject(transaction, request, 'REGISTRATION_DEADLINE_PASSED');
+        return 'rejected';
+      }
+      if (
         current &&
         request.status !== 'CANCELLED' &&
         request.capacity < current.occupied
@@ -140,6 +148,7 @@ export class RegistrationPolicyRepository {
             version: request.policyVersion,
             status: request.status,
             capacity: request.capacity,
+            endTime: request.endTime ? new Date(request.endTime) : null,
             occupied: request.status === 'CANCELLED' ? 0 : current.occupied,
           },
         });
@@ -151,6 +160,7 @@ export class RegistrationPolicyRepository {
             version: request.policyVersion,
             status: request.status,
             capacity: request.capacity,
+            endTime: request.endTime ? new Date(request.endTime) : null,
           },
         });
       }
@@ -172,7 +182,10 @@ export class RegistrationPolicyRepository {
   private async reject(
     transaction: Prisma.TransactionClient,
     request: RegistrationPolicyRequestedPayload,
-    reason: 'CAPACITY_BELOW_OCCUPIED' | 'POLICY_ALREADY_CANCELLED',
+    reason:
+      | 'CAPACITY_BELOW_OCCUPIED'
+      | 'POLICY_ALREADY_CANCELLED'
+      | 'REGISTRATION_DEADLINE_PASSED',
   ): Promise<void> {
     await transaction.outboxEvent.create({
       data: {

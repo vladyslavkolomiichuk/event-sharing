@@ -18,12 +18,12 @@ import { Loading } from '@/components/feedback/Loading';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { eventLocalTime, eventUtcTime } from '@/lib/event-time';
 
-function localDate(value: string): string {
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-}
+const timeZones = [
+  'UTC',
+  ...Intl.supportedValuesOf('timeZone').filter((zone) => zone !== 'UTC'),
+];
 
 export function EventForm({ eventId }: { eventId?: string }) {
   const router = useRouter();
@@ -38,6 +38,9 @@ export function EventForm({ eventId }: { eventId?: string }) {
   const [categoryId, setCategoryId] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [timeZone, setTimeZone] = useState(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+  );
   const [address, setAddress] = useState('');
   const [region, setRegion] = useState('');
   const [latitude, setLatitude] = useState('');
@@ -67,8 +70,9 @@ export function EventForm({ eventId }: { eventId?: string }) {
           setTitle(event.title);
           setDescription(event.description);
           setCategoryId(event.categoryId ?? '');
-          setStartTime(localDate(event.startTime));
-          setEndTime(localDate(event.endTime));
+          setTimeZone(event.timeZone);
+          setStartTime(eventLocalTime(event.startTime, event.timeZone));
+          setEndTime(eventLocalTime(event.endTime, event.timeZone));
           setAddress(event.location.address ?? '');
           setRegion(event.location.region ?? '');
           setLatitude(String(event.location.latitude ?? ''));
@@ -138,8 +142,9 @@ export function EventForm({ eventId }: { eventId?: string }) {
         title,
         description,
         categoryId: categoryId || null,
-        startTime: new Date(startTime).toISOString(),
-        endTime: new Date(endTime).toISOString(),
+        startTime: eventUtcTime(startTime, timeZone),
+        endTime: eventUtcTime(endTime, timeZone),
+        timeZone,
         location: {
           address,
           region,
@@ -278,6 +283,21 @@ export function EventForm({ eventId }: { eventId?: string }) {
               onChange={(event) => setEndTime(event.target.value)}
             />
           </div>
+        </div>
+        <div>
+          <label htmlFor="event-time-zone">Event time zone</label>
+          <select
+            id="event-time-zone"
+            className="w-full"
+            value={timeZone}
+            onChange={(event) => setTimeZone(event.target.value)}
+          >
+            {timeZones.map((zone) => (
+              <option key={zone} value={zone}>
+                {zone}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label htmlFor="limit">Participant limit</label>

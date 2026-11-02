@@ -16,6 +16,7 @@ model EventProjection {
   description  String
   startTime    DateTime @db.Timestamptz(3)
   endTime      DateTime @db.Timestamptz(3)
+  timeZone     String   @default("UTC")
   status       String
   region       String?
   visibility   String

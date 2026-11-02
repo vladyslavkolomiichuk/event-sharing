@@ -27,9 +27,7 @@ export type PolicyResult = 'applied' | 'rejected' | 'duplicate' | 'ignored';
 
 const publicStatuses = [
   'PUBLISHED',
-  'REGISTRATION_OPEN',
-  'REGISTRATION_CLOSED',
-  'IN_PROGRESS',
+  'ONGOING',
   'COMPLETED',
   'CANCELLED',
   'ARCHIVED',
@@ -143,6 +141,7 @@ export class EventRepository {
         description: input.description,
         startTime: new Date(input.startTime),
         endTime: new Date(input.endTime),
+        timeZone: input.timeZone,
         locationAddress: input.location.address,
         locationRegion: input.location.region ?? null,
         latitude: input.location.latitude,
@@ -179,6 +178,7 @@ export class EventRepository {
           transaction,
           event,
           event.status,
+          event.registrationStatus,
           patch.participantLimit,
           null,
         );
@@ -194,10 +194,31 @@ export class EventRepository {
         ? new Date(patch.startTime)
         : event.startTime;
       const endTime = patch.endTime ? new Date(patch.endTime) : event.endTime;
+      const timesChanged =
+        startTime.getTime() !== event.startTime.getTime() ||
+        endTime.getTime() !== event.endTime.getTime();
+      if (
+        endTime.getTime() !== event.endTime.getTime() &&
+        event.registrationStatus === 'OPEN'
+      ) {
+        throw new EventConflictError(
+          'REGISTRATION_OPEN',
+          'Close registration before changing the event end time.',
+        );
+      }
+      if (
+        event.status === 'PUBLISHED' &&
+        event.startTime <= new Date() &&
+        timesChanged
+      ) {
+        throw new EventConflictError(
+          'EVENT_NOT_EDITABLE',
+          'Event times cannot be edited after the event has started.',
+        );
+      }
       if (
         endTime <= startTime ||
-        ((patch.startTime || patch.endTime) &&
-          startTime.getTime() <= Date.now())
+        (timesChanged && startTime.getTime() <= Date.now())
       ) {
         throw new EventConflictError(
           'EVENT_TIME_INVALID',
@@ -218,6 +239,7 @@ export class EventRepository {
       }
       if (patch.startTime !== undefined) data.startTime = startTime;
       if (patch.endTime !== undefined) data.endTime = endTime;
+      if (patch.timeZone !== undefined) data.timeZone = patch.timeZone;
       if (patch.participantLimit !== undefined)
         data.participantLimit = patch.participantLimit;
       if (patch.chatEnabled !== undefined) data.chatEnabled = patch.chatEnabled;
@@ -251,15 +273,9 @@ export class EventRepository {
       this.assertOwner(event, actorId, role);
       this.assertNoPending(event);
       if (
-        ![
-          'DRAFT',
-          'REJECTED',
-          'APPROVED',
-          'PUBLISHED',
-          'REGISTRATION_OPEN',
-          'REGISTRATION_CLOSED',
-          'IN_PROGRESS',
-        ].includes(event.status)
+        !['DRAFT', 'REJECTED', 'APPROVED', 'PUBLISHED', 'ONGOING'].includes(
+          event.status,
+        )
       ) {
         throw new EventConflictError(
           'EVENT_NOT_EDITABLE',
@@ -292,11 +308,49 @@ export class EventRepository {
       this.assertNoPending(event);
       this.lifecycle.assertTransition(action, event.status);
 
+      if (
+        action === 'open' &&
+        (event.registrationStatus !== 'CLOSED' || event.endTime <= new Date())
+      ) {
+        throw new EventConflictError(
+          'REGISTRATION_CLOSED',
+          'Registration cannot be reopened after the event ends or while already open.',
+        );
+      }
+      if (action === 'close' && event.registrationStatus !== 'OPEN') {
+        throw new EventConflictError(
+          'REGISTRATION_CLOSED',
+          'Registration is already closed.',
+        );
+      }
+      if (
+        action === 'start' &&
+        (event.startTime > new Date() || event.endTime <= new Date())
+      ) {
+        throw new EventConflictError(
+          'EVENT_TIME_INVALID',
+          'The event is outside its scheduled time.',
+        );
+      }
+      if (action === 'publish' && event.endTime <= new Date()) {
+        throw new EventConflictError(
+          'EVENT_TIME_INVALID',
+          'The event has already ended.',
+        );
+      }
+      if (action === 'complete' && event.startTime > new Date()) {
+        throw new EventConflictError(
+          'EVENT_TIME_INVALID',
+          'The event has not started yet.',
+        );
+      }
+
       if (action === 'open') {
         return this.requestPolicy(
           transaction,
           event,
-          'REGISTRATION_OPEN',
+          event.status,
+          'OPEN',
           event.participantLimit,
           null,
         );
@@ -305,16 +359,21 @@ export class EventRepository {
         return this.requestPolicy(
           transaction,
           event,
-          'REGISTRATION_CLOSED',
+          event.status,
+          'CLOSED',
           event.participantLimit,
           null,
         );
       }
-      if (action === 'cancel' && event.policyVersion > 0) {
+      if (
+        (action === 'cancel' || action === 'complete') &&
+        event.policyVersion > 0
+      ) {
         return this.requestPolicy(
           transaction,
           event,
-          'CANCELLED',
+          action === 'cancel' ? 'CANCELLED' : 'COMPLETED',
+          'CLOSED',
           event.participantLimit,
           reason,
         );
@@ -325,7 +384,7 @@ export class EventRepository {
         approve: 'APPROVED',
         reject: 'REJECTED',
         publish: 'PUBLISHED',
-        start: 'IN_PROGRESS',
+        start: 'ONGOING',
         complete: 'COMPLETED',
         cancel: 'CANCELLED',
         archive: 'ARCHIVED',
@@ -337,6 +396,9 @@ export class EventRepository {
         version: { increment: 1 },
         policyError: null,
       };
+      if (action === 'cancel' || action === 'complete') {
+        data.registrationStatus = 'CLOSED';
+      }
       if (action === 'reject') data.moderationReason = reason;
       if (action === 'cancel') data.cancellationReason = reason;
       if (action === 'submit') data.moderationReason = null;
@@ -391,6 +453,7 @@ export class EventRepository {
           data: {
             pendingPolicyVersion: null,
             pendingStatus: null,
+            pendingRegistrationStatus: null,
             pendingParticipantLimit: null,
             pendingCancellationReason: null,
             policyError: rejected.reason,
@@ -404,10 +467,13 @@ export class EventRepository {
         where: { id: event.id },
         data: {
           status: event.pendingStatus,
+          registrationStatus:
+            event.pendingRegistrationStatus ?? event.registrationStatus,
           participantLimit: event.pendingParticipantLimit,
           policyVersion: payload.policyVersion,
           pendingPolicyVersion: null,
           pendingStatus: null,
+          pendingRegistrationStatus: null,
           pendingParticipantLimit: null,
           cancellationReason:
             event.pendingStatus === 'CANCELLED'
@@ -430,24 +496,83 @@ export class EventRepository {
     });
   }
 
+  async advanceDueEvents(now = new Date()): Promise<void> {
+    const due = await prisma.event.findMany({
+      where: {
+        pendingPolicyVersion: null,
+        OR: [
+          { status: { in: ['PUBLISHED', 'ONGOING'] }, endTime: { lte: now } },
+          { status: 'PUBLISHED', startTime: { lte: now } },
+        ],
+      },
+      orderBy: { endTime: 'asc' },
+      take: 100,
+      select: { id: true },
+    });
+
+    for (const item of due) {
+      await prisma.$transaction(async (transaction) => {
+        const event = await this.lockEvent(transaction, item.id);
+        if (event.pendingPolicyVersion !== null) return;
+        if (!['PUBLISHED', 'ONGOING'].includes(event.status)) return;
+
+        if (event.endTime <= now) {
+          if (event.registrationStatus === 'OPEN') {
+            await this.requestPolicy(
+              transaction,
+              event,
+              'COMPLETED',
+              'CLOSED',
+              event.participantLimit,
+              null,
+            );
+            return;
+          }
+          const completed = await transaction.event.update({
+            where: { id: event.id },
+            data: { status: 'COMPLETED', version: { increment: 1 } },
+            include: { category: true },
+          });
+          await this.addSnapshot(
+            transaction,
+            completed,
+            EVENT_TYPES.eventUpdated,
+          );
+          return;
+        }
+
+        if (event.status === 'PUBLISHED' && event.startTime <= now) {
+          const ongoing = await transaction.event.update({
+            where: { id: event.id },
+            data: { status: 'ONGOING', version: { increment: 1 } },
+            include: { category: true },
+          });
+          await this.addSnapshot(
+            transaction,
+            ongoing,
+            EVENT_TYPES.eventUpdated,
+          );
+        }
+      });
+    }
+  }
+
   private async requestPolicy(
     transaction: Prisma.TransactionClient,
     event: EventWithCategory,
     pendingStatus: Event['status'],
+    pendingRegistrationStatus: Event['registrationStatus'],
     capacity: number,
     cancellationReason: string | null,
   ): Promise<EventWithCategory> {
     const policyStatus =
-      pendingStatus === 'REGISTRATION_OPEN'
-        ? 'OPEN'
-        : pendingStatus === 'CANCELLED'
-          ? 'CANCELLED'
-          : 'CLOSED';
+      pendingStatus === 'CANCELLED' ? 'CANCELLED' : pendingRegistrationStatus;
     const policyVersion = event.policyVersion + 1;
     const updated = await transaction.event.update({
       where: { id: event.id },
       data: {
         pendingStatus,
+        pendingRegistrationStatus,
         pendingParticipantLimit: capacity,
         pendingPolicyVersion: policyVersion,
         pendingCancellationReason: cancellationReason,
@@ -466,6 +591,7 @@ export class EventRepository {
           policyVersion,
           status: policyStatus,
           capacity,
+          endTime: event.endTime.toISOString(),
         }),
       },
     });

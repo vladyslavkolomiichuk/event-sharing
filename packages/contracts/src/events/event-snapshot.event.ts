@@ -5,6 +5,7 @@ export const EventSnapshotPayloadSchema = EventDetailSchema.omit({
   moderationReason: true,
   policyError: true,
   pendingStatus: true,
+  pendingRegistrationStatus: true,
   pendingParticipantLimit: true,
 }).extend({
   categoryName: z.string().nullable().optional(),

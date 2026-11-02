@@ -88,6 +88,7 @@ export class SearchProjectionRepository {
         description: snapshot.description,
         startTime: new Date(snapshot.startTime),
         endTime: new Date(snapshot.endTime),
+        timeZone: snapshot.timeZone,
         status: snapshot.status,
         region: snapshot.location.region,
         visibility: snapshot.location.visibility,

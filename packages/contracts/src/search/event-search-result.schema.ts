@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { EventStatusSchema } from '../events/event-status.schema.js';
+import { EventTimeZoneSchema } from '../events/event-time-zone.schema.js';
 
 export const SearchEventSchema = z.strictObject({
   id: z.uuid(),
@@ -10,6 +11,7 @@ export const SearchEventSchema = z.strictObject({
   categoryName: z.string().nullable(),
   startTime: z.iso.datetime(),
   endTime: z.iso.datetime(),
+  timeZone: EventTimeZoneSchema.default('UTC'),
   status: EventStatusSchema,
   distanceMeters: z.number().nonnegative().nullable(),
   location: z.strictObject({

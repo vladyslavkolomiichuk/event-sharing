@@ -2,9 +2,7 @@ import type { EventStatus } from '@event-sharing/contracts';
 
 export const CHAT_ACTIVE_STATUSES = [
   'PUBLISHED',
-  'REGISTRATION_OPEN',
-  'REGISTRATION_CLOSED',
-  'IN_PROGRESS',
+  'ONGOING',
 ] as const satisfies readonly EventStatus[];
 
 const active = new Set<string>(CHAT_ACTIVE_STATUSES);

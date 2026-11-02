@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { EventStatusSchema } from './event-status.schema.js';
+import { RegistrationStatusSchema } from './registration-status.schema.js';
+import { EventTimeZoneSchema } from './event-time-zone.schema.js';
 
 export const EventDetailSchema = z.strictObject({
   id: z.uuid(),
@@ -10,11 +12,14 @@ export const EventDetailSchema = z.strictObject({
   description: z.string(),
   startTime: z.iso.datetime(),
   endTime: z.iso.datetime(),
+  timeZone: EventTimeZoneSchema.default('UTC'),
   status: EventStatusSchema,
+  registrationStatus: RegistrationStatusSchema,
   participantLimit: z.number().int().positive(),
   chatEnabled: z.boolean().default(false),
   version: z.number().int().positive(),
   pendingStatus: EventStatusSchema.nullable(),
+  pendingRegistrationStatus: RegistrationStatusSchema.nullable(),
   pendingParticipantLimit: z.number().int().positive().nullable(),
   policyError: z.string().nullable(),
   moderationReason: z.string().nullable(),

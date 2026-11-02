@@ -13,12 +13,15 @@ enum EventStatus {
   REJECTED
   APPROVED
   PUBLISHED
-  REGISTRATION_OPEN
-  REGISTRATION_CLOSED
-  IN_PROGRESS
+  ONGOING
   COMPLETED
   CANCELLED
   ARCHIVED
+}
+
+enum RegistrationState {
+  OPEN
+  CLOSED
 }
 
 enum LocationVisibility {
@@ -44,7 +47,10 @@ model Event {
   description               String
   startTime                 DateTime           @db.Timestamptz(3)
   endTime                   DateTime           @db.Timestamptz(3)
+  timeZone                  String             @default("UTC")
   status                    EventStatus        @default(DRAFT)
+  registrationStatus        RegistrationState  @default(CLOSED)
+  pendingRegistrationStatus RegistrationState?
   moderationReason          String?
   cancellationReason        String?
   locationAddress           String

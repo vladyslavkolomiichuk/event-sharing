@@ -94,9 +94,9 @@ export function EventLocationFilters({
         >
           <option value="">All active</option>
           <option value="PUBLISHED">Published</option>
-          <option value="REGISTRATION_OPEN">Registration open</option>
-          <option value="REGISTRATION_CLOSED">Registration closed</option>
-          <option value="IN_PROGRESS">In progress</option>
+          <option value="ONGOING">Ongoing</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="CANCELLED">Cancelled</option>
         </select>
       </div>
       <Button

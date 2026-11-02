@@ -20,14 +20,7 @@ import { EventChatSettings } from './EventChatSettings';
 import { EventViewTabs, type EventView } from './EventViewTabs';
 import { useChatUnread } from '@/contexts/ChatUnreadContext';
 
-const editable = [
-  'DRAFT',
-  'REJECTED',
-  'APPROVED',
-  'PUBLISHED',
-  'REGISTRATION_OPEN',
-  'REGISTRATION_CLOSED',
-];
+const editable = ['DRAFT', 'REJECTED', 'APPROVED', 'PUBLISHED'];
 
 export function EventDetailView({
   id,
@@ -107,22 +100,18 @@ export function EventDetailView({
   const isOwner = event.organizerId === user.id;
   const canManage = isOwner || user.role === 'ADMIN';
   const chatAvailable =
-    event.chatEnabled &&
-    [
-      'PUBLISHED',
-      'REGISTRATION_OPEN',
-      'REGISTRATION_CLOSED',
-      'IN_PROGRESS',
-    ].includes(event.status);
+    event.chatEnabled && ['PUBLISHED', 'ONGOING'].includes(event.status);
 
   return (
     <div className="space-y-9">
       <div className="space-y-5 border-b border-neutral-200 pb-8">
         <div className="flex flex-wrap items-center gap-3">
           <EventStatusBadge status={event.status} />
-          <span className="text-sm text-neutral-500">
-            Event #{event.id.slice(0, 8)}
-          </span>
+          {['PUBLISHED', 'ONGOING'].includes(event.status) && (
+            <span className="text-sm text-neutral-600">
+              Registration {event.registrationStatus.toLowerCase()}
+            </span>
+          )}
         </div>
         <h1>{event.title}</h1>
         <p className="text-sm font-semibold text-neutral-600">
@@ -164,6 +153,7 @@ export function EventDetailView({
                     {new Date(event.startTime).toLocaleString('en-US', {
                       dateStyle: 'full',
                       timeStyle: 'short',
+                      timeZone: event.timeZone,
                     })}
                   </dd>
                 </div>
@@ -175,6 +165,7 @@ export function EventDetailView({
                     {new Date(event.endTime).toLocaleString('en-US', {
                       dateStyle: 'full',
                       timeStyle: 'short',
+                      timeZone: event.timeZone,
                     })}
                   </dd>
                 </div>
@@ -185,6 +176,12 @@ export function EventDetailView({
                   <dd className="mt-2">
                     {event.location.region || 'Not specified'}
                   </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                    Time zone
+                  </dt>
+                  <dd className="mt-2">{event.timeZone}</dd>
                 </div>
                 <div>
                   <dt className="text-xs font-bold uppercase tracking-wider text-neutral-500">
@@ -231,9 +228,7 @@ export function EventDetailView({
                 'REJECTED',
                 'APPROVED',
                 'PUBLISHED',
-                'REGISTRATION_OPEN',
-                'REGISTRATION_CLOSED',
-                'IN_PROGRESS',
+                'ONGOING',
               ].includes(event.status) && (
                 <EventChatSettings event={event} onChanged={setEvent} />
               )}
@@ -242,15 +237,9 @@ export function EventDetailView({
                 <ParticipantsList eventId={id} />
               </section>
             )}
-            {canManage &&
-              [
-                'PUBLISHED',
-                'REGISTRATION_OPEN',
-                'REGISTRATION_CLOSED',
-                'IN_PROGRESS',
-              ].includes(event.status) && (
-                <EventAnnouncementForm eventId={id} />
-              )}
+            {canManage && ['PUBLISHED', 'ONGOING'].includes(event.status) && (
+              <EventAnnouncementForm eventId={id} />
+            )}
           </div>
           <aside className="space-y-7">
             <section className="rounded-xl border border-neutral-200 bg-white p-7">

@@ -21,6 +21,8 @@ export * from './events/event-types.js';
 export * from './events/topics.js';
 export * from './events/event-routes.js';
 export * from './events/event-status.schema.js';
+export * from './events/registration-status.schema.js';
+export * from './events/event-time-zone.schema.js';
 export * from './events/event-location.schema.js';
 export * from './events/create-event.schema.js';
 export * from './events/update-event.schema.js';

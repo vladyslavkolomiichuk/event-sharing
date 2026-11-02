@@ -29,19 +29,11 @@ const transitions: Record<
     { label: 'Cancel event', action: 'cancel', reason: true },
   ],
   PUBLISHED: [
-    { label: 'Open registration', action: 'registration/open' },
-    { label: 'Cancel event', action: 'cancel', reason: true },
-  ],
-  REGISTRATION_OPEN: [
-    { label: 'Close registration', action: 'registration/close' },
-    { label: 'Cancel event', action: 'cancel', reason: true },
-  ],
-  REGISTRATION_CLOSED: [
-    { label: 'Reopen registration', action: 'registration/open' },
     { label: 'Start event', action: 'start' },
+    { label: 'Complete event', action: 'complete' },
     { label: 'Cancel event', action: 'cancel', reason: true },
   ],
-  IN_PROGRESS: [
+  ONGOING: [
     { label: 'Complete event', action: 'complete' },
     { label: 'Cancel event', action: 'cancel', reason: true },
   ],
@@ -62,9 +54,29 @@ export function EventActions({
   const [selected, setSelected] = useState<EventAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const available = (transitions[event.status] ?? []).filter(
-    (item) => !item.admin || role === 'ADMIN',
-  );
+  const available = [
+    ...(transitions[event.status] ?? []),
+    ...(['PUBLISHED', 'ONGOING'].includes(event.status) &&
+    event.endTime > new Date().toISOString()
+      ? [
+          {
+            label:
+              event.registrationStatus === 'OPEN'
+                ? 'Close registration'
+                : 'Open registration',
+            action: (event.registrationStatus === 'OPEN'
+              ? 'registration/close'
+              : 'registration/open') as EventAction,
+          },
+        ]
+      : []),
+  ].filter((item) => {
+    if (item.admin && role !== 'ADMIN') return false;
+    if (item.action === 'start' || item.action === 'complete') {
+      return event.startTime <= new Date().toISOString();
+    }
+    return true;
+  });
 
   async function run(action: EventAction, requiresReason?: boolean) {
     if (requiresReason && selected !== action) {

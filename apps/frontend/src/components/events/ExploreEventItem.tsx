@@ -23,6 +23,7 @@ export function ExploreEventItem({
             month: 'short',
             day: 'numeric',
             year: 'numeric',
+            timeZone: event.timeZone,
           })}
         </span>
         <div className="flex items-center gap-2">

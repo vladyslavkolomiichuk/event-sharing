@@ -21,9 +21,8 @@ import {
 import { ProjectionRepository } from '../repositories/ProjectionRepository.js';
 
 const membershipReadyStatuses = new Set<string>([
-  'REGISTRATION_OPEN',
-  'REGISTRATION_CLOSED',
-  'IN_PROGRESS',
+  'PUBLISHED',
+  'ONGOING',
   'COMPLETED',
   'CANCELLED',
   'ARCHIVED',

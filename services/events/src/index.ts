@@ -6,6 +6,7 @@ import { connectDatabase, disconnectDatabase } from './database/client.js';
 import { EventRepository } from './repositories/EventRepository.js';
 import { ParticipantAccessRepository } from './repositories/ParticipantAccessRepository.js';
 import { EventOutboxWorker } from './workers/EventOutboxWorker.js';
+import { EventLifecycleWorker } from './workers/EventLifecycleWorker.js';
 
 const brokers = env.KAFKA_BROKERS.split(',').map((broker) => broker.trim());
 await connectDatabase();
@@ -15,8 +16,10 @@ const consumer = new ParticipationEventConsumer(
   new ParticipantAccessRepository(),
 );
 const outboxWorker = new EventOutboxWorker(brokers);
+const lifecycleWorker = new EventLifecycleWorker();
 await consumer.start();
 await outboxWorker.start();
+lifecycleWorker.start();
 
 const app = createApp(new PostgresReadinessCheck(env.DATABASE_URL));
 const server = app.listen(env.PORT, env.HOST, () => {
@@ -25,6 +28,7 @@ const server = app.listen(env.PORT, env.HOST, () => {
 
 async function shutdown(): Promise<void> {
   server.close(async () => {
+    lifecycleWorker.stop();
     await consumer.stop();
     await outboxWorker.stop();
     await disconnectDatabase();

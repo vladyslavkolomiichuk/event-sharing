@@ -3,19 +3,22 @@ import type { EventStatus } from '../events/event-status.schema.js';
 
 export const SEARCHABLE_EVENT_STATUSES = [
   'PUBLISHED',
-  'REGISTRATION_OPEN',
-  'REGISTRATION_CLOSED',
-  'IN_PROGRESS',
+  'ONGOING',
 ] as const satisfies readonly EventStatus[];
 
 export const SearchableEventStatusSchema = z.enum(SEARCHABLE_EVENT_STATUSES);
+export const EventSearchStatusSchema = z.enum([
+  ...SEARCHABLE_EVENT_STATUSES,
+  'COMPLETED',
+  'CANCELLED',
+]);
 
 export const EventSearchQuerySchema = z
   .strictObject({
     text: z.string().trim().max(200).optional(),
     categoryId: z.union([z.uuid(), z.literal('uncategorized')]).optional(),
     organizerId: z.uuid().optional(),
-    status: SearchableEventStatusSchema.optional(),
+    status: EventSearchStatusSchema.optional(),
     startFrom: z.iso.datetime().optional(),
     startTo: z.iso.datetime().optional(),
     latitude: z.number().min(-90).max(90).optional(),

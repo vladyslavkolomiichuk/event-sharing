@@ -1,0 +1,1 @@
+ALTER TABLE "event" ADD COLUMN "timeZone" text NOT NULL DEFAULT 'UTC';

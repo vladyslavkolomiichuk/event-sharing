@@ -26,14 +26,7 @@ export class MessageService {
     if (!event) throw new ResourceNotFoundError();
     if (event.organizerId !== senderId && role !== 'ADMIN')
       throw new ForbiddenError();
-    if (
-      ![
-        'PUBLISHED',
-        'REGISTRATION_OPEN',
-        'REGISTRATION_CLOSED',
-        'IN_PROGRESS',
-      ].includes(event.status)
-    ) {
+    if (!['PUBLISHED', 'ONGOING'].includes(event.status)) {
       throw new ForbiddenError();
     }
     const memberships = await this.projections.listActiveMembers(eventId);

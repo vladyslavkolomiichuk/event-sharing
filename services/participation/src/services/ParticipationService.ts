@@ -24,11 +24,21 @@ export class ParticipationService {
     if (!policy) throw new PolicyNotFoundError();
     return AvailabilitySchema.parse({
       eventId,
-      status: policy.status,
+      status:
+        policy.status === 'OPEN' &&
+        policy.endTime &&
+        policy.endTime <= new Date()
+          ? 'CLOSED'
+          : policy.status === 'OPEN' && policy.occupied >= policy.capacity
+            ? 'FULL'
+            : policy.status,
       capacity: policy.capacity,
       occupied: policy.occupied,
       available:
-        policy.status === 'OPEN' ? policy.capacity - policy.occupied : 0,
+        policy.status === 'OPEN' &&
+        (!policy.endTime || policy.endTime > new Date())
+          ? policy.capacity - policy.occupied
+          : 0,
       policyVersion: policy.version,
     });
   }

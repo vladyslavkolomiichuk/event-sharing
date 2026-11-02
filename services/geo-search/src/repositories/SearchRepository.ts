@@ -21,6 +21,7 @@ type SearchRow = {
   description: string;
   startTime: Date;
   endTime: Date;
+  timeZone: string;
   status: string;
   region: string | null;
   visibility: string;
@@ -33,17 +34,21 @@ type SearchRow = {
 
 export class SearchRepository {
   async search(query: EventSearchQuery): Promise<EventSearchResult> {
-    const conditions: Prisma.Sql[] = [
-      Prisma.sql`p.status IN (${Prisma.join([...SEARCHABLE_EVENT_STATUSES])})`,
-      Prisma.sql`p."endTime" > NOW()`,
-    ];
+    const conditions: Prisma.Sql[] = query.status
+      ? [Prisma.sql`p.status = ${query.status}`]
+      : [
+          Prisma.sql`p.status IN (${Prisma.join([...SEARCHABLE_EVENT_STATUSES])})`,
+          Prisma.sql`p."endTime" > NOW()`,
+        ];
+    if (query.status === 'PUBLISHED' || query.status === 'ONGOING') {
+      conditions.push(Prisma.sql`p."endTime" > NOW()`);
+    }
     if (query.categoryId === 'uncategorized')
       conditions.push(Prisma.sql`p."categoryId" IS NULL`);
     else if (query.categoryId)
       conditions.push(Prisma.sql`p."categoryId" = ${query.categoryId}::uuid`);
     if (query.organizerId)
       conditions.push(Prisma.sql`p."organizerId" = ${query.organizerId}::uuid`);
-    if (query.status) conditions.push(Prisma.sql`p.status = ${query.status}`);
     if (query.startFrom)
       conditions.push(
         Prisma.sql`p."startTime" >= ${new Date(query.startFrom)}`,
@@ -103,7 +108,7 @@ export class SearchRepository {
     const rows = await prisma.$queryRaw<SearchRow[]>(Prisma.sql`
       WITH matches AS (
         SELECT p.id, p."organizerId", p."categoryId", p."categoryName",
-          p.title, p.description, p."startTime", p."endTime", p.status,
+          p.title, p.description, p."startTime", p."endTime", p."timeZone", p.status,
           p.region, p.visibility, p.address, p.latitude, p.longitude,
           ${distance} AS "distanceMeters", ${rank} AS rank
         FROM "event_projection" p
@@ -126,6 +131,7 @@ export class SearchRepository {
         description: row.description,
         startTime: row.startTime.toISOString(),
         endTime: row.endTime.toISOString(),
+        timeZone: row.timeZone,
         status: row.status,
         distanceMeters: row.distanceMeters,
         location: {

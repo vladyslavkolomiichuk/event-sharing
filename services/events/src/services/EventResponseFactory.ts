@@ -10,12 +10,7 @@ export class EventResponseFactory {
   detail(event: EventWithCategory, revealLocation: boolean): EventDetail {
     const publicVenueVisible =
       event.locationVisibility === 'PUBLIC' &&
-      [
-        'PUBLISHED',
-        'REGISTRATION_OPEN',
-        'REGISTRATION_CLOSED',
-        'IN_PROGRESS',
-      ].includes(event.status);
+      ['PUBLISHED', 'ONGOING'].includes(event.status);
     const visible = revealLocation || publicVenueVisible;
     return EventDetailSchema.parse({
       id: event.id,
@@ -26,11 +21,14 @@ export class EventResponseFactory {
       description: event.description,
       startTime: event.startTime.toISOString(),
       endTime: event.endTime.toISOString(),
+      timeZone: event.timeZone,
       status: event.status,
+      registrationStatus: event.registrationStatus,
       participantLimit: event.participantLimit,
       chatEnabled: event.chatEnabled,
       version: event.version,
       pendingStatus: event.pendingStatus,
+      pendingRegistrationStatus: event.pendingRegistrationStatus,
       pendingParticipantLimit: event.pendingParticipantLimit,
       policyError: event.policyError,
       moderationReason: event.moderationReason,
@@ -52,6 +50,7 @@ export class EventResponseFactory {
       moderationReason,
       policyError,
       pendingStatus,
+      pendingRegistrationStatus,
       pendingParticipantLimit,
       ...snapshot
     } = this.detail(event, false);

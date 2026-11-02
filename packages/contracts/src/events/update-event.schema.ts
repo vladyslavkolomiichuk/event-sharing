@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { EventLocationSchema } from './event-location.schema.js';
+import { EventTimeZoneSchema } from './event-time-zone.schema.js';
 
 export const UpdateEventSchema = z
   .strictObject({
@@ -8,6 +9,7 @@ export const UpdateEventSchema = z
     categoryId: z.uuid().nullable().optional(),
     startTime: z.iso.datetime().optional(),
     endTime: z.iso.datetime().optional(),
+    timeZone: EventTimeZoneSchema.optional(),
     location: EventLocationSchema.optional(),
     participantLimit: z.number().int().positive().optional(),
     chatEnabled: z.boolean().optional(),

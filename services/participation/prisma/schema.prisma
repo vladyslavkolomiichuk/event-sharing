@@ -25,6 +25,7 @@ model RegistrationPolicy {
   version       Int
   status        RegistrationStatus
   capacity      Int
+  endTime       DateTime?          @db.Timestamptz(3)
   occupied      Int                @default(0)
   updatedAt     DateTime           @updatedAt @db.Timestamptz(3)
 
