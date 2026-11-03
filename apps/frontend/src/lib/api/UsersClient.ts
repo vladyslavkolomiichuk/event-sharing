@@ -26,8 +26,15 @@ export class UsersClient {
     return gateway.get(`/api/users?ids=${encodeURIComponent(ids.join(','))}`);
   }
 
-  searchByName(name: string): Promise<UserProfilePublic[]> {
-    return gateway.get(`/api/users/search?name=${encodeURIComponent(name)}`);
+  searchByUsername(
+    username: string,
+    cursor?: string,
+  ): Promise<{ items: UserProfilePublic[]; nextCursor: string | null }> {
+    const params = new URLSearchParams({
+      username: username.replace(/^@/, ''),
+    });
+    if (cursor) params.set('cursor', cursor);
+    return gateway.get(`/api/users/search?${params}`);
   }
 
   update(data: UpdateUserProfile): Promise<UserProfilePrivate> {

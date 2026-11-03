@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import type { EventDetail, UserProfilePublic } from '@event-sharing/contracts';
 import { usersClient } from '@/lib/api/UsersClient';
+import { friendsClient } from '@/lib/api/FriendsClient';
+import { useAuth } from '@/contexts/AuthContext';
 import { eventsClient } from '@/lib/api/EventsClient';
 import { EventCard } from '@/components/events/EventCard';
 import { Button } from '@/components/ui/button';
@@ -11,6 +13,7 @@ import { Notice } from '@/components/feedback/Notice';
 import { ProfileAvatar } from './ProfileAvatar';
 
 export function PublicProfile({ userId }: { userId: string }) {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfilePublic | null>(null);
   const [events, setEvents] = useState<EventDetail[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -18,6 +21,19 @@ export function PublicProfile({ userId }: { userId: string }) {
   const [eventsError, setEventsError] = useState('');
   const [eventsLoading, setEventsLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [friendMessage, setFriendMessage] = useState('');
+
+  async function addFriend() {
+    if (!profile) return;
+    try {
+      await friendsClient.request(profile.username);
+      setFriendMessage('Friend request sent.');
+    } catch (cause) {
+      setFriendMessage(
+        cause instanceof Error ? cause.message : 'Could not send request.',
+      );
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -103,6 +119,23 @@ export function PublicProfile({ userId }: { userId: string }) {
             </p>
             <h1>{profile.name}</h1>
             <p className="text-neutral-500">@{profile.username}</p>
+            {user && user.id !== profile.userId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void addFriend()}
+              >
+                Add friend
+              </Button>
+            )}
+            {friendMessage && (
+              <Notice
+                message={friendMessage}
+                tone={
+                  friendMessage === 'Friend request sent.' ? 'success' : 'error'
+                }
+              />
+            )}
             <p className="mt-2 text-sm text-neutral-500">
               Member since{' '}
               {new Date(profile.createdAt).toLocaleDateString('en-US', {

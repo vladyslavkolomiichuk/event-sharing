@@ -99,7 +99,9 @@ export function AdminWorkspace() {
     setUserMatches([]);
     setSelectedUser(null);
     try {
-      setUserMatches(await usersClient.searchByName(userName.trim()));
+      setUserMatches(
+        (await usersClient.searchByUsername(userName.trim())).items,
+      );
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : 'Could not find users.',
@@ -162,19 +164,19 @@ export function AdminWorkspace() {
       <section className="space-y-5 rounded-xl border border-neutral-200 bg-white p-7">
         <h2>User roles</h2>
         <p className="text-sm text-neutral-600">
-          Find a user by name or username, then assign a role.
+          Find a user by username, then assign a role.
         </p>
         <form onSubmit={findUsers} className="flex gap-2">
           <div>
-            <label htmlFor="user-name">Name or username</label>
+            <label htmlFor="user-name">Username</label>
             <Input
               id="user-name"
               required
               minLength={2}
-              maxLength={100}
+              maxLength={30}
               value={userName}
               onChange={(event) => setUserName(event.target.value)}
-              placeholder="Search by name or username"
+              placeholder="Search by username"
             />
           </div>
           <Button className="self-end" disabled={busy}>
@@ -193,9 +195,6 @@ export function AdminWorkspace() {
                   <span className="font-semibold">{person.name}</span>
                   <span className="ml-2 text-sm text-neutral-500">
                     @{person.username}
-                  </span>
-                  <span className="ml-2 text-sm text-neutral-500">
-                    {person.city || 'City not shared'}
                   </span>
                 </button>
               </li>

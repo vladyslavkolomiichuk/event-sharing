@@ -2,7 +2,7 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { jwt } from 'better-auth/plugins';
 import { MailMessageCipher } from '@event-sharing/messaging';
-import { DisplayNameSchema } from '@event-sharing/contracts';
+import { DisplayNameSchema, UsernameSchema } from '@event-sharing/contracts';
 import { env } from '../config/env.js';
 import { prisma } from '../database/client.js';
 import { MailRequestRepository } from '../repositories/MailRequestRepository.js';
@@ -33,6 +33,9 @@ export const auth = betterAuth({
           data: {
             ...user,
             name: DisplayNameSchema.parse(user.name),
+            ...(user.username
+              ? { username: UsernameSchema.parse(user.username) }
+              : {}),
             image: null,
           },
         }),

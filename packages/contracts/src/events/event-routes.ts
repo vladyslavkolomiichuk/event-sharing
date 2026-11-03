@@ -23,6 +23,14 @@ export const EVENT_ROUTES = {
     producer: 'users',
     topic: EVENT_TOPICS.users,
   },
+  [EVENT_TYPES.friendRequested]: {
+    producer: 'users',
+    topic: EVENT_TOPICS.users,
+  },
+  [EVENT_TYPES.friendAccepted]: {
+    producer: 'users',
+    topic: EVENT_TOPICS.users,
+  },
   [EVENT_TYPES.eventCreated]: {
     producer: 'events',
     topic: EVENT_TOPICS.events,

@@ -6,6 +6,7 @@ import {
   UserNameUpdatedPayloadSchema,
   UserProfileUpdatedPayloadSchema,
   UserRegisteredPayloadSchema,
+  FriendEventPayloadSchema,
   UserRoleChangedPayloadSchema,
   isEventSnapshotType,
   isMembershipEventType,
@@ -225,6 +226,34 @@ export class NotificationEventService {
           transaction,
           data.userId,
           data.notificationsEnabled,
+        );
+        return 'processed';
+      }
+      if (
+        event.producer === 'users' &&
+        (event.eventType === EVENT_TYPES.friendRequested ||
+          event.eventType === EVENT_TYPES.friendAccepted)
+      ) {
+        const data = FriendEventPayloadSchema.parse(event.payload);
+        const requested = event.eventType === EVENT_TYPES.friendRequested;
+        await this.createNotifications(
+          transaction,
+          [
+            {
+              recipientId: data.recipientId,
+              senderId: data.actorId,
+              type: requested ? 'FRIEND_REQUEST' : 'FRIEND_ACCEPTED',
+              title: requested
+                ? 'New friend request'
+                : 'Friend request accepted',
+              body: requested
+                ? `${data.actorName} sent you a friend request.`
+                : `${data.actorName} accepted your friend request.`,
+            href: '/friends',
+              sourceEventId: event.eventId,
+            },
+          ],
+          recipients,
         );
         return 'processed';
       }

@@ -35,10 +35,13 @@ export class UserProfileController {
   };
 
   searchPublic: RequestHandler = async (request, response) => {
-    const user = request.authenticatedUser;
-    if (!user) throw new UnauthorizedError();
-    const { name } = SearchPublicProfilesQuerySchema.parse(request.query);
-    response.status(200).json(await this.service.searchByName(name, user.role));
+    const userId = this.requireUserId(request.authenticatedUser?.id);
+    const { username, cursor } = SearchPublicProfilesQuerySchema.parse(
+      request.query,
+    );
+    response
+      .status(200)
+      .json(await this.service.searchByUsername(username, userId, cursor));
   };
 
   updateMe: RequestHandler = async (request, response) => {

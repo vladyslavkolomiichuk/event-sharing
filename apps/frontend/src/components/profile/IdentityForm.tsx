@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { UpdateIdentitySchema } from '@event-sharing/contracts';
+import { UpdateIdentitySchema, UsernameSchema } from '@event-sharing/contracts';
 import { authClient } from '@/lib/api/AuthClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ export function IdentityForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [availability, setAvailability] = useState('');
 
   useEffect(() => {
     setName(user?.name ?? '');
@@ -46,6 +47,30 @@ export function IdentityForm() {
     }
   }
 
+  async function checkAvailability() {
+    const parsed = UsernameSchema.safeParse(username);
+    if (!parsed.success) {
+      setAvailability(parsed.error.issues[0]?.message ?? 'Invalid username.');
+      return;
+    }
+    if (parsed.data === user?.username) {
+      setAvailability('This is your current username.');
+      return;
+    }
+    try {
+      const result = await authClient.usernameAvailable(parsed.data);
+      setAvailability(
+        result.available
+          ? 'Username is available.'
+          : 'Username is already taken.',
+      );
+    } catch (cause) {
+      setAvailability(
+        cause instanceof Error ? cause.message : 'Could not check username.',
+      );
+    }
+  }
+
   return (
     <form
       onSubmit={submit}
@@ -73,12 +98,24 @@ export function IdentityForm() {
           maxLength={30}
           required
           value={username}
-          onChange={(event) => setUsername(event.target.value)}
+          onChange={(event) => {
+            setUsername(event.target.value);
+            setAvailability('');
+          }}
         />
         <p className="mt-2 text-xs text-neutral-500">
           Use 3–30 lowercase letters, numbers, or underscores. Start with a
           letter.
         </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void checkAvailability()}
+        >
+          Check availability
+        </Button>
+        {availability && <p className="mt-2 text-sm">{availability}</p>}
       </div>
       {saved && <Notice message="Name and username updated." tone="success" />}
       {error && <Notice message={error} tone="error" />}

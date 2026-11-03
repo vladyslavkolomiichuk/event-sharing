@@ -19,6 +19,8 @@ const supportedTypes = new Set<string>([
   EVENT_TYPES.userRoleChanged,
   EVENT_TYPES.userNameUpdated,
   EVENT_TYPES.userProfileUpdated,
+  EVENT_TYPES.friendRequested,
+  EVENT_TYPES.friendAccepted,
   EVENT_TYPES.eventCreated,
   EVENT_TYPES.eventUpdated,
   EVENT_TYPES.eventCancelled,

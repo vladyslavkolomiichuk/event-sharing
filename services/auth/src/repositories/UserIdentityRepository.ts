@@ -4,6 +4,14 @@ import { prisma } from '../database/client.js';
 import { UsernameTakenError } from '../domain/errors/UsernameTakenError.js';
 
 export class UserIdentityRepository {
+  async available(username: string): Promise<boolean> {
+    const user = await prisma.user.findUnique({
+      where: { username },
+      select: { id: true },
+    });
+    return user === null;
+  }
+
   async update(userId: string, changes: UpdateIdentity) {
     try {
       return await prisma.user.update({

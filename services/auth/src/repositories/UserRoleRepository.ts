@@ -4,7 +4,7 @@ import { prisma } from '../database/client.js';
 export class UserRoleRepository {
   findByUsername(username: string) {
     return prisma.user.findUnique({
-      where: { username },
+      where: { username: username.toLowerCase() },
       select: { id: true },
     });
   }

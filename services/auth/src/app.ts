@@ -32,6 +32,10 @@ export function createApp(readinessCheck: ReadinessCheck): Express {
     requireUserSession,
     new UserIdentityController().update,
   );
+  app.get(
+    '/auth/username-availability',
+    new UserIdentityController().availability,
+  );
   app.get('/auth/account-capabilities', (_request, response) => {
     response.status(200).json({ emailDeliveryAvailable: accountMailAvailable });
   });

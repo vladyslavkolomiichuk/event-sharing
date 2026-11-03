@@ -43,6 +43,7 @@ export function createApp(dependencies: GatewayAppDependencies): Express {
 
   const authRateLimiter = new GatewayRateLimiter(120, 60_000);
   const credentialRateLimiter = new GatewayRateLimiter(10, 60_000);
+  const userSearchRateLimiter = new GatewayRateLimiter(60, 60_000);
   app.use('/auth', authRateLimiter.middleware());
   app.use(
     ['/auth/sign-in/email', '/auth/sign-up/email'],
@@ -51,6 +52,7 @@ export function createApp(dependencies: GatewayAppDependencies): Express {
   app.use('/auth', dependencies.authProxy);
 
   const authenticate = dependencies.authenticateBrowserSession;
+  app.use('/api/users/search', userSearchRateLimiter.middleware());
   app.use('/api/users', authenticate, dependencies.serviceProxies.users);
   app.use('/api/events', authenticate, dependencies.serviceProxies.events);
   app.use('/api/search', authenticate, dependencies.serviceProxies.search);

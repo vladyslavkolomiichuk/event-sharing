@@ -10,6 +10,27 @@ export const DisplayNameSchema = z
     'Use letters, numbers, spaces, apostrophes, periods, or hyphens.',
   );
 
+const reservedUsernames = new Set([
+  'admin',
+  'administrator',
+  'api',
+  'auth',
+  'events',
+  'friends',
+  'help',
+  'login',
+  'logout',
+  'me',
+  'messages',
+  'notifications',
+  'profile',
+  'search',
+  'settings',
+  'support',
+  'system',
+  'users',
+]);
+
 export const UsernameSchema = z
   .string()
   .trim()
@@ -17,6 +38,10 @@ export const UsernameSchema = z
   .regex(
     /^[a-z][a-z0-9_]{2,29}$/,
     'Use 3–30 lowercase letters, numbers, or underscores, starting with a letter.',
+  )
+  .refine(
+    (value) => !reservedUsernames.has(value),
+    'This username is reserved.',
   );
 
 export const UpdateIdentitySchema = z

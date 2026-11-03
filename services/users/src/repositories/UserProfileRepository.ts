@@ -41,32 +41,44 @@ export class UserProfileRepository {
     });
   }
 
-  async findByName(name: string): Promise<UserProfileSnapshot[]> {
+  async searchByUsername(username: string, actorId: string, cursor?: string) {
+    const blocks = await prisma.userBlock.findMany({
+      where: { OR: [{ blockerId: actorId }, { blockedId: actorId }] },
+      select: { blockerId: true, blockedId: true },
+    });
+    const hidden = blocks.map((block) =>
+      block.blockerId === actorId ? block.blockedId : block.blockerId,
+    );
     const matches = await prisma.userProfile.findMany({
       where: {
-        OR: [
-          { name: { contains: name, mode: 'insensitive' } },
-          { username: { contains: name.toLowerCase() } },
-        ],
+        username: { contains: username, ...(cursor ? { gt: cursor } : {}) },
+        userId: { notIn: [...hidden, actorId] },
       },
       select: { userId: true },
-      orderBy: { name: 'asc' },
-      take: 20,
+      orderBy: { username: 'asc' },
+      take: 21,
     });
     const snapshots = await this.findManyByIds(
-      matches.map((item) => item.userId),
+      matches.slice(0, 20).map((item) => item.userId),
     );
     const byUserId = new Map(
       snapshots.map((item) => [item.profile.userId, item]),
     );
-    return matches.flatMap((item) => {
+    const items = matches.slice(0, 20).flatMap((item) => {
       const snapshot = byUserId.get(item.userId);
       return snapshot ? [snapshot] : [];
     });
+    return {
+      items,
+      nextCursor:
+        matches.length > 20 ? (items.at(-1)?.profile.username ?? null) : null,
+    };
   }
 
   async findByUsername(username: string): Promise<UserProfileSnapshot | null> {
-    const profile = await prisma.userProfile.findFirst({ where: { username } });
+    const profile = await prisma.userProfile.findUnique({
+      where: { username },
+    });
     return profile ? this.findById(profile.userId) : null;
   }
 
@@ -190,6 +202,10 @@ export class UserProfileRepository {
         if (patch.preferences.notificationsEnabled !== undefined) {
           preferenceData.notificationsEnabled =
             patch.preferences.notificationsEnabled;
+        }
+        if (patch.preferences.allowFriendRequests !== undefined) {
+          preferenceData.allowFriendRequests =
+            patch.preferences.allowFriendRequests;
         }
         preferences = await transaction.userPreference.update({
           where: { userId },

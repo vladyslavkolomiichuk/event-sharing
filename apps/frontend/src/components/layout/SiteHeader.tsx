@@ -13,6 +13,7 @@ const links = [
   { href: '/events', label: 'Events' },
   { href: '/my-events', label: 'My events' },
   { href: '/participation', label: 'Joined' },
+  { href: '/friends', label: 'Friends' },
 ];
 
 export function SiteHeader() {

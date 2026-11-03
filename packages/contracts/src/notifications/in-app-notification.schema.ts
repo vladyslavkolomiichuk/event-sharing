@@ -11,6 +11,8 @@ export const InAppNotificationSchema = z.strictObject({
     'PARTICIPANT_JOINED',
     'DIRECT_MESSAGE',
     'EVENT_MESSAGE',
+    'FRIEND_REQUEST',
+    'FRIEND_ACCEPTED',
   ]),
   title: z.string(),
   body: z.string(),

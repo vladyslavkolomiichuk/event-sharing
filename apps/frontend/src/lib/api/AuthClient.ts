@@ -33,6 +33,12 @@ export class AuthClient {
     return gateway.get('/auth/account-capabilities');
   }
 
+  usernameAvailable(username: string): Promise<{ available: boolean }> {
+    return gateway.get(
+      `/auth/username-availability?username=${encodeURIComponent(username)}`,
+    );
+  }
+
   changePassword(
     currentPassword: string,
     newPassword: string,

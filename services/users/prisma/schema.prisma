@@ -20,7 +20,7 @@ model UserProfile {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  @@index([username])
+  @@unique([username])
   @@map("user_profile")
 }
 
@@ -29,9 +29,44 @@ model UserPreference {
   showPhone            Boolean  @default(false)
   showCity             Boolean  @default(true)
   notificationsEnabled Boolean  @default(true)
+  allowFriendRequests   Boolean  @default(true)
   updatedAt            DateTime @updatedAt @db.Timestamptz(3)
 
   @@map("user_preference")
+}
+
+model FriendRequest {
+  id          String   @id @default(uuid()) @db.Uuid
+  senderId    String   @db.Uuid
+  recipientId String   @db.Uuid
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([senderId, recipientId])
+  @@index([recipientId, status, createdAt])
+  @@index([senderId, status, createdAt])
+  @@map("friend_request")
+}
+
+model Friendship {
+  userIdA   String   @db.Uuid
+  userIdB   String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@id([userIdA, userIdB])
+  @@index([userIdB])
+  @@map("friendship")
+}
+
+model UserBlock {
+  blockerId String   @db.Uuid
+  blockedId String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("user_block")
 }
 
 model InboxEvent {

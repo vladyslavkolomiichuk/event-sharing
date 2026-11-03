@@ -24,6 +24,7 @@ export function ProfileForm() {
   const [showPhone, setShowPhone] = useState(false);
   const [showCity, setShowCity] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [allowFriendRequests, setAllowFriendRequests] = useState(true);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -42,6 +43,7 @@ export function ProfileForm() {
       setShowPhone(value.preferences.showPhone);
       setShowCity(value.preferences.showCity);
       setNotificationsEnabled(value.preferences.notificationsEnabled);
+      setAllowFriendRequests(value.preferences.allowFriendRequests);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : 'Could not load profile.',
@@ -66,7 +68,12 @@ export function ProfileForm() {
         bio,
         phone: phone.trim() || null,
         city: city.trim() || null,
-        preferences: { showPhone, showCity, notificationsEnabled },
+        preferences: {
+          showPhone,
+          showCity,
+          notificationsEnabled,
+          allowFriendRequests,
+        },
       });
       setProfile(await usersClient.update(input));
       setSaved(true);
@@ -172,6 +179,14 @@ export function ProfileForm() {
             onChange={(event) => setNotificationsEnabled(event.target.checked)}
           />
           Receive event and participation updates
+        </label>
+        <label className="flex items-center gap-3 font-normal">
+          <input
+            type="checkbox"
+            checked={allowFriendRequests}
+            onChange={(event) => setAllowFriendRequests(event.target.checked)}
+          />
+          Allow friend requests
         </label>
         <p className="text-xs leading-5 text-neutral-500">
           Notification delivery is planned. Your preference is already saved

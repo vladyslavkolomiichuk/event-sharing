@@ -6,6 +6,8 @@ export const EVENT_TYPES = {
   userProfileUpdated: 'user.profile.updated',
   userNameUpdated: 'user.name.updated',
   userUsernameUpdated: 'user.username.updated',
+  friendRequested: 'friend.requested',
+  friendAccepted: 'friend.accepted',
   eventCreated: 'event.created',
   eventUpdated: 'event.updated',
   eventCancelled: 'event.cancelled',

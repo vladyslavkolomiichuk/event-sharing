@@ -4,9 +4,7 @@ import {
   type UpdateUserProfile,
   type UserProfilePrivate,
   type UserProfilePublic,
-  type UserRole,
 } from '@event-sharing/contracts';
-import { ForbiddenError } from '../domain/errors/ForbiddenError.js';
 import { ProfileNotFoundError } from '../domain/errors/ProfileNotFoundError.js';
 import {
   UserProfileRepository,
@@ -35,13 +33,20 @@ export class UserProfileService {
     return snapshots.map((snapshot) => this.toPublic(snapshot));
   }
 
-  async searchByName(
-    name: string,
-    role: UserRole,
-  ): Promise<UserProfilePublic[]> {
-    if (role !== 'ADMIN') throw new ForbiddenError();
-    const snapshots = await this.repository.findByName(name);
-    return snapshots.map((snapshot) => this.toPublic(snapshot));
+  async searchByUsername(username: string, actorId: string, cursor?: string) {
+    const { items, nextCursor } = await this.repository.searchByUsername(
+      username,
+      actorId,
+      cursor,
+    );
+    return {
+      items: items.map((snapshot) => ({
+        ...this.toPublic(snapshot),
+        phone: null,
+        city: null,
+      })),
+      nextCursor,
+    };
   }
 
   private toPublic({
@@ -95,6 +100,7 @@ export class UserProfileService {
         showPhone: preferences.showPhone,
         showCity: preferences.showCity,
         notificationsEnabled: preferences.notificationsEnabled,
+        allowFriendRequests: preferences.allowFriendRequests,
       },
     });
   }

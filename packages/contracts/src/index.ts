@@ -9,6 +9,7 @@ export * from './users/user-profile-updated.event.js';
 export * from './users/update-user-profile.schema.js';
 export * from './users/user-profile-public.schema.js';
 export * from './users/user-profile-private.schema.js';
+export * from './users/friend.event.js';
 export * from './notifications/mail-request.schema.js';
 export * from './notifications/notification-requested.event.js';
 export * from './notifications/in-app-notification.schema.js';

@@ -3,6 +3,7 @@ import {
   EVENT_TYPES,
   EventEnvelopeSchema,
   UserProfileUpdatedPayloadSchema,
+  FriendEventPayloadSchema,
 } from '@event-sharing/contracts';
 import {
   AbstractOutboxWorker,
@@ -35,7 +36,11 @@ export class UserProfileOutboxWorker extends AbstractOutboxWorker<ProfileOutboxE
   }
 
   protected async publishEvent(event: ProfileOutboxEvent): Promise<void> {
-    if (event.eventType !== EVENT_TYPES.userProfileUpdated) {
+    if (
+      event.eventType !== EVENT_TYPES.userProfileUpdated &&
+      event.eventType !== EVENT_TYPES.friendRequested &&
+      event.eventType !== EVENT_TYPES.friendAccepted
+    ) {
       throw new Error(`Unsupported user event type: ${event.eventType}`);
     }
 
@@ -46,7 +51,10 @@ export class UserProfileOutboxWorker extends AbstractOutboxWorker<ProfileOutboxE
       occurredAt: event.occurredAt.toISOString(),
       correlationId: event.id,
       producer: 'users',
-      payload: UserProfileUpdatedPayloadSchema.parse(event.payload),
+      payload:
+        event.eventType === EVENT_TYPES.userProfileUpdated
+          ? UserProfileUpdatedPayloadSchema.parse(event.payload)
+          : FriendEventPayloadSchema.parse(event.payload),
     });
 
     await prisma.outboxEvent.update({

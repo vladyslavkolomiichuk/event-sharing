@@ -4,6 +4,7 @@ const UserPreferencesPatchSchema = z.strictObject({
   showPhone: z.boolean().optional(),
   showCity: z.boolean().optional(),
   notificationsEnabled: z.boolean().optional(),
+  allowFriendRequests: z.boolean().optional(),
 });
 
 export const UpdateUserProfileSchema = z

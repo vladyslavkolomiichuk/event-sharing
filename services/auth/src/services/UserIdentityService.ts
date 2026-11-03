@@ -7,4 +7,8 @@ export class UserIdentityService {
   update(userId: string, changes: UpdateIdentity) {
     return this.repository.update(userId, changes);
   }
+
+  available(username: string) {
+    return this.repository.available(username);
+  }
 }
