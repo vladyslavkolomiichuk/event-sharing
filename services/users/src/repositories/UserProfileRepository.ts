@@ -207,6 +207,10 @@ export class UserProfileRepository {
           preferenceData.allowFriendRequests =
             patch.preferences.allowFriendRequests;
         }
+        if (patch.preferences.allowInvitesFromStrangers !== undefined) {
+          preferenceData.allowInvitesFromStrangers =
+            patch.preferences.allowInvitesFromStrangers;
+        }
         preferences = await transaction.userPreference.update({
           where: { userId },
           data: preferenceData,

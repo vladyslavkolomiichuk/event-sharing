@@ -52,6 +52,7 @@ export class EventRepository {
     limit: number,
   ): Promise<EventWithCategory[]> {
     const where: Prisma.EventWhereInput = {
+      visibility: 'PUBLIC',
       status: { in: [...publicStatuses] },
     };
     if (categoryId) {
@@ -73,6 +74,7 @@ export class EventRepository {
   ): Promise<EventWithCategory[]> {
     const where: Prisma.EventWhereInput = {
       organizerId,
+      visibility: 'PUBLIC',
       status: { in: [...publicStatuses] },
     };
     if (cursor) where.OR = this.afterCursor(cursor);
@@ -149,6 +151,7 @@ export class EventRepository {
         locationVisibility: input.location.visibility,
         participantLimit: input.participantLimit,
         chatEnabled: input.chatEnabled,
+        visibility: input.visibility,
       },
       include: { category: true },
     });
@@ -165,6 +168,17 @@ export class EventRepository {
       this.assertOwner(event, actorId, role);
       this.assertNoPending(event);
       this.lifecycle.assertEditable(event.status);
+
+      if (
+        patch.visibility !== undefined &&
+        patch.visibility !== event.visibility &&
+        event.policyVersion > 0
+      ) {
+        throw new EventConflictError(
+          'VISIBILITY_LOCKED',
+          'Event visibility cannot change after registration opens.',
+        );
+      }
 
       if (patch.participantLimit !== undefined && event.policyVersion > 0) {
         if (Object.keys(patch).length !== 1) {
@@ -243,6 +257,7 @@ export class EventRepository {
       if (patch.participantLimit !== undefined)
         data.participantLimit = patch.participantLimit;
       if (patch.chatEnabled !== undefined) data.chatEnabled = patch.chatEnabled;
+      if (patch.visibility !== undefined) data.visibility = patch.visibility;
       if (patch.location) {
         data.locationAddress = patch.location.address;
         data.locationRegion = patch.location.region ?? null;
@@ -592,6 +607,8 @@ export class EventRepository {
           status: policyStatus,
           capacity,
           endTime: event.endTime.toISOString(),
+          visibility: event.visibility,
+          title: event.title,
         }),
       },
     });

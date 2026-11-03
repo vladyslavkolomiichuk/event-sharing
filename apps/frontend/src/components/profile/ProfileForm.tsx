@@ -25,6 +25,8 @@ export function ProfileForm() {
   const [showCity, setShowCity] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [allowFriendRequests, setAllowFriendRequests] = useState(true);
+  const [allowInvitesFromStrangers, setAllowInvitesFromStrangers] =
+    useState(true);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -44,6 +46,7 @@ export function ProfileForm() {
       setShowCity(value.preferences.showCity);
       setNotificationsEnabled(value.preferences.notificationsEnabled);
       setAllowFriendRequests(value.preferences.allowFriendRequests);
+      setAllowInvitesFromStrangers(value.preferences.allowInvitesFromStrangers);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : 'Could not load profile.',
@@ -73,6 +76,7 @@ export function ProfileForm() {
           showCity,
           notificationsEnabled,
           allowFriendRequests,
+          allowInvitesFromStrangers,
         },
       });
       setProfile(await usersClient.update(input));
@@ -187,6 +191,16 @@ export function ProfileForm() {
             onChange={(event) => setAllowFriendRequests(event.target.checked)}
           />
           Allow friend requests
+        </label>
+        <label className="flex items-center gap-3 font-normal">
+          <input
+            type="checkbox"
+            checked={allowInvitesFromStrangers}
+            onChange={(event) =>
+              setAllowInvitesFromStrangers(event.target.checked)
+            }
+          />
+          Allow event invitations from people outside my friends
         </label>
         <p className="text-xs leading-5 text-neutral-500">
           Notification delivery is planned. Your preference is already saved

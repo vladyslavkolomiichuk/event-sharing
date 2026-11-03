@@ -7,6 +7,7 @@ import {
   UserProfileUpdatedPayloadSchema,
   UserRegisteredPayloadSchema,
   FriendEventPayloadSchema,
+  InvitationSentPayloadSchema,
   UserRoleChangedPayloadSchema,
   isEventSnapshotType,
   isMembershipEventType,
@@ -249,7 +250,30 @@ export class NotificationEventService {
               body: requested
                 ? `${data.actorName} sent you a friend request.`
                 : `${data.actorName} accepted your friend request.`,
-            href: '/friends',
+              href: '/friends',
+              sourceEventId: event.eventId,
+            },
+          ],
+          recipients,
+        );
+        return 'processed';
+      }
+      if (
+        event.producer === 'participation' &&
+        event.eventType === EVENT_TYPES.invitationSent
+      ) {
+        const data = InvitationSentPayloadSchema.parse(event.payload);
+        await this.createNotifications(
+          transaction,
+          [
+            {
+              recipientId: data.recipientId,
+              senderId: data.organizerId,
+              type: 'EVENT_INVITATION',
+              title: 'Event invitation',
+              body: `You were invited to ${data.title}.`,
+              href: '/invitations',
+              eventId: data.eventId,
               sourceEventId: event.eventId,
             },
           ],

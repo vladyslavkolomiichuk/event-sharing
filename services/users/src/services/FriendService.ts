@@ -21,6 +21,78 @@ class FriendActionError extends AppError {
 }
 
 export class FriendService {
+  async statuses(actorId: string, userIds: string[]) {
+    const [friendships, requests] = await Promise.all([
+      prisma.friendship.findMany({
+        where: {
+          OR: [
+            { userIdA: actorId, userIdB: { in: userIds } },
+            { userIdB: actorId, userIdA: { in: userIds } },
+          ],
+        },
+      }),
+      prisma.friendRequest.findMany({
+        where: {
+          status: 'PENDING',
+          OR: [
+            { senderId: actorId, recipientId: { in: userIds } },
+            { recipientId: actorId, senderId: { in: userIds } },
+          ],
+        },
+      }),
+    ]);
+    const statuses = new Map<string, 'FRIENDS' | 'SENT' | 'RECEIVED'>();
+    for (const item of friendships)
+      statuses.set(
+        item.userIdA === actorId ? item.userIdB : item.userIdA,
+        'FRIENDS',
+      );
+    for (const item of requests)
+      statuses.set(
+        item.senderId === actorId ? item.recipientId : item.senderId,
+        item.senderId === actorId ? 'SENT' : 'RECEIVED',
+      );
+    return statuses;
+  }
+
+  async invitationTarget(actorId: string, username: string) {
+    const person = await prisma.userProfile.findUnique({
+      where: { username },
+      select: { userId: true, name: true, username: true },
+    });
+    if (!person)
+      throw new FriendActionError('User not found.', 'USER_NOT_FOUND', 404);
+    if (person.userId === actorId)
+      throw new FriendActionError('You cannot invite yourself.');
+    const [userIdA, userIdB] = this.pair(actorId, person.userId);
+    const [preference, friendship, blocks] = await Promise.all([
+      prisma.userPreference.findUnique({ where: { userId: person.userId } }),
+      prisma.friendship.findUnique({
+        where: { userIdA_userIdB: { userIdA, userIdB } },
+      }),
+      prisma.userBlock.count({
+        where: {
+          OR: [
+            { blockerId: actorId, blockedId: person.userId },
+            { blockerId: person.userId, blockedId: actorId },
+          ],
+        },
+      }),
+    ]);
+    if (
+      blocks ||
+      !preference ||
+      (!preference.allowInvitesFromStrangers && !friendship)
+    ) {
+      throw new FriendActionError(
+        'This user cannot receive your invitation.',
+        'INVITATION_UNAVAILABLE',
+        403,
+      );
+    }
+    return person;
+  }
+
   private pair(left: string, right: string): [string, string] {
     return left < right ? [left, right] : [right, left];
   }

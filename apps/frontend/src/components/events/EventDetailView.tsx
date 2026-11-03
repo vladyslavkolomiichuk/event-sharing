@@ -19,6 +19,8 @@ import { EventChats } from './EventChats';
 import { EventChatSettings } from './EventChatSettings';
 import { EventViewTabs, type EventView } from './EventViewTabs';
 import { useChatUnread } from '@/contexts/ChatUnreadContext';
+import { ShareEvent } from './ShareEvent';
+import { InviteParticipants } from './InviteParticipants';
 
 const editable = ['DRAFT', 'REJECTED', 'APPROVED', 'PUBLISHED'];
 
@@ -120,6 +122,7 @@ export function EventDetailView({
         <p className="max-w-3xl whitespace-pre-wrap text-lg leading-8 text-neutral-600">
           {event.description}
         </p>
+        <ShareEvent event={event} isOwner={isOwner} />
         <Button variant="ghost" size="sm" onClick={() => void load()}>
           Refresh details
         </Button>
@@ -240,6 +243,10 @@ export function EventDetailView({
             {canManage && ['PUBLISHED', 'ONGOING'].includes(event.status) && (
               <EventAnnouncementForm eventId={id} />
             )}
+            {canManage &&
+              !['CANCELLED', 'COMPLETED', 'ARCHIVED'].includes(
+                event.status,
+              ) && <InviteParticipants eventId={id} />}
           </div>
           <aside className="space-y-7">
             <section className="rounded-xl border border-neutral-200 bg-white p-7">

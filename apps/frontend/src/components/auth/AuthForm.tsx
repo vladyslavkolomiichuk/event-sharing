@@ -27,7 +27,14 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         await authClient.signUp(name.trim(), email.trim(), password);
       else await authClient.signIn(email.trim(), password);
       await refresh();
-      router.push('/events');
+      const returnTo = new URLSearchParams(window.location.search).get(
+        'returnTo',
+      );
+      router.push(
+        returnTo?.startsWith('/') && !returnTo.startsWith('//')
+          ? returnTo
+          : '/events',
+      );
       router.refresh();
     } catch (cause) {
       setError(

@@ -30,6 +30,7 @@ model UserPreference {
   showCity             Boolean  @default(true)
   notificationsEnabled Boolean  @default(true)
   allowFriendRequests   Boolean  @default(true)
+  allowInvitesFromStrangers Boolean @default(true)
   updatedAt            DateTime @updatedAt @db.Timestamptz(3)
 
   @@map("user_preference")

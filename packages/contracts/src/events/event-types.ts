@@ -8,6 +8,7 @@ export const EVENT_TYPES = {
   userUsernameUpdated: 'user.username.updated',
   friendRequested: 'friend.requested',
   friendAccepted: 'friend.accepted',
+  invitationSent: 'invitation.sent',
   eventCreated: 'event.created',
   eventUpdated: 'event.updated',
   eventCancelled: 'event.cancelled',

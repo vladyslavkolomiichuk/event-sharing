@@ -25,6 +25,16 @@ export class FriendController {
     );
   };
 
+  invitationTarget: RequestHandler = async (request, response) => {
+    const username = UsernameSchema.parse(request.params.username);
+    response.json(
+      await this.service.invitationTarget(
+        this.actor(request.authenticatedUser?.id),
+        username,
+      ),
+    );
+  };
+
   request: RequestHandler = async (request, response) => {
     const username = UsernameSchema.parse(request.body?.username);
     response

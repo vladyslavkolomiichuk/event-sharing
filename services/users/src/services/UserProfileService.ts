@@ -6,13 +6,17 @@ import {
   type UserProfilePublic,
 } from '@event-sharing/contracts';
 import { ProfileNotFoundError } from '../domain/errors/ProfileNotFoundError.js';
+import { FriendService } from './FriendService.js';
 import {
   UserProfileRepository,
   type UserProfileSnapshot,
 } from '../repositories/UserProfileRepository.js';
 
 export class UserProfileService {
-  constructor(private readonly repository: UserProfileRepository) {}
+  constructor(
+    private readonly repository: UserProfileRepository,
+    private readonly friends = new FriendService(),
+  ) {}
 
   async getPrivate(userId: string): Promise<UserProfilePrivate> {
     return this.toPrivate(await this.getSnapshot(userId));
@@ -39,11 +43,16 @@ export class UserProfileService {
       actorId,
       cursor,
     );
+    const relationships = await this.friends.statuses(
+      actorId,
+      items.map((item) => item.profile.userId),
+    );
     return {
       items: items.map((snapshot) => ({
         ...this.toPublic(snapshot),
         phone: null,
         city: null,
+        relationship: relationships.get(snapshot.profile.userId) ?? 'NONE',
       })),
       nextCursor,
     };
@@ -101,6 +110,7 @@ export class UserProfileService {
         showCity: preferences.showCity,
         notificationsEnabled: preferences.notificationsEnabled,
         allowFriendRequests: preferences.allowFriendRequests,
+        allowInvitesFromStrangers: preferences.allowInvitesFromStrangers,
       },
     });
   }

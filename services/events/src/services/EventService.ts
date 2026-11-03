@@ -54,6 +54,12 @@ export class EventService {
     const owner = event.organizerId === userId || role === 'ADMIN';
     if (!owner && !this.events.isPublic(event.status))
       throw new EventNotFoundError();
+    if (
+      event.visibility === 'INVITE_ONLY' &&
+      !owner &&
+      !(await this.events.hasParticipantAccess(id, userId))
+    )
+      throw new EventNotFoundError();
     let revealLocation = owner;
     if (!owner && event.status !== 'CANCELLED' && event.status !== 'ARCHIVED') {
       revealLocation = await this.events.hasParticipantAccess(id, userId);

@@ -31,6 +31,10 @@ export const EVENT_ROUTES = {
     producer: 'users',
     topic: EVENT_TOPICS.users,
   },
+  [EVENT_TYPES.invitationSent]: {
+    producer: 'participation',
+    topic: EVENT_TOPICS.participation,
+  },
   [EVENT_TYPES.eventCreated]: {
     producer: 'events',
     topic: EVENT_TOPICS.events,

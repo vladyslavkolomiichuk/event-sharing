@@ -40,6 +40,7 @@ export class SearchRepository {
           Prisma.sql`p.status IN (${Prisma.join([...SEARCHABLE_EVENT_STATUSES])})`,
           Prisma.sql`p."endTime" > NOW()`,
         ];
+    conditions.push(Prisma.sql`p."eventVisibility" = 'PUBLIC'`);
     if (query.status === 'PUBLISHED' || query.status === 'ONGOING') {
       conditions.push(Prisma.sql`p."endTime" > NOW()`);
     }

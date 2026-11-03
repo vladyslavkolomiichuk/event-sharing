@@ -9,6 +9,7 @@ import type { EventWithCategory } from '../models/EventWithCategory.js';
 export class EventResponseFactory {
   detail(event: EventWithCategory, revealLocation: boolean): EventDetail {
     const publicVenueVisible =
+      event.visibility !== 'INVITE_ONLY' &&
       event.locationVisibility === 'PUBLIC' &&
       ['PUBLISHED', 'ONGOING'].includes(event.status);
     const visible = revealLocation || publicVenueVisible;
@@ -26,6 +27,7 @@ export class EventResponseFactory {
       registrationStatus: event.registrationStatus,
       participantLimit: event.participantLimit,
       chatEnabled: event.chatEnabled,
+      visibility: event.visibility,
       version: event.version,
       pendingStatus: event.pendingStatus,
       pendingRegistrationStatus: event.pendingRegistrationStatus,

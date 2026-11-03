@@ -3,6 +3,7 @@ import {
   RegistrationPolicyAppliedPayloadSchema,
   RegistrationPolicyRejectedPayloadSchema,
   RegistrationPolicyRequestedPayloadSchema,
+  InvitationSentPayloadSchema,
   type RegistrationPolicyRequestedPayload,
 } from '@event-sharing/contracts';
 import type { Prisma, RegistrationPolicy } from '../generated/prisma/client.js';
@@ -149,6 +150,8 @@ export class RegistrationPolicyRepository {
             status: request.status,
             capacity: request.capacity,
             endTime: request.endTime ? new Date(request.endTime) : null,
+            visibility: request.visibility,
+            title: request.title,
             occupied: request.status === 'CANCELLED' ? 0 : current.occupied,
           },
         });
@@ -161,8 +164,39 @@ export class RegistrationPolicyRepository {
             status: request.status,
             capacity: request.capacity,
             endTime: request.endTime ? new Date(request.endTime) : null,
+            visibility: request.visibility,
+            title: request.title,
           },
         });
+      }
+
+      if (request.status === 'OPEN') {
+        const waiting = await transaction.personalInvite.findMany({
+          where: {
+            eventId: request.eventId,
+            status: 'PENDING',
+            notifiedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+        });
+        for (const invite of waiting) {
+          await transaction.outboxEvent.create({
+            data: {
+              aggregateId: request.eventId,
+              eventType: EVENT_TYPES.invitationSent,
+              payload: InvitationSentPayloadSchema.parse({
+                eventId: request.eventId,
+                recipientId: invite.recipientId,
+                organizerId: invite.senderId,
+                title: request.title,
+              }),
+            },
+          });
+          await transaction.personalInvite.update({
+            where: { id: invite.id },
+            data: { notifiedAt: new Date() },
+          });
+        }
       }
 
       await transaction.outboxEvent.create({

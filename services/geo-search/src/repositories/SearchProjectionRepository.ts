@@ -79,7 +79,9 @@ export class SearchProjectionRepository {
         where: { id: snapshot.id },
       });
       if (previous && previous.version >= snapshot.version) return 'ignored';
-      const publicVenue = snapshot.location.visibility === 'PUBLIC';
+      const publicVenue =
+        snapshot.visibility === 'PUBLIC' &&
+        snapshot.location.visibility === 'PUBLIC';
       const data = {
         organizerId: snapshot.organizerId,
         categoryId: snapshot.categoryId,
@@ -90,6 +92,7 @@ export class SearchProjectionRepository {
         endTime: new Date(snapshot.endTime),
         timeZone: snapshot.timeZone,
         status: snapshot.status,
+        eventVisibility: snapshot.visibility,
         region: snapshot.location.region,
         visibility: snapshot.location.visibility,
         address: publicVenue ? snapshot.location.address : null,

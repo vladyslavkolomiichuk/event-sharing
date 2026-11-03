@@ -8,6 +8,7 @@ export const UserProfilePrivateSchema = UserProfilePublicSchema.extend({
     showCity: z.boolean(),
     notificationsEnabled: z.boolean(),
     allowFriendRequests: z.boolean(),
+    allowInvitesFromStrangers: z.boolean(),
   }),
 });
 

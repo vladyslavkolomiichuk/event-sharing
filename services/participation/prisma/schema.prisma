@@ -26,12 +26,47 @@ model RegistrationPolicy {
   status        RegistrationStatus
   capacity      Int
   endTime       DateTime?          @db.Timestamptz(3)
+  visibility    String             @default("PUBLIC")
+  title         String             @default("Event")
   occupied      Int                @default(0)
   updatedAt     DateTime           @updatedAt @db.Timestamptz(3)
 
   memberships Membership[]
 
   @@map("registration_policy")
+}
+
+model InviteLink {
+  id          String    @id @default(uuid()) @db.Uuid
+  eventId     String    @db.Uuid
+  tokenHash   String    @unique
+  createdBy   String    @db.Uuid
+  expiresAt   DateTime  @db.Timestamptz(3)
+  maxUses     Int?
+  uses        Int       @default(0)
+  revokedAt   DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([eventId, createdAt])
+  @@map("invite_link")
+}
+
+model PersonalInvite {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventId     String   @db.Uuid
+  recipientId String   @db.Uuid
+  senderId    String   @db.Uuid
+  title       String
+  status      String   @default("PENDING")
+  notifiedAt  DateTime? @db.Timestamptz(3)
+  expiresAt   DateTime @db.Timestamptz(3)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([eventId, recipientId])
+  @@index([recipientId, status, createdAt])
+  @@index([eventId, createdAt])
+  @@map("personal_invite")
 }
 
 model Membership {

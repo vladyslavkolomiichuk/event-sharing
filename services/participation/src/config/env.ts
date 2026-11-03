@@ -12,6 +12,8 @@ const EnvSchema = DatabaseServiceEnvSchema.extend({
   AUTH_JWT_ISSUER: z.url(),
   AUTH_JWT_AUDIENCE: z.string().min(1),
   KAFKA_BROKERS: z.string().min(1),
+  USERS_SERVICE_URL: z.url().default('http://127.0.0.1:8003'),
+  EVENTS_SERVICE_URL: z.url().default('http://127.0.0.1:8001'),
 });
 
 export const env = EnvSchema.parse({

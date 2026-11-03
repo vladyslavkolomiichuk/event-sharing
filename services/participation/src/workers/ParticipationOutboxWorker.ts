@@ -3,6 +3,7 @@ import {
   EVENT_TYPES,
   EventEnvelopeSchema,
   MembershipEventPayloadSchema,
+  InvitationSentPayloadSchema,
   RegistrationPolicyAppliedPayloadSchema,
   RegistrationPolicyRejectedPayloadSchema,
 } from '@event-sharing/contracts';
@@ -50,6 +51,8 @@ export class ParticipationOutboxWorker extends AbstractOutboxWorker<Participatio
       event.eventType === EVENT_TYPES.userLeft
     ) {
       payload = MembershipEventPayloadSchema.parse(event.payload);
+    } else if (event.eventType === EVENT_TYPES.invitationSent) {
+      payload = InvitationSentPayloadSchema.parse(event.payload);
     } else {
       throw new Error(`Unsupported participation event: ${event.eventType}`);
     }

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { EventLocationSchema } from './event-location.schema.js';
 import { EventTimeZoneSchema } from './event-time-zone.schema.js';
+import { EventVisibilitySchema } from './event-visibility.schema.js';
 
 export const CreateEventSchema = z
   .strictObject({
@@ -13,6 +14,7 @@ export const CreateEventSchema = z
     location: EventLocationSchema,
     participantLimit: z.number().int().positive(),
     chatEnabled: z.boolean().default(false),
+    visibility: EventVisibilitySchema.default('PUBLIC'),
   })
   .refine((event) => Date.parse(event.endTime) > Date.parse(event.startTime), {
     message: 'End time must be after start time.',

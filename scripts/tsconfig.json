@@ -3,5 +3,11 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "include": ["*.ts"]
+  "include": [
+    "*.ts",
+    "integration/*.ts",
+    "../apps/gateway/src/types/*.d.ts",
+    "../services/participation/src/types/*.d.ts",
+    "../services/users/src/types/*.d.ts"
+  ]
 }

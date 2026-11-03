@@ -5,6 +5,10 @@ import type {
 } from '@event-sharing/contracts';
 import { gateway } from './GatewayClient';
 
+export type UserSearchResult = UserProfilePublic & {
+  relationship: 'NONE' | 'FRIENDS' | 'SENT' | 'RECEIVED';
+};
+
 export class UsersClient {
   me(): Promise<UserProfilePrivate> {
     return gateway.get('/api/users/me');
@@ -29,7 +33,7 @@ export class UsersClient {
   searchByUsername(
     username: string,
     cursor?: string,
-  ): Promise<{ items: UserProfilePublic[]; nextCursor: string | null }> {
+  ): Promise<{ items: UserSearchResult[]; nextCursor: string | null }> {
     const params = new URLSearchParams({
       username: username.replace(/^@/, ''),
     });

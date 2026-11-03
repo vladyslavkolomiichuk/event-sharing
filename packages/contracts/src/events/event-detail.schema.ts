@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { EventStatusSchema } from './event-status.schema.js';
 import { RegistrationStatusSchema } from './registration-status.schema.js';
 import { EventTimeZoneSchema } from './event-time-zone.schema.js';
+import { EventVisibilitySchema } from './event-visibility.schema.js';
 
 export const EventDetailSchema = z.strictObject({
   id: z.uuid(),
@@ -17,6 +18,7 @@ export const EventDetailSchema = z.strictObject({
   registrationStatus: RegistrationStatusSchema,
   participantLimit: z.number().int().positive(),
   chatEnabled: z.boolean().default(false),
+  visibility: EventVisibilitySchema.default('PUBLIC'),
   version: z.number().int().positive(),
   pendingStatus: EventStatusSchema.nullable(),
   pendingRegistrationStatus: RegistrationStatusSchema.nullable(),

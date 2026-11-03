@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
-import type { UserProfilePublic } from '@event-sharing/contracts';
 import {
   friendsClient,
   type FriendList,
   type FriendPerson,
 } from '@/lib/api/FriendsClient';
-import { usersClient } from '@/lib/api/UsersClient';
+import { usersClient, type UserSearchResult } from '@/lib/api/UsersClient';
+import { ProfileAvatar } from './ProfileAvatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/feedback/Notice';
@@ -16,7 +16,11 @@ import { Notice } from '@/components/feedback/Notice';
 export function FriendsWorkspace() {
   const [list, setList] = useState<FriendList | null>(null);
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<UserProfilePublic[]>([]);
+  const [results, setResults] = useState<UserSearchResult[]>([]);
+  const [searched, setSearched] = useState(false);
+  const [friendFilter, setFriendFilter] = useState('');
+  const [friendSort, setFriendSort] = useState<'name' | 'username'>('name');
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -57,6 +61,7 @@ export function FriendsWorkspace() {
     try {
       const page = await usersClient.searchByUsername(query.trim());
       setResults(page.items);
+      setSearched(true);
       setCursor(page.nextCursor);
     } catch (cause) {
       setError(
@@ -84,6 +89,11 @@ export function FriendsWorkspace() {
     try {
       await action();
       await refresh();
+      if (searched && query.trim()) {
+        const page = await usersClient.searchByUsername(query.trim());
+        setResults(page.items);
+        setCursor(page.nextCursor);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Action failed.');
     } finally {
@@ -94,15 +104,29 @@ export function FriendsWorkspace() {
   function personLink(person: FriendPerson) {
     return (
       <Link className="font-medium underline" href={`/u/${person.username}`}>
-        {person.name}{' '}
+        <span className="inline-flex items-center gap-2">
+          <ProfileAvatar name={person.name} avatarUrl={person.avatarUrl} />
+          {person.name}
+        </span>{' '}
         <span className="text-neutral-500">@{person.username}</span>
       </Link>
     );
   }
 
+  const shownFriends = [...(list?.friends ?? [])]
+    .filter((person) =>
+      `${person.name} ${person.username}`
+        .toLowerCase()
+        .includes(friendFilter.toLowerCase()),
+    )
+    .sort((left, right) => left[friendSort].localeCompare(right[friendSort]));
+
   return (
     <div className="space-y-7">
       <h1>Friends</h1>
+      <Link className="text-sm font-medium underline" href="/invitations">
+        Event invitations
+      </Link>
       <section className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
         <h2>Find people</h2>
         <form onSubmit={search} className="flex gap-3">
@@ -124,18 +148,31 @@ export function FriendsWorkspace() {
               key={person.userId}
             >
               {personLink(person)}
-              <Button
-                size="sm"
-                disabled={busy}
-                onClick={() =>
-                  void act(() => friendsClient.request(person.username))
-                }
-              >
-                Add friend
-              </Button>
+              {person.relationship === 'NONE' ? (
+                <Button
+                  size="sm"
+                  disabled={busy}
+                  onClick={() =>
+                    void act(() => friendsClient.request(person.username))
+                  }
+                >
+                  Add friend
+                </Button>
+              ) : (
+                <span className="text-sm text-neutral-600">
+                  {person.relationship === 'FRIENDS'
+                    ? 'Friends'
+                    : person.relationship === 'SENT'
+                      ? 'Request sent'
+                      : 'Request received'}
+                </span>
+              )}
             </li>
           ))}
         </ul>
+        {searched && results.length === 0 && (
+          <p className="text-sm text-neutral-500">No users found.</p>
+        )}
         {cursor && (
           <Button variant="outline" onClick={() => void more()}>
             More results
@@ -211,23 +248,66 @@ export function FriendsWorkspace() {
         </div>
         <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
           <h2>Your friends</h2>
-          {list?.friends.length === 0 && <p>No friends yet.</p>}
-          {list?.friends.map((person) => (
+          <div className="flex flex-wrap gap-2">
+            <Input
+              aria-label="Search friends"
+              value={friendFilter}
+              onChange={(event) => setFriendFilter(event.target.value)}
+              placeholder="Search friends"
+            />
+            <select
+              aria-label="Sort friends"
+              className="rounded-md border border-neutral-300 bg-white px-3 py-2"
+              value={friendSort}
+              onChange={(event) =>
+                setFriendSort(event.target.value as 'name' | 'username')
+              }
+            >
+              <option value="name">Sort by name</option>
+              <option value="username">Sort by username</option>
+            </select>
+          </div>
+          {shownFriends.length === 0 && (
+            <p>{friendFilter ? 'No matching friends.' : 'No friends yet.'}</p>
+          )}
+          {shownFriends.map((person) => (
             <div
               key={person.userId}
               className="flex flex-wrap items-center gap-3"
             >
               {personLink(person)}
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy}
-                onClick={() =>
-                  void act(() => friendsClient.remove(person.username))
-                }
-              >
-                Remove
-              </Button>
+              {confirmRemove === person.username ? (
+                <>
+                  <span className="text-sm">Remove this friend?</span>
+                  <Button
+                    size="sm"
+                    disabled={busy}
+                    onClick={() =>
+                      void act(() =>
+                        friendsClient.remove(person.username),
+                      ).then(() => setConfirmRemove(null))
+                    }
+                  >
+                    Confirm
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setConfirmRemove(null)}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => setConfirmRemove(person.username)}
+                >
+                  Remove
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"

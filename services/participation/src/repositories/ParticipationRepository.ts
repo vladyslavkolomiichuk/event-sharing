@@ -6,6 +6,7 @@ import { prisma } from '../database/client.js';
 import { CapacityPolicy } from '../domain/CapacityPolicy.js';
 import { MembershipNotFoundError } from '../domain/errors/MembershipNotFoundError.js';
 import { PolicyNotFoundError } from '../domain/errors/PolicyNotFoundError.js';
+import { InvitationError } from '../domain/errors/InvitationError.js';
 import type {
   Membership,
   Prisma,
@@ -15,15 +16,72 @@ import type {
 export class ParticipationRepository {
   constructor(private readonly capacityPolicy = new CapacityPolicy()) {}
 
-  async join(eventId: string, userId: string): Promise<Membership> {
+  async join(
+    eventId: string,
+    userId: string,
+    inviteId?: string,
+    tokenHash?: string,
+  ): Promise<Membership> {
     return prisma.$transaction(async (transaction) => {
       const policy = await this.lockPolicy(transaction, eventId);
 
       const existing = await transaction.membership.findUnique({
         where: { eventId_userId: { eventId, userId } },
       });
-      if (existing?.status === 'JOINED') return existing;
+      if (existing?.status === 'JOINED') {
+        if (inviteId) {
+          await transaction.personalInvite.updateMany({
+            where: {
+              id: inviteId,
+              eventId,
+              recipientId: userId,
+              status: 'PENDING',
+            },
+            data: { status: 'ACCEPTED' },
+          });
+        }
+        return existing;
+      }
 
+      if (policy.visibility === 'INVITE_ONLY' && !inviteId && !tokenHash) {
+        throw new InvitationError(
+          'An invitation is required.',
+          'INVITATION_REQUIRED',
+          403,
+        );
+      }
+      const invite = inviteId
+        ? await transaction.personalInvite.findFirst({
+            where: {
+              id: inviteId,
+              eventId,
+              recipientId: userId,
+              status: 'PENDING',
+              expiresAt: { gt: new Date() },
+            },
+          })
+        : null;
+      const link = tokenHash
+        ? await transaction.inviteLink.findFirst({
+            where: {
+              eventId,
+              tokenHash,
+              revokedAt: null,
+              expiresAt: { gt: new Date() },
+            },
+          })
+        : null;
+      if (
+        (inviteId && !invite) ||
+        (tokenHash &&
+          (!link || (link.maxUses !== null && link.uses >= link.maxUses)))
+      ) {
+        throw new InvitationError(
+          'Invitation is invalid or expired.',
+          'INVITATION_INVALID',
+          404,
+        );
+      }
       this.capacityPolicy.assertCanJoin(policy);
 
       let membership: Membership;
@@ -42,6 +100,16 @@ export class ParticipationRepository {
         where: { eventId },
         data: { occupied: { increment: 1 } },
       });
+      if (invite)
+        await transaction.personalInvite.update({
+          where: { id: invite.id },
+          data: { status: 'ACCEPTED' },
+        });
+      if (link)
+        await transaction.inviteLink.update({
+          where: { id: link.id },
+          data: { uses: { increment: 1 } },
+        });
       await transaction.outboxEvent.create({
         data: {
           aggregateId: eventId,

@@ -29,6 +29,12 @@ enum LocationVisibility {
   PARTICIPANTS_ONLY
 }
 
+enum EventVisibility {
+  PUBLIC
+  UNLISTED
+  INVITE_ONLY
+}
+
 model Category {
   id        String   @id @default(uuid()) @db.Uuid
   name      String   @unique
@@ -60,6 +66,7 @@ model Event {
   locationVisibility        LocationVisibility @default(PARTICIPANTS_ONLY)
   participantLimit          Int
   chatEnabled               Boolean            @default(false)
+  visibility                EventVisibility    @default(PUBLIC)
   version                   Int                @default(1)
   lastSnapshotEventId       String?            @db.Uuid
   policyVersion             Int                @default(0)
