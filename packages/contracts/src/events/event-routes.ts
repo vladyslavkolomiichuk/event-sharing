@@ -83,6 +83,14 @@ export const EVENT_ROUTES = {
     producer: 'notifications',
     topic: EVENT_TOPICS.notifications,
   },
+  [EVENT_TYPES.chatMembershipChanged]: {
+    producer: 'messages',
+    topic: EVENT_TOPICS.messages,
+  },
+  [EVENT_TYPES.chatMessageCreated]: {
+    producer: 'messages',
+    topic: EVENT_TOPICS.messages,
+  },
 } as const satisfies Record<
   EventType,
   { producer: EventProducer; topic: EventTopic }

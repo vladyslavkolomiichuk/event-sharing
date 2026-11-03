@@ -6,11 +6,13 @@ import { ChatEventConsumer } from './consumers/ChatEventConsumer.js';
 import { connectDatabase, disconnectDatabase } from './database/client.js';
 import { ChatProjectionRepository } from './repositories/ChatProjectionRepository.js';
 import { MessageRealtimeServer } from './realtime/MessageRealtimeServer.js';
+import { ChatOutboxWorker } from './workers/ChatOutboxWorker.js';
 
 await connectDatabase();
 const realtime = new MessageRealtimeServer();
+const brokers = env.KAFKA_BROKERS.split(',').map((broker) => broker.trim());
 const consumer = new ChatEventConsumer(
-  env.KAFKA_BROKERS.split(',').map((broker) => broker.trim()),
+  brokers,
   new ChatProjectionRepository((userIds, eventId) =>
     realtime.publish(userIds, {
       type: REALTIME_SIGNAL_TYPES.messagesChanged,
@@ -19,6 +21,8 @@ const consumer = new ChatEventConsumer(
   ),
 );
 await consumer.start();
+const outbox = new ChatOutboxWorker(brokers);
+await outbox.start();
 const app = createApp(new PostgresReadinessCheck(env.DATABASE_URL), realtime);
 const server = app.listen(env.PORT, env.HOST, () =>
   console.info(`Messages listening on ${env.HOST}:${env.PORT}.`),
@@ -28,6 +32,7 @@ async function shutdown() {
   realtime.close();
   server.close(async () => {
     await consumer.stop();
+    await outbox.stop();
     await disconnectDatabase();
   });
 }

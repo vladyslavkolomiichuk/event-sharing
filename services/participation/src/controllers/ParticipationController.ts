@@ -36,6 +36,17 @@ export class ParticipationController {
       );
   };
 
+  memberStatus: RequestHandler = async (request, response) => {
+    const eventId = z.uuid().parse(request.params.eventId);
+    const targetId = z.uuid().parse(request.params.userId);
+    const user = this.requireUser(request.authenticatedUser);
+    response
+      .status(200)
+      .json(
+        await this.service.memberStatus(eventId, targetId, user.id, user.role),
+      );
+  };
+
   mine: RequestHandler = async (request, response) => {
     const { cursor } = ListMembershipsQuerySchema.parse(request.query);
     const user = this.requireUser(request.authenticatedUser);

@@ -24,6 +24,7 @@ export function participationRoutes(
   router.get('/me', controller.mine);
   router.get('/events/:eventId/availability', controller.availability);
   router.get('/events/:eventId/participants', controller.participants);
+  router.get('/events/:eventId/members/:userId', controller.memberStatus);
   router.post('/events/:eventId/join', controller.join);
   router.delete('/events/:eventId/join', controller.leave);
   return router;

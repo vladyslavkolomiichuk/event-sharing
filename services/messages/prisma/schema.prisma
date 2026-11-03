@@ -15,6 +15,19 @@ model InboxEvent {
   @@map("inbox_event")
 }
 
+model OutboxEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  aggregateId String    @db.Uuid
+  eventType   String
+  payload     Json
+  occurredAt  DateTime  @default(now()) @db.Timestamptz(3)
+  publishedAt DateTime? @db.Timestamptz(3)
+  attempts    Int       @default(0)
+
+  @@index([publishedAt, occurredAt])
+  @@map("outbox_event")
+}
+
 model PendingSnapshotEvent {
   id              String   @id @db.Uuid
   previousEventId String   @db.Uuid
@@ -57,15 +70,30 @@ model ChatRoom {
   id         String          @id @default(uuid()) @db.Uuid
   eventId    String          @db.Uuid
   name       String
+  access     String          @default("ALL_PARTICIPANTS")
   createdBy  String          @db.Uuid
   createdAt  DateTime        @default(now()) @db.Timestamptz(3)
   archivedAt DateTime?       @db.Timestamptz(3)
   messages   ChatMessage[]
   reads      ChatReadState[]
+  members    ChatRoomMember[]
 
   @@unique([eventId, name])
   @@index([eventId, createdAt])
   @@map("chat_room")
+}
+
+model ChatRoomMember {
+  roomId    String    @db.Uuid
+  userId    String    @db.Uuid
+  status    String    @default("PENDING")
+  joinedAt  DateTime? @db.Timestamptz(3)
+  removedAt DateTime? @db.Timestamptz(3)
+  room      ChatRoom  @relation(fields: [roomId], references: [id])
+
+  @@id([roomId, userId])
+  @@index([userId, status])
+  @@map("chat_room_member")
 }
 
 model ChatReadState {
@@ -84,11 +112,13 @@ model ChatMessage {
   roomId    String   @db.Uuid
   eventId   String   @db.Uuid
   senderId  String   @db.Uuid
+  clientMessageId String @db.Uuid
   body      String
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   room      ChatRoom @relation(fields: [roomId], references: [id])
 
   @@index([roomId, createdAt, id])
   @@index([senderId, createdAt])
+  @@unique([senderId, clientMessageId])
   @@map("chat_message")
 }

@@ -66,6 +66,30 @@ export class ParticipationService {
     return this.toList(rows, 'userId');
   }
 
+  async memberStatus(
+    eventId: string,
+    targetId: string,
+    actorId: string,
+    role: UserRole,
+  ) {
+    const policy = await this.policies.findByEventId(eventId);
+    if (!policy) throw new PolicyNotFoundError();
+    const membership = await this.participations.membership(eventId, targetId);
+    if (
+      role !== 'ADMIN' &&
+      policy.organizerId !== actorId &&
+      (targetId !== actorId || membership?.status !== 'JOINED')
+    )
+      throw new PolicyNotFoundError();
+    return {
+      status: membership?.status ?? null,
+      joinedAt:
+        membership?.status === 'JOINED'
+          ? membership.joinedAt.toISOString()
+          : null,
+    };
+  }
+
   async mine(
     userId: string,
     cursor: string | undefined,

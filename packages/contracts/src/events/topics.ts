@@ -5,6 +5,7 @@ export const EVENT_TOPICS = {
   participation: 'event-sharing.participation.v1',
   search: 'event-sharing.search.v1',
   notifications: 'event-sharing.notifications.v1',
+  messages: 'event-sharing.messages.v1',
 } as const;
 
 export type EventTopic = (typeof EVENT_TOPICS)[keyof typeof EVENT_TOPICS];

@@ -102,8 +102,22 @@ export function EventDetailView({
     );
   const isOwner = event.organizerId === user.id;
   const canManage = isOwner || user.role === 'ADMIN';
+  const groupManagementAvailable =
+    canManage &&
+    [
+      'DRAFT',
+      'MODERATION',
+      'REJECTED',
+      'APPROVED',
+      'PUBLISHED',
+      'ONGOING',
+    ].includes(event.status);
   const chatAvailable =
-    event.chatEnabled && ['PUBLISHED', 'ONGOING'].includes(event.status);
+    event.chatEnabled &&
+    (groupManagementAvailable ||
+      ['PUBLISHED', 'ONGOING', 'COMPLETED', 'CANCELLED'].includes(
+        event.status,
+      ));
 
   return (
     <div className="space-y-9">
@@ -290,7 +304,8 @@ export function EventDetailView({
             <EventChats
               eventId={id}
               eventTitle={event.title}
-              canManage={canManage}
+              canManage={groupManagementAvailable}
+              readOnly={!['PUBLISHED', 'ONGOING'].includes(event.status)}
             />
           ) : (
             <section className="rounded-xl border border-neutral-200 bg-white p-8 text-neutral-600">

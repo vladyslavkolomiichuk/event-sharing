@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ChatRoom } from '@event-sharing/contracts';
+import type { ChatRoom, CreateChatRoom } from '@event-sharing/contracts';
 import { useAuth } from '@/contexts/AuthContext';
 import { messagesClient } from '@/lib/api/MessagesClient';
 import { ApiError } from '@/lib/api/GatewayClient';
@@ -9,15 +9,18 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/feedback/Notice';
 import { ChatRoomList } from '@/components/messages/ChatRoomList';
 import { ChatConversation } from '@/components/messages/ChatConversation';
+import { invitationClient } from '@/lib/api/InvitationClient';
 
 export function EventChats({
   eventId,
   eventTitle,
   canManage,
+  readOnly,
 }: {
   eventId: string;
   eventTitle: string;
   canManage: boolean;
+  readOnly: boolean;
 }) {
   const { user } = useAuth();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
@@ -88,15 +91,25 @@ export function EventChats({
     window.dispatchEvent(new Event('messages:changed'));
   }
 
-  async function createRoom(name: string): Promise<boolean> {
+  async function createRoom(
+    input: CreateChatRoom,
+    usernames: string[],
+  ): Promise<boolean> {
     setBusy(true);
     setError('');
     try {
-      const room = await messagesClient.createRoom(eventId, name);
+      const room = await messagesClient.createRoom(eventId, input);
       setRooms((current) => [...current, room]);
       setSelectedId(room.id);
       setMobileOpen(true);
       setNotice('Chat room created.');
+      if (usernames.length) {
+        try {
+          await invitationClient.send(eventId, usernames);
+        } catch {
+          setNotice('Group created. Some event invitations could not be sent.');
+        }
+      }
       changed();
       return true;
     } catch (cause) {
@@ -166,6 +179,7 @@ export function EventChats({
             room={selectedRoom}
             userId={user.id}
             canManage={canManage}
+            readOnly={readOnly}
             onActivity={changed}
             onArchive={archiveRoom}
             onBack={() => setMobileOpen(false)}

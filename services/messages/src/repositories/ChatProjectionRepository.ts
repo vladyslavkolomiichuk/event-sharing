@@ -1,5 +1,6 @@
 import {
   EVENT_TYPES,
+  ChatMembershipChangedPayloadSchema,
   EventEnvelopeSchema,
   EventSnapshotPayloadSchema,
   MembershipEventPayloadSchema,
@@ -172,6 +173,55 @@ export class ChatProjectionRepository {
               : {}),
           },
         });
+        const groupMembers = await transaction.chatRoomMember.findMany({
+          where: {
+            userId: data.userId,
+            status:
+              event.eventType === EVENT_TYPES.userJoined ? 'PENDING' : 'ACTIVE',
+            room: { eventId: data.eventId, access: 'SELECTED_MEMBERS' },
+          },
+          include: { room: true },
+        });
+        for (const member of groupMembers) {
+          await transaction.chatRoomMember.update({
+            where: {
+              roomId_userId: { roomId: member.roomId, userId: data.userId },
+            },
+            data:
+              event.eventType === EVENT_TYPES.userJoined
+                ? { status: 'ACTIVE', joinedAt: new Date(event.occurredAt) }
+                : { status: 'PENDING', joinedAt: null },
+          });
+          const active = await transaction.chatRoomMember.findMany({
+            where: { roomId: member.roomId, status: 'ACTIVE' },
+            select: { userId: true },
+          });
+          const recipients = new Set([
+            ...active.map((item) => item.userId),
+            data.userId,
+          ]);
+          recipients.delete(member.room.createdBy);
+          for (const recipientId of recipients) {
+            await transaction.outboxEvent.create({
+              data: {
+                aggregateId: data.eventId,
+                eventType: EVENT_TYPES.chatMembershipChanged,
+                payload: ChatMembershipChangedPayloadSchema.parse({
+                  eventId: data.eventId,
+                  roomId: member.roomId,
+                  roomName: member.room.name,
+                  recipientId,
+                  subjectId: data.userId,
+                  actorId: member.room.createdBy,
+                  change:
+                    event.eventType === EVENT_TYPES.userJoined
+                      ? 'ADDED'
+                      : 'REMOVED',
+                }),
+              },
+            });
+          }
+        }
         return 'processed';
       }
       return 'ignored';

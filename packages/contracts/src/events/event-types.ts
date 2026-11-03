@@ -21,6 +21,8 @@ export const EVENT_TYPES = {
   notificationRequested: 'notification.requested',
   notificationSent: 'notification.sent',
   notificationFailed: 'notification.failed',
+  chatMembershipChanged: 'chat.membership.changed',
+  chatMessageCreated: 'chat.message.created',
 } as const;
 
 export const EventTypeSchema = z.enum(EVENT_TYPES);

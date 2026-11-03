@@ -23,6 +23,11 @@ import { eventLocalTime, eventUtcTime } from '@/lib/event-time';
 import { InviteParticipants } from './InviteParticipants';
 import { invitationClient } from '@/lib/api/InvitationClient';
 import { useToast } from '@/contexts/ToastContext';
+import {
+  ChatGroupDraftForm,
+  type ChatGroupDraft,
+} from '@/components/messages/ChatGroupDraftForm';
+import { messagesClient } from '@/lib/api/MessagesClient';
 
 const timeZones = [
   'UTC',
@@ -55,6 +60,7 @@ export function EventForm({ eventId }: { eventId?: string }) {
   );
   const [participantLimit, setParticipantLimit] = useState('20');
   const [chatEnabled, setChatEnabled] = useState(false);
+  const [chatGroups, setChatGroups] = useState<ChatGroupDraft[]>([]);
   const [eventVisibility, setEventVisibility] =
     useState<EventVisibility>('PUBLIC');
   const [invitees, setInvitees] = useState<string[]>([]);
@@ -179,14 +185,38 @@ export function EventForm({ eventId }: { eventId?: string }) {
         const created = await eventsClient.create(
           CreateEventSchema.parse(input),
         );
-        if (invitees.length) {
+        const allInvitees = [
+          ...new Set([
+            ...invitees,
+            ...chatGroups.flatMap((group) =>
+              group.members.map((member) => member.username),
+            ),
+          ]),
+        ];
+        if (allInvitees.length) {
           try {
-            await invitationClient.send(created.id, invitees);
+            await invitationClient.send(created.id, allInvitees);
           } catch {
             show(
               'Event created, but invitations could not be sent. Try again from the event page.',
               'warning',
             );
+          }
+        }
+        if (chatEnabled) {
+          for (const group of chatGroups) {
+            try {
+              await messagesClient.createRoom(created.id, {
+                name: group.name,
+                access: group.access,
+                memberIds: group.members.map((member) => member.userId),
+              });
+            } catch {
+              show(
+                `Event created, but group ${group.name} could not be saved. Add it from the event page.`,
+                'warning',
+              );
+            }
           }
         }
         router.push(`/events/${created.id}`);
@@ -363,6 +393,9 @@ export function EventForm({ eventId }: { eventId?: string }) {
             />
             Enable event chats for registered participants
           </label>
+          {chatEnabled && !eventId && (
+            <ChatGroupDraftForm groups={chatGroups} onChange={setChatGroups} />
+          )}
         </div>
         <div className="space-y-6 rounded-xl border border-neutral-200 bg-white p-6 sm:p-8">
           <h2>Location</h2>

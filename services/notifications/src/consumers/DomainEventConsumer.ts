@@ -12,6 +12,7 @@ const topics = [
   EVENT_TOPICS.users,
   EVENT_TOPICS.events,
   EVENT_TOPICS.participation,
+  EVENT_TOPICS.messages,
 ];
 
 const supportedTypes = new Set<string>([
@@ -27,6 +28,8 @@ const supportedTypes = new Set<string>([
   EVENT_TYPES.eventCancelled,
   EVENT_TYPES.userJoined,
   EVENT_TYPES.userLeft,
+  EVENT_TYPES.chatMembershipChanged,
+  EVENT_TYPES.chatMessageCreated,
 ]);
 
 export class DomainEventConsumer {

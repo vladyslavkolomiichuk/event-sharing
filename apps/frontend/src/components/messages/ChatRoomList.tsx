@@ -1,10 +1,15 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import type { ChatRoom } from '@event-sharing/contracts';
+import type {
+  ChatRoom,
+  ChatRoomAccess,
+  CreateChatRoom,
+} from '@event-sharing/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UnreadCountBadge } from './UnreadCountBadge';
+import { ChatMemberPicker, type ChatPerson } from './ChatMemberPicker';
 
 export function ChatRoomList({
   rooms,
@@ -20,12 +25,14 @@ export function ChatRoomList({
   canManage: boolean;
   busy: boolean;
   onSelect: (id: string) => void;
-  onCreate: (name: string) => Promise<boolean>;
+  onCreate: (input: CreateChatRoom, usernames: string[]) => Promise<boolean>;
   mobileHidden: boolean;
 }) {
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
+  const [access, setAccess] = useState<ChatRoomAccess>('SELECTED_MEMBERS');
+  const [members, setMembers] = useState<ChatPerson[]>([]);
   const visible = rooms.filter((room) =>
     room.name.toLowerCase().includes(query.trim().toLowerCase()),
   );
@@ -37,8 +44,19 @@ export function ChatRoomList({
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
-    if (!(await onCreate(name.trim()))) return;
+    if (
+      !(await onCreate(
+        {
+          name: name.trim(),
+          access,
+          memberIds: members.map((person) => person.userId),
+        },
+        members.map((person) => person.username),
+      ))
+    )
+      return;
     setName('');
+    setMembers([]);
     setCreating(false);
   }
 
@@ -67,7 +85,7 @@ export function ChatRoomList({
           )}
         </div>
         {creating && (
-          <form onSubmit={submit} className="flex gap-2">
+          <form onSubmit={submit} className="space-y-3">
             <Input
               aria-label="Room name"
               value={name}
@@ -77,6 +95,19 @@ export function ChatRoomList({
               required
               autoFocus
             />
+            <select
+              value={access}
+              onChange={(event) =>
+                setAccess(event.target.value as ChatRoomAccess)
+              }
+              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value="SELECTED_MEMBERS">Selected members only</option>
+              <option value="ALL_PARTICIPANTS">All participants</option>
+            </select>
+            {access === 'SELECTED_MEMBERS' && (
+              <ChatMemberPicker selected={members} onChange={setMembers} />
+            )}
             <Button disabled={busy || !name.trim()} size="sm">
               Create
             </Button>

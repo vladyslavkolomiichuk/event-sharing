@@ -7,6 +7,8 @@ import {
   UserProfileUpdatedPayloadSchema,
   UserRegisteredPayloadSchema,
   FriendEventPayloadSchema,
+  ChatMembershipChangedPayloadSchema,
+  ChatMessageCreatedPayloadSchema,
   InvitationSentPayloadSchema,
   UserRoleChangedPayloadSchema,
   isEventSnapshotType,
@@ -429,6 +431,82 @@ export class NotificationEventService {
               recipients,
             );
           }
+        }
+        return 'processed';
+      }
+      if (
+        event.producer === 'messages' &&
+        event.eventType === EVENT_TYPES.chatMembershipChanged
+      ) {
+        const data = ChatMembershipChangedPayloadSchema.parse(event.payload);
+        const recipient = await this.projections.getUser(
+          transaction,
+          data.recipientId,
+        );
+        if (recipient?.notificationsEnabled !== false) {
+          const subject = await this.projections.getUser(
+            transaction,
+            data.subjectId,
+          );
+          const self = data.recipientId === data.subjectId;
+          await this.createNotifications(
+            transaction,
+            [
+              {
+                recipientId: data.recipientId,
+                type: 'CHAT_GROUP_CHANGED',
+                title:
+                  data.change === 'ADDED'
+                    ? 'Group member added'
+                    : 'Group member removed',
+                body: self
+                  ? `You were ${data.change === 'ADDED' ? 'added to' : 'removed from'} ${data.roomName}.`
+                  : `${subject?.name ?? 'A member'} was ${data.change === 'ADDED' ? 'added to' : 'removed from'} ${data.roomName}.`,
+                href:
+                  data.change === 'REMOVED' && self
+                    ? `/events/${data.eventId}`
+                    : `/events/${data.eventId}?view=chats`,
+                senderId: data.actorId,
+                eventId: data.eventId,
+                sourceEventId: event.eventId,
+              },
+            ],
+            recipients,
+          );
+        }
+        return 'processed';
+      }
+      if (
+        event.producer === 'messages' &&
+        event.eventType === EVENT_TYPES.chatMessageCreated
+      ) {
+        const data = ChatMessageCreatedPayloadSchema.parse(event.payload);
+        const recipient = await this.projections.getUser(
+          transaction,
+          data.recipientId,
+        );
+        if (recipient?.notificationsEnabled !== false) {
+          const sender = await this.projections.getUser(
+            transaction,
+            data.senderId,
+          );
+          await this.createNotifications(
+            transaction,
+            [
+              {
+                recipientId: data.recipientId,
+                type: 'CHAT_MESSAGE',
+                title: `New message in ${data.roomName}`,
+                body: `${sender?.name ?? 'A member'} sent a message.`,
+                href: `/events/${data.eventId}?view=chats`,
+                senderId: data.senderId,
+                eventId: data.eventId,
+                messageId: data.messageId,
+                sourceEventId: event.eventId,
+              },
+            ],
+            recipients,
+          );
         }
         return 'processed';
       }

@@ -16,6 +16,8 @@ export * from './notifications/in-app-notification.schema.js';
 export * from './notifications/message.schema.js';
 export * from './notifications/notification-delivery.event.js';
 export * from './messages/chat.schema.js';
+export * from './messages/chat-membership.event.js';
+export * from './messages/chat-message.event.js';
 export * from './common/api-error.schema.js';
 export * from './common/health-response.schema.js';
 export * from './common/system-services-response.schema.js';

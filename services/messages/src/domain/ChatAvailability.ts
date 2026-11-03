@@ -5,8 +5,19 @@ export const CHAT_ACTIVE_STATUSES = [
   'ONGOING',
 ] as const satisfies readonly EventStatus[];
 
+export const CHAT_READABLE_STATUSES = [
+  ...CHAT_ACTIVE_STATUSES,
+  'COMPLETED',
+  'CANCELLED',
+] as const satisfies readonly EventStatus[];
+
 const active = new Set<string>(CHAT_ACTIVE_STATUSES);
+const readable = new Set<string>(CHAT_READABLE_STATUSES);
 
 export function isChatAvailable(status: string): boolean {
   return active.has(status);
+}
+
+export function isChatReadable(status: string): boolean {
+  return readable.has(status);
 }

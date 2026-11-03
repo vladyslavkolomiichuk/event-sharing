@@ -8,6 +8,7 @@ export const EventProducerSchema = z.enum([
   'geo-search',
   'participation',
   'notifications',
+  'messages',
 ]);
 
 export const EventEnvelopeSchema = z.strictObject({

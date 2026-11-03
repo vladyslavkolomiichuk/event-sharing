@@ -16,6 +16,12 @@ import type {
 export class ParticipationRepository {
   constructor(private readonly capacityPolicy = new CapacityPolicy()) {}
 
+  membership(eventId: string, userId: string) {
+    return prisma.membership.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+    });
+  }
+
   async join(
     eventId: string,
     userId: string,

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Notice } from '@/components/feedback/Notice';
 import { ChatMessageBubble } from './ChatMessageBubble';
+import { ChatGroupSettings } from './ChatGroupSettings';
 
 export function ChatConversation({
   eventId,
@@ -14,6 +15,7 @@ export function ChatConversation({
   room,
   userId,
   canManage,
+  readOnly,
   onActivity,
   onArchive,
   onBack,
@@ -23,6 +25,7 @@ export function ChatConversation({
   room: ChatRoom;
   userId: string;
   canManage: boolean;
+  readOnly: boolean;
   onActivity: () => void;
   onArchive: (roomId: string) => Promise<void>;
   onBack: () => void;
@@ -37,6 +40,8 @@ export function ChatConversation({
   const formRef = useRef<HTMLFormElement>(null);
   const readRef = useRef('');
   const knownLatestRef = useRef('');
+  const draftIdRef = useRef('');
+  const attemptedRef = useRef(false);
   const activityRef = useRef(onActivity);
   activityRef.current = onActivity;
 
@@ -110,6 +115,14 @@ export function ChatConversation({
         if (newest && (wasInitial || nearBottom)) void markRead(newest.id);
       } catch (cause) {
         if (active) {
+          if (
+            cause instanceof Error &&
+            'status' in cause &&
+            cause.status === 403
+          ) {
+            setMessages([]);
+            setBefore(null);
+          }
           setError(
             cause instanceof Error
               ? cause.message
@@ -151,7 +164,16 @@ export function ChatConversation({
       const previousHeight = panel?.scrollHeight ?? 0;
       const previousTop = panel?.scrollTop ?? 0;
       const page = await messagesClient.messages(eventId, room.id, before);
-      setMessages((current) => [...page.items.reverse(), ...current]);
+      setMessages((current) => {
+        const combined = new Map(
+          [...page.items, ...current].map((message) => [message.id, message]),
+        );
+        return [...combined.values()].sort(
+          (left, right) =>
+            left.createdAt.localeCompare(right.createdAt) ||
+            left.id.localeCompare(right.id),
+        );
+      });
       setBefore(page.nextBefore);
       window.requestAnimationFrame(() => {
         if (panel)
@@ -174,10 +196,23 @@ export function ChatConversation({
     setBusy(true);
     setError('');
     try {
-      const message = await messagesClient.send(eventId, room.id, body.trim());
-      setMessages((current) => [...current, message]);
+      if (!draftIdRef.current) draftIdRef.current = crypto.randomUUID();
+      attemptedRef.current = true;
+      const message = await messagesClient.send(
+        eventId,
+        room.id,
+        body.trim(),
+        draftIdRef.current,
+      );
+      setMessages((current) =>
+        current.some((item) => item.id === message.id)
+          ? current
+          : [...current, message],
+      );
       knownLatestRef.current = message.id;
       setBody('');
+      draftIdRef.current = '';
+      attemptedRef.current = false;
       await markRead(message.id);
       window.requestAnimationFrame(() => {
         if (scrollRef.current)
@@ -223,6 +258,13 @@ export function ChatConversation({
           </Button>
         )}
       </div>
+      {canManage && room.name !== 'General' && (
+        <ChatGroupSettings
+          eventId={eventId}
+          room={room}
+          onChanged={onActivity}
+        />
+      )}
       <div
         ref={scrollRef}
         onScroll={() => {
@@ -268,36 +310,48 @@ export function ChatConversation({
           />
         ))}
       </div>
-      <form
-        ref={formRef}
-        onSubmit={send}
-        className="flex items-end gap-3 border-t border-neutral-200 bg-[#f0f2f5] p-3 sm:p-4"
-      >
-        <label htmlFor="chat-message" className="sr-only">
-          Message
-        </label>
-        <Textarea
-          id="chat-message"
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault();
-              formRef.current?.requestSubmit();
-            }
-          }}
-          maxLength={2000}
-          rows={2}
-          placeholder={`Message ${room.name}`}
-          className="max-h-32 min-h-11 flex-1 resize-none border-0 bg-white"
-        />
-        <Button
-          disabled={busy || !body.trim()}
-          className="bg-emerald-700 text-white hover:bg-emerald-800"
+      {readOnly ? (
+        <p className="border-t border-neutral-200 bg-white p-4 text-center text-sm text-neutral-600">
+          This event is closed. Chat history is available to existing members.
+        </p>
+      ) : (
+        <form
+          ref={formRef}
+          onSubmit={send}
+          className="flex items-end gap-3 border-t border-neutral-200 bg-[#f0f2f5] p-3 sm:p-4"
         >
-          Send
-        </Button>
-      </form>
+          <label htmlFor="chat-message" className="sr-only">
+            Message
+          </label>
+          <Textarea
+            id="chat-message"
+            value={body}
+            onChange={(event) => {
+              if (attemptedRef.current) {
+                draftIdRef.current = '';
+                attemptedRef.current = false;
+              }
+              setBody(event.target.value);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                formRef.current?.requestSubmit();
+              }
+            }}
+            maxLength={2000}
+            rows={2}
+            placeholder={`Message ${room.name}`}
+            className="max-h-32 min-h-11 flex-1 resize-none border-0 bg-white"
+          />
+          <Button
+            disabled={busy || !body.trim()}
+            className="bg-emerald-700 text-white hover:bg-emerald-800"
+          >
+            Send
+          </Button>
+        </form>
+      )}
       {error && <Notice message={error} tone="error" />}
     </div>
   );
