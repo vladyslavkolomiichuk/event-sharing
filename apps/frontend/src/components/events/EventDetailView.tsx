@@ -6,7 +6,6 @@ import type { EventDetail, UserProfilePublic } from '@event-sharing/contracts';
 import { eventsClient } from '@/lib/api/EventsClient';
 import { usersClient } from '@/lib/api/UsersClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/contexts/ToastContext';
 import { EventActions } from './EventActions';
 import { RegistrationPanel } from './RegistrationPanel';
 import { ParticipantsList } from './ParticipantsList';
@@ -34,21 +33,16 @@ export function EventDetailView({
   initialView: EventView;
 }) {
   const { user, loading: authLoading } = useAuth();
-  const { show } = useToast();
   const { unreadForEvent } = useChatUnread();
   const [view, setView] = useState<EventView>(initialView);
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [organizer, setOrganizer] = useState<UserProfilePublic | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => setView(initialView), [id, initialView]);
 
-  async function load(manual = false) {
-    if (manual) {
-      setRefreshing(true);
-    }
+  async function load() {
     try {
       const details = await eventsClient.get(id);
       setEvent(details);
@@ -56,15 +50,12 @@ export function EventDetailView({
         await usersClient.get(details.organizerId).catch(() => null),
       );
       setError('');
-      if (manual) show('Event details refreshed.', 'success');
     } catch (cause) {
-      const message =
-        cause instanceof Error ? cause.message : 'Could not load event.';
-      if (manual) show(message, 'error');
-      else setError(message);
+      setError(
+        cause instanceof Error ? cause.message : 'Could not load event.',
+      );
     } finally {
       setLoading(false);
-      if (manual) setRefreshing(false);
     }
   }
 
@@ -147,17 +138,14 @@ export function EventDetailView({
           {event.description}
         </p>
         <ShareEvent event={event} isOwner={isOwner} />
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={refreshing}
-          onClick={() => void load(true)}
-        >
-          {refreshing ? 'Refreshing…' : 'Refresh details'}
-        </Button>
         {canManage && editable.includes(event.status) && (
           <Button asChild variant="outline">
             <Link href={`/events/${id}/edit`}>Edit event</Link>
+          </Button>
+        )}
+        {canManage && event.status === 'COMPLETED' && (
+          <Button asChild variant="outline">
+            <Link href={`/events/new?from=${id}`}>Create next event</Link>
           </Button>
         )}
       </div>

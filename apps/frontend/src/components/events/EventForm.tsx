@@ -34,12 +34,19 @@ const timeZones = [
   ...Intl.supportedValuesOf('timeZone').filter((zone) => zone !== 'UTC'),
 ];
 
-export function EventForm({ eventId }: { eventId?: string }) {
+export function EventForm({
+  eventId,
+  copyFromId,
+}: {
+  eventId?: string;
+  copyFromId?: string;
+}) {
   const router = useRouter();
   const { user } = useAuth();
   const { show } = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [existing, setExisting] = useState<EventDetail | null>(null);
+  const [copySource, setCopySource] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -74,19 +81,25 @@ export function EventForm({ eventId }: { eventId?: string }) {
   useEffect(() => {
     async function load() {
       try {
+        const sourceId = eventId ?? copyFromId;
         const [loadedCategories, event] = await Promise.all([
           eventsClient.categories(),
-          eventId ? eventsClient.get(eventId) : Promise.resolve(null),
+          sourceId ? eventsClient.get(sourceId) : Promise.resolve(null),
         ]);
         setCategories(loadedCategories);
         if (event) {
-          setExisting(event);
+          if (eventId) setExisting(event);
+          else setCopySource(event);
           setTitle(event.title);
           setDescription(event.description);
           setCategoryId(event.categoryId ?? '');
           setTimeZone(event.timeZone);
-          setStartTime(eventLocalTime(event.startTime, event.timeZone));
-          setEndTime(eventLocalTime(event.endTime, event.timeZone));
+          setStartTime(
+            copyFromId ? '' : eventLocalTime(event.startTime, event.timeZone),
+          );
+          setEndTime(
+            copyFromId ? '' : eventLocalTime(event.endTime, event.timeZone),
+          );
           setAddress(event.location.address ?? '');
           setRegion(event.location.region ?? '');
           setLatitude(String(event.location.latitude ?? ''));
@@ -116,10 +129,10 @@ export function EventForm({ eventId }: { eventId?: string }) {
       }
     }
     void load();
-  }, [eventId]);
+  }, [eventId, copyFromId]);
 
   useEffect(() => {
-    if (eventId || !user) return;
+    if (eventId || copyFromId || !user) return;
     usersClient
       .me()
       .then(async (profile) => {
@@ -135,7 +148,7 @@ export function EventForm({ eventId }: { eventId?: string }) {
         }
       })
       .catch(() => undefined);
-  }, [eventId, user?.id]);
+  }, [eventId, copyFromId, user?.id]);
 
   function choosePoint(point: MapPoint) {
     pointChosen.current = true;
@@ -242,6 +255,24 @@ export function EventForm({ eventId }: { eventId?: string }) {
       </div>
     );
   if (
+    copyFromId &&
+    (!copySource ||
+      copySource.status !== 'COMPLETED' ||
+      !user ||
+      (copySource.organizerId !== user.id && user.role !== 'ADMIN'))
+  )
+    return (
+      <div className="space-y-4">
+        <Notice
+          message={error || 'You cannot create a new event from this one.'}
+          tone="error"
+        />
+        <Button variant="outline" onClick={() => router.push('/my-events')}>
+          Back to my events
+        </Button>
+      </div>
+    );
+  if (
     existing &&
     user &&
     existing.organizerId !== user.id &&
@@ -255,6 +286,20 @@ export function EventForm({ eventId }: { eventId?: string }) {
           onClick={() => router.push(`/events/${eventId}`)}
         >
           Back to event
+        </Button>
+      </div>
+    );
+  if (existing?.status === 'COMPLETED')
+    return (
+      <div className="space-y-4">
+        <Notice
+          message="This event has ended. Create a new draft from its details to run it again."
+          tone="info"
+        />
+        <Button
+          onClick={() => router.push(`/events/new?from=${existing.id}`)}
+        >
+          Create next event
         </Button>
       </div>
     );
