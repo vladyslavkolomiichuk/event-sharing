@@ -56,6 +56,8 @@ export function SearchPreferenceSettings() {
           </option>
           <option value="DEVICE">Current location</option>
           <option value="CITY">City</option>
+          <option value="ADDRESS">Address</option>
+          <option value="MAP">Map point</option>
           <option value="ANYWHERE">Anywhere</option>
         </select>
       </div>

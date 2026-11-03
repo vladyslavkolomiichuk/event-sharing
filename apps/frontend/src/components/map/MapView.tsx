@@ -13,6 +13,7 @@ export type MapMarker = MapPoint & {
   selected?: boolean;
   count?: number;
   user?: boolean;
+  draggable?: boolean;
 };
 
 export function MapView({
@@ -21,6 +22,7 @@ export function MapView({
   markers,
   onPick,
   onMarkerClick,
+  onMarkerDrag,
   visible = true,
   className,
 }: {
@@ -29,6 +31,7 @@ export function MapView({
   markers: MapMarker[];
   onPick?: (point: MapPoint) => void;
   onMarkerClick?: (id: string) => void;
+  onMarkerDrag?: (id: string, point: MapPoint) => void;
   visible?: boolean;
   className?: string;
 }) {
@@ -37,10 +40,12 @@ export function MapView({
   const markerRef = useRef<Marker[]>([]);
   const onPickRef = useRef(onPick);
   const onMarkerClickRef = useRef(onMarkerClick);
+  const onMarkerDragRef = useRef(onMarkerDrag);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   onPickRef.current = onPick;
   onMarkerClickRef.current = onMarkerClick;
+  onMarkerDragRef.current = onMarkerDrag;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -105,7 +110,7 @@ export function MapView({
         ? document.createElement('div')
         : document.createElement('button');
       if (!item.user) (element as HTMLButtonElement).type = 'button';
-      element.className = `event-map-marker${item.selected ? ' event-map-marker-selected' : ''}${item.approximate ? ' event-map-marker-approximate' : ''}${item.user ? ' event-map-marker-user' : ''}`;
+      element.className = `event-map-marker${item.selected ? ' event-map-marker-selected' : ''}${item.approximate ? ' event-map-marker-approximate' : ''}${item.user ? ' event-map-marker-user' : ''}${item.draggable ? ' event-map-marker-draggable' : ''}`;
       element.setAttribute('aria-label', item.label);
       element.title = item.label;
       if (item.count && item.count > 1)
@@ -113,11 +118,25 @@ export function MapView({
       if (!item.user)
         element.addEventListener('click', (event) => {
           event.stopPropagation();
-          onMarkerClickRef.current?.(item.id);
+          if (!item.draggable) onMarkerClickRef.current?.(item.id);
         });
-      return new Marker({ element, anchor: 'bottom' })
+      const marker = new Marker({
+        element,
+        anchor: 'bottom',
+        draggable: item.draggable ?? false,
+      })
         .setLngLat([item.longitude, item.latitude])
         .addTo(map);
+      if (item.draggable) {
+        marker.on('dragend', () => {
+          const point = marker.getLngLat();
+          onMarkerDragRef.current?.(item.id, {
+            latitude: point.lat,
+            longitude: point.lng,
+          });
+        });
+      }
+      return marker;
     });
   }, [markers, ready]);
 

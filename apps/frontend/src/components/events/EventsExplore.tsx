@@ -2,7 +2,11 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { EventSearchQuery, SearchEvent } from '@event-sharing/contracts';
+import type {
+  EventSearchQuery,
+  SearchEvent,
+  SearchLocationSource,
+} from '@event-sharing/contracts';
 import { searchClient } from '@/lib/api/SearchClient';
 import { eventsClient, type Category } from '@/lib/api/EventsClient';
 import { usersClient } from '@/lib/api/UsersClient';
@@ -44,8 +48,12 @@ export function EventsExplore() {
   const [radiusKm, setRadiusKm] = useState(15);
   const [center, setCenter] = useState<MapPoint>(worldCenter);
   const [zoom, setZoom] = useState(2);
-  const [mapCity, setMapCity] = useState('');
+  const [placeQuery, setPlaceQuery] = useState('');
+  const [placeKind, setPlaceKind] = useState<'city' | 'address'>('city');
   const [anchor, setAnchor] = useState<MapPoint | null>(null);
+  const [anchorSource, setAnchorSource] = useState<SearchLocationSource | null>(
+    null,
+  );
   const [userLocation, setUserLocation] = useState<MapPoint | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [cityCenters, setCityCenters] = useState<Record<string, MapPoint>>({});
@@ -81,6 +89,8 @@ export function EventsExplore() {
     setUserLocation(null);
     setAccuracy(null);
     setAnchor(null);
+    setAnchorSource(null);
+    setPlaceQuery('');
     setCenter(worldCenter);
     setZoom(2);
   }, [user?.id]);
@@ -95,6 +105,8 @@ export function EventsExplore() {
       return;
     }
     if (mode === 'DEVICE') return;
+    if (mode === 'CITY') setPlaceKind('city');
+    if (mode === 'ADDRESS') setPlaceKind('address');
     let cancelled = false;
     usersClient
       .me()
@@ -106,9 +118,11 @@ export function EventsExplore() {
         if (!locationSelected.current) {
           setCenter(point);
           setZoom(11);
-          setMapCity(profile.city);
           if (mode === 'CITY') {
+            setPlaceKind('city');
+            setPlaceQuery(profile.city);
             setAnchor(point);
+            setAnchorSource('CITY');
             setSort('distance');
           }
         }
@@ -129,6 +143,7 @@ export function EventsExplore() {
     setUserLocation(point);
     setAccuracy(position.accuracy);
     setAnchor(point);
+    setAnchorSource('DEVICE');
     setCenter(point);
     setZoom(12);
     setSort('distance');
@@ -164,12 +179,12 @@ export function EventsExplore() {
         ...(startTo
           ? { startTo: new Date(`${startTo}T23:59:59`).toISOString() }
           : {}),
-        ...(anchor
+        ...(anchor && anchorSource
           ? {
               latitude: anchor.latitude,
               longitude: anchor.longitude,
               radiusMeters: radiusKm * 1000,
-              locationSource: userLocation ? 'DEVICE' : 'CITY',
+              locationSource: anchorSource,
             }
           : {}),
         ...(next ? { cursor: next } : {}),
@@ -200,7 +215,7 @@ export function EventsExplore() {
       startTo,
       sort,
       anchor,
-      userLocation,
+      anchorSource,
       radiusKm,
       show,
     ],
@@ -297,13 +312,32 @@ export function EventsExplore() {
             },
           ]
         : []),
+      ...(anchor && anchorSource !== 'DEVICE'
+        ? [
+            {
+              id: 'search-anchor',
+              label: 'Search center. Drag to move it.',
+              ...anchor,
+              draggable: true,
+            },
+          ]
+        : []),
     ];
-  }, [items, cityCenters, selectedId, selectedRegion, userLocation]);
+  }, [
+    items,
+    cityCenters,
+    selectedId,
+    selectedRegion,
+    userLocation,
+    anchor,
+    anchorSource,
+  ]);
 
-  async function chooseCity(point: MapPoint, label: string) {
+  async function choosePlace(point: MapPoint, label: string) {
     const currentRequest = ++locationRequestId.current;
+    const source = placeKind === 'city' ? 'CITY' : 'ADDRESS';
     try {
-      await chooseMode('CITY');
+      await chooseMode(source);
     } catch (cause) {
       if (currentRequest !== locationRequestId.current) return;
       show(
@@ -317,22 +351,55 @@ export function EventsExplore() {
     if (currentRequest !== locationRequestId.current) return;
     locationSelected.current = true;
     setAnchor(point);
+    setAnchorSource(source);
     setUserLocation(null);
     setAccuracy(null);
-    setMapCity(label);
+    setPlaceQuery(label);
     setCenter(point);
     setZoom(11);
     setSort('distance');
   }
 
-  function changeCity(value: string) {
+  function changePlace(value: string) {
     locationRequestId.current++;
     locationSelected.current = true;
-    setMapCity(value);
+    setPlaceQuery(value);
     setAnchor(null);
+    setAnchorSource(null);
     setUserLocation(null);
     setAccuracy(null);
     if (sort === 'distance') setSort('start_time');
+  }
+
+  function changePlaceKind(kind: 'city' | 'address') {
+    setPlaceKind(kind);
+    changePlace('');
+  }
+
+  async function chooseMapPoint(point: MapPoint) {
+    const currentRequest = ++locationRequestId.current;
+    try {
+      if (mode !== 'MAP') await chooseMode('MAP');
+    } catch (cause) {
+      if (currentRequest !== locationRequestId.current) return;
+      show(
+        cause instanceof Error
+          ? cause.message
+          : 'Could not save search method.',
+        'error',
+      );
+      return;
+    }
+    if (currentRequest !== locationRequestId.current) return;
+    locationSelected.current = true;
+    setAnchor(point);
+    setAnchorSource('MAP');
+    setUserLocation(null);
+    setAccuracy(null);
+    setPlaceQuery('');
+    setCenter(point);
+    setZoom((current) => Math.max(current, 11));
+    setSort('distance');
   }
 
   async function useMyLocation() {
@@ -347,7 +414,8 @@ export function EventsExplore() {
       setUserLocation(point);
       setAccuracy(found.accuracy);
       setAnchor(point);
-      setMapCity('');
+      setAnchorSource('DEVICE');
+      setPlaceQuery('');
       setCenter(point);
       setZoom(12);
       setSort('distance');
@@ -382,7 +450,8 @@ export function EventsExplore() {
     setUserLocation(null);
     setAccuracy(null);
     setAnchor(null);
-    setMapCity('');
+    setAnchorSource(null);
+    setPlaceQuery('');
     setSort('start_time');
     setCenter(worldCenter);
     setZoom(2);
@@ -458,10 +527,12 @@ export function EventsExplore() {
         </p>
       )}
       <EventLocationFilters
-        city={mapCity}
-        onCityChange={changeCity}
-        onCitySelect={(point, label) => void chooseCity(point, label)}
-        locationActive={Boolean(anchor)}
+        placeQuery={placeQuery}
+        onPlaceQueryChange={changePlace}
+        placeKind={placeKind}
+        onPlaceKindChange={changePlaceKind}
+        onPlaceSelect={(point, label) => void choosePlace(point, label)}
+        locationActive={Boolean(anchor && anchorSource)}
         radiusKm={radiusKm}
         onRadiusChange={setRadiusKm}
         startFrom={startFrom}
@@ -523,12 +594,23 @@ export function EventsExplore() {
         </section>
         <section
           aria-label="Event map"
-          className={`${mobileView === 'list' ? 'hidden lg:block' : 'block'}`}
+          className={`relative ${mobileView === 'list' ? 'hidden lg:block' : 'block'}`}
         >
+          <p className="pointer-events-none absolute left-3 top-3 z-10 max-w-[15rem] rounded bg-white/95 px-3 py-2 text-xs text-neutral-800 shadow-sm">
+            {anchorSource === 'DEVICE'
+              ? 'Click the map to search from another point.'
+              : anchor
+                ? 'Drag the search marker or click another point.'
+                : 'Click the map to search for nearby events.'}
+          </p>
           <MapView
             center={center}
             zoom={zoom}
             markers={markers}
+            onPick={(point) => void chooseMapPoint(point)}
+            onMarkerDrag={(id, point) => {
+              if (id === 'search-anchor') void chooseMapPoint(point);
+            }}
             onMarkerClick={selectMarker}
             visible={mobileView === 'map'}
             className="h-[min(70dvh,760px)] min-h-[440px]"
@@ -536,11 +618,13 @@ export function EventsExplore() {
         </section>
       </div>
       <p className="text-xs leading-5 text-neutral-600">
-        Your position is requested only when you choose “Use my location”. It is
-        not saved to your profile or search history; the search service receives
-        it for the current request. The map provider receives tile requests for
-        the area you view. Private venues appear at approximate city positions.
-        Map tiles: OpenFreeMap and OpenStreetMap; city suggestions: Photon.
+        Select a place above, click the map, or drag the search marker to find
+        nearby events. Your position is requested only when you choose “Use my
+        location”. It is not saved to your profile or search history; the search
+        service receives it for the current request. The map provider receives
+        tile requests for the area you view. Private venues appear at
+        approximate city positions. Map tiles: OpenFreeMap and OpenStreetMap.
+        Place searches are sent to Photon for suggestions.
         {accuracy !== null &&
           userLocation &&
           ` Position accuracy: about ${accuracy} m.`}

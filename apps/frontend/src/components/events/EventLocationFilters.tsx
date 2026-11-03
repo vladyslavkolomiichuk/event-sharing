@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export function EventLocationFilters({
-  city,
-  onCityChange,
-  onCitySelect,
+  placeQuery,
+  onPlaceQueryChange,
+  placeKind,
+  onPlaceKindChange,
+  onPlaceSelect,
   locationActive,
   radiusKm,
   onRadiusChange,
@@ -18,9 +20,11 @@ export function EventLocationFilters({
   onStatusChange,
   onClearLocation,
 }: {
-  city: string;
-  onCityChange: (value: string) => void;
-  onCitySelect: (point: MapPoint, label: string) => void;
+  placeQuery: string;
+  onPlaceQueryChange: (value: string) => void;
+  placeKind: 'city' | 'address';
+  onPlaceKindChange: (kind: 'city' | 'address') => void;
+  onPlaceSelect: (point: MapPoint, label: string) => void;
   locationActive: boolean;
   radiusKm: number;
   onRadiusChange: (value: number) => void;
@@ -33,20 +37,40 @@ export function EventLocationFilters({
   onClearLocation: () => void;
 }) {
   return (
-    <div className="grid gap-3 rounded-xl border border-neutral-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-[1fr_130px_150px_150px_130px_auto] lg:items-end">
+    <div className="grid gap-3 rounded-xl border border-neutral-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-[110px_minmax(180px,1fr)_110px_140px_140px_120px_auto] lg:items-end">
+      <div>
+        <label htmlFor="event-place-kind">Find by</label>
+        <select
+          id="event-place-kind"
+          className="w-full"
+          value={placeKind}
+          onChange={(event) =>
+            onPlaceKindChange(event.target.value as 'city' | 'address')
+          }
+        >
+          <option value="city">City</option>
+          <option value="address">Address</option>
+        </select>
+      </div>
       <PlaceAutocomplete
-        id="event-map-city"
-        label="Search around a city"
-        kind="city"
-        value={city}
-        onChange={onCityChange}
+        id="event-map-place"
+        label={
+          placeKind === 'city'
+            ? 'Search around a city'
+            : 'Search around an address'
+        }
+        kind={placeKind}
+        value={placeQuery}
+        onChange={onPlaceQueryChange}
         onSelect={(place) =>
-          onCitySelect(
+          onPlaceSelect(
             { latitude: place.latitude, longitude: place.longitude },
             place.label,
           )
         }
-        placeholder="Choose a city"
+        placeholder={
+          placeKind === 'city' ? 'Choose a city' : 'Choose an address'
+        }
       />
       <div>
         <label htmlFor="event-search-radius">Radius</label>

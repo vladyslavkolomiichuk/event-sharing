@@ -104,3 +104,12 @@ textarea:focus-visible {
     0 0 0 9px rgb(0 0 0 / 12%);
   cursor: default;
 }
+.event-map-marker-draggable {
+  background: white;
+  border-color: #111;
+  box-shadow: 0 0 0 2px white;
+  cursor: grab;
+}
+.event-map-marker-draggable:active {
+  cursor: grabbing;
+}

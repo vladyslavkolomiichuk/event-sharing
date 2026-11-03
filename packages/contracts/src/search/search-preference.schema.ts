@@ -1,10 +1,17 @@
 import { z } from 'zod';
 
-export const SearchModeSchema = z.enum(['DEVICE', 'CITY', 'ANYWHERE']);
+export const SearchModeSchema = z.enum([
+  'DEVICE',
+  'CITY',
+  'ADDRESS',
+  'MAP',
+  'ANYWHERE',
+]);
 export type SearchMode = z.infer<typeof SearchModeSchema>;
 export const SearchLocationSourceSchema = SearchModeSchema.exclude([
   'ANYWHERE',
 ]);
+export type SearchLocationSource = z.infer<typeof SearchLocationSourceSchema>;
 
 export const SearchPreferenceSchema = z.strictObject({
   mode: z.union([SearchModeSchema, z.literal('UNSET')]),

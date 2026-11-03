@@ -46,11 +46,12 @@ export function SearchLocationOnboarding() {
       >
         <h2 id="search-location-title">How would you like to find events?</h2>
         <p className="text-sm leading-6 text-neutral-700">
-          We can search near your current position, around a city you choose, or
-          anywhere. Your exact position is used for the current search and is
-          not saved in your profile or search history. You can change this
-          choice in Profile settings. The map provider receives requests for the
-          area you view.
+          We can search near your current position, around a place you choose,
+          from a map point, or anywhere. Your exact position is used for the
+          current search and is not saved in your profile or search history. You
+          can change this choice in Profile settings. The map provider receives
+          requests for the area you view, and Photon receives place searches for
+          suggestions.
         </p>
         <div className="flex flex-wrap gap-3">
           <Button disabled={busy} onClick={() => void choose('DEVICE')}>
@@ -62,6 +63,20 @@ export function SearchLocationOnboarding() {
             onClick={() => void choose('CITY')}
           >
             Choose a city
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() => void choose('ADDRESS')}
+          >
+            Enter an address
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() => void choose('MAP')}
+          >
+            Pick on map
           </Button>
           <Button
             variant="outline"
