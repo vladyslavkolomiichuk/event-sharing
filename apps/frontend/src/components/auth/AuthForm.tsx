@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
-import { authClient } from '@/lib/api/AuthClient';
+import { useEffect, useState, type FormEvent } from 'react';
+import { authClient, type SocialProvider } from '@/lib/api/AuthClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Notice } from '@/components/feedback/Notice';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,52 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [social, setSocial] = useState<Record<SocialProvider, boolean>>({
+    google: false,
+    github: false,
+  });
+
+  useEffect(() => {
+    void authClient
+      .accountCapabilities()
+      .then((value) => setSocial(value.socialProviders))
+      .catch(() => undefined);
+    const oauthError = new URLSearchParams(window.location.search).get('error');
+    if (oauthError) {
+      setError(
+        oauthError.includes('account_not_linked') ||
+          oauthError.includes('account not linked')
+          ? 'An account with this email already exists. Sign in with its original method, then connect this provider in Profile.'
+          : 'Social sign-in could not be completed. Please try again.',
+      );
+    }
+  }, []);
+
+  async function startSocial(provider: SocialProvider) {
+    setBusy(true);
+    setError('');
+    try {
+      const returnTo = new URLSearchParams(window.location.search).get(
+        'returnTo',
+      );
+      const destination =
+        returnTo?.startsWith('/') && !returnTo.startsWith('//')
+          ? returnTo
+          : '/events';
+      const callback = `${window.location.origin}${destination}`;
+      const errorCallback = `${window.location.origin}/sign-in?error=oauth_failed`;
+      window.location.assign(
+        await authClient.startSocial(provider, callback, errorCallback),
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'Could not start social sign-in.',
+      );
+      setBusy(false);
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -117,6 +163,28 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
               : 'Create account'}
         </Button>
       </form>
+      <div className="mt-5 space-y-3 rounded-xl border border-neutral-200 bg-white p-7">
+        <p className="text-sm text-neutral-600">
+          Sign in or create an account
+        </p>
+        {(['google', 'github'] as const).map((provider) => (
+          <Button
+            key={provider}
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={busy || !social[provider]}
+            onClick={() => void startSocial(provider)}
+          >
+            Continue with {provider === 'google' ? 'Google' : 'GitHub'}
+          </Button>
+        ))}
+        {!social.google && !social.github && (
+          <p className="text-xs text-neutral-500">
+            Social sign-in is awaiting provider configuration.
+          </p>
+        )}
+      </div>
       <p className="mt-5 text-sm text-neutral-600">
         {mode === 'sign-in' ? 'New here?' : 'Already have an account?'}{' '}
         <Link

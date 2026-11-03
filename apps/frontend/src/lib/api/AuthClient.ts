@@ -10,7 +10,11 @@ export type SessionUser = {
 };
 
 export type AuthSession = { user: SessionUser } | null;
-export type AccountCapabilities = { emailDeliveryAvailable: boolean };
+export type SocialProvider = 'google' | 'github';
+export type AccountCapabilities = {
+  emailDeliveryAvailable: boolean;
+  socialProviders: Record<SocialProvider, boolean>;
+};
 
 export class AuthClient {
   getSession(): Promise<AuthSession> {
@@ -31,6 +35,24 @@ export class AuthClient {
 
   accountCapabilities(): Promise<AccountCapabilities> {
     return gateway.get('/auth/account-capabilities');
+  }
+
+  socialAccounts(): Promise<{ providers: SocialProvider[] }> {
+    return gateway.get('/auth/social-accounts');
+  }
+
+  async startSocial(
+    provider: SocialProvider,
+    callbackURL: string,
+    errorCallbackURL: string,
+    link = false,
+  ): Promise<string> {
+    const result = await gateway.post<{ url?: string }>(
+      link ? '/auth/link-social' : '/auth/sign-in/social',
+      { provider, callbackURL, errorCallbackURL, disableRedirect: true },
+    );
+    if (!result.url) throw new Error('Could not start social sign-in.');
+    return result.url;
   }
 
   usernameAvailable(username: string): Promise<{ available: boolean }> {

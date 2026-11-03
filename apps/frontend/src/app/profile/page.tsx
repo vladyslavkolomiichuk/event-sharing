@@ -3,6 +3,7 @@ import { ProfileForm } from '@/components/profile/ProfileForm';
 import { AccountSecurity } from '@/components/profile/AccountSecurity';
 import { IdentityForm } from '@/components/profile/IdentityForm';
 import { SearchPreferenceSettings } from '@/components/profile/SearchPreferenceSettings';
+import { SocialAccounts } from '@/components/profile/SocialAccounts';
 export default function ProfilePage() {
   return (
     <RequireAuth>
@@ -20,6 +21,7 @@ export default function ProfilePage() {
         <SearchPreferenceSettings />
         <ProfileForm />
         <AccountSecurity />
+        <SocialAccounts />
       </div>
     </RequireAuth>
   );

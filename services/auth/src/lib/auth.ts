@@ -17,15 +17,45 @@ const mail =
     : null;
 
 export const accountMailAvailable = Boolean(mail);
+export const socialProvidersAvailable = {
+  google: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+  github: Boolean(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET),
+};
 
 export const auth = betterAuth({
-  baseURL: env.BETTER_AUTH_URL,
+  baseURL: env.BETTER_AUTH_PUBLIC_URL ?? env.BETTER_AUTH_URL,
   basePath: '/auth',
   trustedOrigins: [env.FRONTEND_ORIGIN, env.BETTER_AUTH_URL],
   secret: env.BETTER_AUTH_SECRET,
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),
+  account: {
+    encryptOAuthTokens: true,
+    accountLinking: {
+      enabled: true,
+      disableImplicitLinking: true,
+      allowDifferentEmails: false,
+    },
+  },
+  socialProviders: {
+    ...(socialProvidersAvailable.google
+      ? {
+          google: {
+            clientId: env.GOOGLE_CLIENT_ID!,
+            clientSecret: env.GOOGLE_CLIENT_SECRET!,
+          },
+        }
+      : {}),
+    ...(socialProvidersAvailable.github
+      ? {
+          github: {
+            clientId: env.GITHUB_CLIENT_ID!,
+            clientSecret: env.GITHUB_CLIENT_SECRET!,
+          },
+        }
+      : {}),
+  },
   databaseHooks: {
     user: {
       create: {

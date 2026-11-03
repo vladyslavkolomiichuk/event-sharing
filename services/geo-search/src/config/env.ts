@@ -5,6 +5,8 @@ import {
 } from '@event-sharing/common';
 import { z } from 'zod';
 
+const publicDemoUrl = 'https://valhalla1.openstreetmap.de';
+
 const EnvSchema = DatabaseServiceEnvSchema.extend({
   PORT: PortSchema.default(8004),
   HOST: z.string().min(1).default('127.0.0.1'),
@@ -12,6 +14,20 @@ const EnvSchema = DatabaseServiceEnvSchema.extend({
   AUTH_JWT_ISSUER: z.url(),
   AUTH_JWT_AUDIENCE: z.string().min(1),
   KAFKA_BROKERS: z.string().min(1),
+  EVENTS_SERVICE_URL: z.url().default('http://127.0.0.1:8001'),
+  VALHALLA_URL: z.url().default(publicDemoUrl),
+  VALHALLA_CLIENT_ID: z.string().min(1).default('event-sharing-development'),
+}).superRefine((value, context) => {
+  if (
+    value.NODE_ENV === 'production' &&
+    value.VALHALLA_URL.replace(/\/$/, '') === publicDemoUrl
+  ) {
+    context.addIssue({
+      code: 'custom',
+      path: ['VALHALLA_URL'],
+      message: 'Production routing requires a configured Valhalla server.',
+    });
+  }
 });
 
 export const env = EnvSchema.parse({

@@ -56,6 +56,7 @@ model Account {
   updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
 
   @@index([userId])
+  @@unique([providerId, accountId])
   @@map("account")
 }
 

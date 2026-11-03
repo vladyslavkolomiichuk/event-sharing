@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Map, Marker, NavigationControl, setWorkerUrl } from 'maplibre-gl';
+import {
+  GeoJSONSource,
+  LngLatBounds,
+  Map,
+  Marker,
+  NavigationControl,
+  setWorkerUrl,
+} from 'maplibre-gl';
 import { cn } from '@/lib/utils';
 import { Notice } from '@/components/feedback/Notice';
 
@@ -20,6 +27,7 @@ export function MapView({
   center,
   zoom,
   markers,
+  route,
   onPick,
   onMarkerClick,
   onMarkerDrag,
@@ -29,6 +37,7 @@ export function MapView({
   center: MapPoint;
   zoom: number;
   markers: MapMarker[];
+  route?: MapPoint[];
   onPick?: (point: MapPoint) => void;
   onMarkerClick?: (id: string) => void;
   onMarkerDrag?: (id: string, point: MapPoint) => void;
@@ -100,6 +109,45 @@ export function MapView({
   useEffect(() => {
     if (visible) requestAnimationFrame(() => mapRef.current?.resize());
   }, [visible]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const coordinates = (route ?? []).map((point) => [
+      point.longitude,
+      point.latitude,
+    ]);
+    const data =
+      coordinates.length >= 2
+        ? {
+            type: 'Feature' as const,
+            properties: {},
+            geometry: { type: 'LineString' as const, coordinates },
+          }
+        : { type: 'FeatureCollection' as const, features: [] };
+    const source = map.getSource('event-route') as GeoJSONSource | undefined;
+    if (source) source.setData(data);
+    else {
+      map.addSource('event-route', { type: 'geojson', data });
+      map.addLayer({
+        id: 'event-route-outline',
+        type: 'line',
+        source: 'event-route',
+        paint: { 'line-color': '#fff', 'line-width': 8 },
+      });
+      map.addLayer({
+        id: 'event-route-line',
+        type: 'line',
+        source: 'event-route',
+        paint: { 'line-color': '#111', 'line-width': 4 },
+      });
+    }
+    if (coordinates.length >= 2) {
+      const bounds = new LngLatBounds();
+      for (const point of coordinates) bounds.extend(point as [number, number]);
+      map.fitBounds(bounds, { padding: 50, maxZoom: 14 });
+    }
+  }, [route, ready]);
 
   useEffect(() => {
     const map = mapRef.current;

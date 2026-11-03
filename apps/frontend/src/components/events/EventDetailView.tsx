@@ -21,6 +21,7 @@ import { EventViewTabs, type EventView } from './EventViewTabs';
 import { useChatUnread } from '@/contexts/ChatUnreadContext';
 import { ShareEvent } from './ShareEvent';
 import { InviteParticipants } from './InviteParticipants';
+import { EventRoutePlanner } from './EventRoutePlanner';
 
 const editable = ['DRAFT', 'REJECTED', 'APPROVED', 'PUBLISHED'];
 
@@ -216,6 +217,10 @@ export function EventDetailView({
                   </p>
                 )}
             </section>
+            {event.location.latitude !== null &&
+              event.location.longitude !== null && (
+                <EventRoutePlanner event={event} />
+              )}
             {canManage && (
               <section className="rounded-xl border border-neutral-200 bg-white p-7">
                 <EventActions

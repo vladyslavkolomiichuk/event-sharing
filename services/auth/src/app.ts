@@ -4,7 +4,12 @@ import type { ReadinessCheck } from '@event-sharing/common';
 import { toNodeHandler } from 'better-auth/node';
 import { UserRoleController } from './controllers/UserRoleController.js';
 import { UserIdentityController } from './controllers/UserIdentityController.js';
-import { accountMailAvailable, auth } from './lib/auth.js';
+import {
+  accountMailAvailable,
+  auth,
+  socialProvidersAvailable,
+} from './lib/auth.js';
+import { prisma } from './database/client.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFound } from './middleware/not-found.js';
 import { requireUserSession } from './middleware/require-user-session.js';
@@ -37,8 +42,27 @@ export function createApp(readinessCheck: ReadinessCheck): Express {
     new UserIdentityController().availability,
   );
   app.get('/auth/account-capabilities', (_request, response) => {
-    response.status(200).json({ emailDeliveryAvailable: accountMailAvailable });
+    response.status(200).json({
+      emailDeliveryAvailable: accountMailAvailable,
+      socialProviders: socialProvidersAvailable,
+    });
   });
+  app.get(
+    '/auth/social-accounts',
+    requireUserSession,
+    async (request, response) => {
+      const accounts = await prisma.account.findMany({
+        where: {
+          userId: request.authUser!.id,
+          providerId: { in: ['google', 'github'] },
+        },
+        select: { providerId: true },
+      });
+      response
+        .status(200)
+        .json({ providers: accounts.map((account) => account.providerId) });
+    },
+  );
   app.all('/auth/*splat', toNodeHandler(auth));
   app.use(express.json());
 

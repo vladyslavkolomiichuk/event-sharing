@@ -37,6 +37,7 @@ export * from './events/event-snapshot.event.js';
 export * from './search/event-search-query.schema.js';
 export * from './search/search-preference.schema.js';
 export * from './search/event-search-result.schema.js';
+export * from './search/event-route.schema.js';
 export * from './search/search-performed.event.js';
 export * from './event-log/event-log.schema.js';
 export * from './realtime/realtime-signal.schema.js';

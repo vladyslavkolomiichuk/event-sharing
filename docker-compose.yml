@@ -72,7 +72,20 @@ services:
       retries: 10
       start_period: 30s
 
+  valhalla:
+    image: ghcr.io/valhalla/valhalla-scripted:3.9.1
+    profiles: [routing]
+    restart: unless-stopped
+    environment:
+      tile_urls: ${VALHALLA_PBF_URL:-}
+      server_threads: '2'
+    ports:
+      - '127.0.0.1:${VALHALLA_PORT:-8007}:8002'
+    volumes:
+      - valhalla-data:/custom_files
+
 volumes:
   postgres-data:
   pgadmin-data:
   kafka-data:
+  valhalla-data:
