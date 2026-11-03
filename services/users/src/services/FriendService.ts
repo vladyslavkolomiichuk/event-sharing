@@ -36,31 +36,32 @@ export class FriendService {
     const [userIdA, userIdB] = this.pair(senderId, recipient.userId);
     return prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userIdA + userIdB}))`;
-      const [preference, blocks, friendship, pending, sender] =
-        await Promise.all([
-          tx.userPreference.findUnique({ where: { userId: recipient.userId } }),
-          tx.userBlock.count({
-            where: {
-              OR: [
-                { blockerId: senderId, blockedId: recipient.userId },
-                { blockerId: recipient.userId, blockedId: senderId },
-              ],
-            },
-          }),
-          tx.friendship.findUnique({
-            where: { userIdA_userIdB: { userIdA, userIdB } },
-          }),
-          tx.friendRequest.findFirst({
-            where: {
-              status: 'PENDING',
-              OR: [
-                { senderId, recipientId: recipient.userId },
-                { senderId: recipient.userId, recipientId: senderId },
-              ],
-            },
-          }),
-          tx.userProfile.findUniqueOrThrow({ where: { userId: senderId } }),
-        ]);
+      const preference = await tx.userPreference.findUnique({
+        where: { userId: recipient.userId },
+      });
+      const blocks = await tx.userBlock.count({
+        where: {
+          OR: [
+            { blockerId: senderId, blockedId: recipient.userId },
+            { blockerId: recipient.userId, blockedId: senderId },
+          ],
+        },
+      });
+      const friendship = await tx.friendship.findUnique({
+        where: { userIdA_userIdB: { userIdA, userIdB } },
+      });
+      const pending = await tx.friendRequest.findFirst({
+        where: {
+          status: 'PENDING',
+          OR: [
+            { senderId, recipientId: recipient.userId },
+            { senderId: recipient.userId, recipientId: senderId },
+          ],
+        },
+      });
+      const sender = await tx.userProfile.findUniqueOrThrow({
+        where: { userId: senderId },
+      });
       if (!preference?.allowFriendRequests || blocks) {
         throw new FriendActionError(
           'Friend requests are unavailable.',
