@@ -100,7 +100,7 @@ async function testGatewayFlow() {
     const ready = { check: async () => true };
     const userServer = createServer(createUserApp(ready));
     servers.push(userServer);
-    await listen(userServer, 8003);
+    const userUrl = await listen(userServer, 8003);
     const participationServer = createServer(createParticipationApp(ready));
     servers.push(participationServer);
     const participationUrl = await listen(participationServer);
@@ -127,7 +127,7 @@ async function testGatewayFlow() {
         next();
       },
       serviceProxies: {
-        users: unavailable,
+        users: new ServiceProxy(userUrl, '/api/users', 'Users').create(),
         events: unavailable,
         search: unavailable,
         participation: proxy,
@@ -139,6 +139,15 @@ async function testGatewayFlow() {
     const gatewayServer = createServer(gateway);
     servers.push(gatewayServer);
     const base = await listen(gatewayServer);
+    const userSearch = await fetch(
+      `${base}/api/users/search?username=${usernames[1]!.slice(0, 8)}`,
+      { headers: { cookie: 'test-session=organizer' } },
+    );
+    const searchResult = (await userSearch.json()) as {
+      items: { userId: string }[];
+    };
+    assert.equal(userSearch.status, 200, JSON.stringify(searchResult));
+    assert.ok(searchResult.items.some((item) => item.userId === guestIds[0]));
     const send = await fetch(
       `${base}/api/participation/events/${eventIds[3]}/invitations`,
       {
