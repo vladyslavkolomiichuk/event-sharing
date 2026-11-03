@@ -1,7 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import type { SearchMode } from '@event-sharing/contracts';
+import {
+  needsUsernameSelection,
+  type SearchMode,
+} from '@event-sharing/contracts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchPreference } from '@/contexts/SearchPreferenceContext';
 import { Button } from '@/components/ui/button';
@@ -14,7 +17,13 @@ export function SearchLocationOnboarding() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  if (!user || !ready || mode !== 'UNSET') return null;
+  if (
+    !user ||
+    needsUsernameSelection(user.username) ||
+    !ready ||
+    mode !== 'UNSET'
+  )
+    return null;
 
   async function choose(next: SearchMode) {
     setBusy(true);

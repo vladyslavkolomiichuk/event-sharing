@@ -1,4 +1,4 @@
-import type { UpdateIdentity } from '@event-sharing/contracts';
+import { usernameCandidates, type UpdateIdentity } from '@event-sharing/contracts';
 import { UserIdentityRepository } from '../repositories/UserIdentityRepository.js';
 
 export class UserIdentityService {
@@ -10,5 +10,9 @@ export class UserIdentityService {
 
   available(username: string) {
     return this.repository.available(username);
+  }
+
+  suggestions(name: string) {
+    return this.repository.availableSuggestions(usernameCandidates(name));
   }
 }

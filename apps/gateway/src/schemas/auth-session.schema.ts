@@ -5,5 +5,6 @@ export const AuthSessionSchema = z.object({
   user: z.object({
     id: z.uuid(),
     role: UserRoleSchema,
+    username: z.string().nullable(),
   }),
 });

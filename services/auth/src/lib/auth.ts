@@ -1,8 +1,12 @@
 import { betterAuth } from 'better-auth';
+import { APIError } from 'better-auth/api';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { jwt } from 'better-auth/plugins';
 import { MailMessageCipher } from '@event-sharing/messaging';
-import { DisplayNameSchema, UsernameSchema } from '@event-sharing/contracts';
+import {
+  ChosenUsernameSchema,
+  DisplayNameSchema,
+} from '@event-sharing/contracts';
 import { env } from '../config/env.js';
 import { prisma } from '../database/client.js';
 import { MailRequestRepository } from '../repositories/MailRequestRepository.js';
@@ -58,16 +62,24 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        before: async (user) => ({
-          data: {
-            ...user,
-            name: DisplayNameSchema.parse(user.name),
-            ...(user.username
-              ? { username: UsernameSchema.parse(user.username) }
-              : {}),
-            image: null,
-          },
-        }),
+        before: async (user, context) => {
+          const localSignUp = context?.path === '/sign-up/email';
+          if (localSignUp && !user.username) {
+            throw new APIError('BAD_REQUEST', {
+              message: 'Choose a username.',
+            });
+          }
+          return {
+            data: {
+              ...user,
+              name: DisplayNameSchema.parse(user.name),
+              username: localSignUp
+                ? ChosenUsernameSchema.parse(user.username)
+                : null,
+              image: null,
+            },
+          };
+        },
       },
       update: {
         before: async (user) => ({
@@ -75,6 +87,9 @@ export const auth = betterAuth({
             ...user,
             ...(user.name !== undefined
               ? { name: DisplayNameSchema.parse(user.name) }
+              : {}),
+            ...(user.username !== undefined
+              ? { username: ChosenUsernameSchema.parse(user.username) }
               : {}),
             image: null,
           },
@@ -103,7 +118,7 @@ export const auth = betterAuth({
       username: {
         type: 'string',
         required: false,
-        input: false,
+        input: true,
       },
       role: {
         type: ['USER', 'ORGANIZER', 'ADMIN'],

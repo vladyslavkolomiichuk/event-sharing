@@ -8,6 +8,7 @@ import { NotificationsRealtimeProvider } from '@/contexts/NotificationsRealtimeP
 import { MessagesRealtimeProvider } from '@/contexts/MessagesRealtimeProvider';
 import { SearchPreferenceProvider } from '@/contexts/SearchPreferenceContext';
 import { SearchLocationOnboarding } from '@/components/search/SearchLocationOnboarding';
+import { OnboardingGate } from '@/components/auth/OnboardingGate';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './globals.css';
 
@@ -33,7 +34,7 @@ export default function RootLayout({
                       <SiteHeader />
                       <div className="flex min-w-0 flex-1 flex-col">
                         <main className="mx-auto w-full max-w-[1680px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
-                          {children}
+                          <OnboardingGate>{children}</OnboardingGate>
                         </main>
                         <SiteFooter />
                       </div>

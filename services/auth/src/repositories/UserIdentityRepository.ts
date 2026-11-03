@@ -12,6 +12,16 @@ export class UserIdentityRepository {
     return user === null;
   }
 
+  async availableSuggestions(candidates: string[]): Promise<string[]> {
+    if (!candidates.length) return [];
+    const users = await prisma.user.findMany({
+      where: { username: { in: candidates } },
+      select: { username: true },
+    });
+    const taken = new Set(users.map((user) => user.username));
+    return candidates.filter((candidate) => !taken.has(candidate)).slice(0, 2);
+  }
+
   async update(userId: string, changes: UpdateIdentity) {
     try {
       return await prisma.user.update({

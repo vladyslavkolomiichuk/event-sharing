@@ -109,6 +109,7 @@ export class IdentityEventConsumer {
             payload.userId,
             payload.username,
             event.eventType,
+            payload.name,
           );
           EventTrace.received(
             'Users',

@@ -8,7 +8,10 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { ChatOverview } from '@event-sharing/contracts';
+import {
+  needsUsernameSelection,
+  type ChatOverview,
+} from '@event-sharing/contracts';
 import { messagesClient } from '@/lib/api/MessagesClient';
 import { useAuth } from './AuthContext';
 
@@ -38,7 +41,8 @@ export function ChatUnreadProvider({
 
   const refresh = useCallback(async () => {
     const currentRequest = ++requestId.current;
-    const requestedUserId = user?.id ?? null;
+    const requestedUserId =
+      user && !needsUsernameSelection(user.username) ? user.id : null;
     if (!requestedUserId) {
       setOverview(empty);
       setOverviewOwnerId(null);
@@ -69,7 +73,7 @@ export function ChatUnreadProvider({
       )
         setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, user?.username]);
 
   useEffect(() => {
     setOverview(empty);

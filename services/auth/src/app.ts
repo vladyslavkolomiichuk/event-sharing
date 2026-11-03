@@ -64,6 +64,10 @@ export function createApp(readinessCheck: ReadinessCheck): Express {
     '/backend/auth/username-availability',
     new UserIdentityController().availability,
   );
+  app.get(
+    '/backend/auth/username-suggestions',
+    new UserIdentityController().suggestions,
+  );
   app.get('/backend/auth/account-capabilities', (_request, response) => {
     response.status(200).json({
       emailDeliveryAvailable: accountMailAvailable,

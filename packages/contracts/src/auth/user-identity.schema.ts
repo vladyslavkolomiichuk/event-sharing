@@ -44,10 +44,21 @@ export const UsernameSchema = z
     'This username is reserved.',
   );
 
+export const ChosenUsernameSchema = UsernameSchema.refine(
+  (value) => !/^user_[0-9a-f]{24}$/.test(value),
+  'Choose a personal username.',
+);
+
+export function needsUsernameSelection(
+  username: string | null | undefined,
+): boolean {
+  return !username || /^user_[0-9a-f]{24}$/.test(username);
+}
+
 export const UpdateIdentitySchema = z
   .strictObject({
     name: DisplayNameSchema.optional(),
-    username: UsernameSchema.optional(),
+    username: ChosenUsernameSchema.optional(),
   })
   .refine((value) => value.name !== undefined || value.username !== undefined, {
     message: 'Provide a name or username.',

@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { UpdateIdentitySchema, UsernameSchema } from '@event-sharing/contracts';
+import {
+  UpdateIdentitySchema,
+  ChosenUsernameSchema,
+} from '@event-sharing/contracts';
 import { authClient } from '@/lib/api/AuthClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -48,7 +51,7 @@ export function IdentityForm() {
   }
 
   async function checkAvailability() {
-    const parsed = UsernameSchema.safeParse(username);
+    const parsed = ChosenUsernameSchema.safeParse(username);
     if (!parsed.success) {
       setAvailability(parsed.error.issues[0]?.message ?? 'Invalid username.');
       return;

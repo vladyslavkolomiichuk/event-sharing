@@ -10,7 +10,6 @@
   "scripts": {
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm build && pnpm -r --if-present typecheck && tsc -p scripts/tsconfig.json --noEmit",
-    "test:integration": "tsx scripts/integration/invitation-flow.ts",
     "dev:backend": "pnpm build && pnpm --parallel --filter \"./services/**\" --filter \"./apps/gateway\" dev",
     "start:backend": "pnpm build && pnpm --parallel --filter \"./services/**\" --filter \"./apps/gateway\" start",
     "dev:core": "pnpm build && pnpm --parallel --filter @event-sharing/auth --filter @event-sharing/gateway --filter @event-sharing/users --filter @event-sharing/events --filter @event-sharing/geo-search --filter @event-sharing/participation --filter @event-sharing/notifications --filter @event-sharing/messages --filter @event-sharing/event-log dev",

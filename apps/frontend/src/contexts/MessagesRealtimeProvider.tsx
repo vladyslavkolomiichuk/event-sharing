@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { connectRealtime } from '@/lib/realtime/connectRealtime';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
+import { needsUsernameSelection } from '@event-sharing/contracts';
 
 export function MessagesRealtimeProvider({
   children,
@@ -14,7 +15,7 @@ export function MessagesRealtimeProvider({
   const { show } = useToast();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || needsUsernameSelection(user.username)) return;
     return connectRealtime({
       path: '/realtime/messages',
       signalType: 'messages.changed',
@@ -35,7 +36,7 @@ export function MessagesRealtimeProvider({
         show('Live chats are disconnected. Reconnecting…', 'warning'),
       onRestored: () => show('Live chats restored.', 'success'),
     });
-  }, [user?.id, show]);
+  }, [user?.id, user?.username, show]);
 
   return children;
 }

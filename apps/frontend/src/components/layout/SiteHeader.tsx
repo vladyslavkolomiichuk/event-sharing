@@ -9,6 +9,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
 import { NotificationStatus } from '@/components/notifications/NotificationStatus';
 import { ChatHeaderLink } from '@/components/messages/ChatHeaderLink';
+import { needsUsernameSelection } from '@event-sharing/contracts';
 
 const mainLinks = [
   { href: '/', label: 'Explore' },
@@ -29,6 +30,7 @@ function NavigationContent({ close }: { close?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const profileReady = user && !needsUsernameSelection(user.username);
 
   async function handleSignOut() {
     setBusy(true);
@@ -87,7 +89,7 @@ function NavigationContent({ close }: { close?: () => void }) {
         className="mt-6 flex-1 space-y-1 overflow-y-auto"
       >
         {navigationLink('/', 'Explore')}
-        {user && (
+        {profileReady && (
           <>
             {mainLinks
               .slice(1)
@@ -119,7 +121,7 @@ function NavigationContent({ close }: { close?: () => void }) {
             </div>
           </>
         )}
-        {user?.role === 'ADMIN' && (
+        {profileReady && user.role === 'ADMIN' && (
           <div className="mt-5 border-t border-neutral-200 pt-4">
             <p className="px-3 pb-2 text-xs font-bold uppercase tracking-widest text-neutral-500">
               Administration

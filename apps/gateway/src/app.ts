@@ -11,6 +11,7 @@ import { GatewayRateLimiter } from './middleware/GatewayRateLimiter.js';
 import { notFound } from './middleware/not-found.js';
 import { assignRequestId } from './middleware/request-id.js';
 import { requireRole } from './middleware/require-role.js';
+import { requireCompleteProfile } from './middleware/require-complete-profile.js';
 import { systemRoutes } from './routes/system.routes.js';
 
 export type GatewayAppDependencies = {
@@ -61,25 +62,17 @@ export function createApp(dependencies: GatewayAppDependencies): Express {
     authenticate,
     new DataExportController().export,
   );
+  app.use('/api', authenticate, requireCompleteProfile);
   app.use('/api/users/search', userSearchRateLimiter.middleware());
-  app.use('/api/users', authenticate, dependencies.serviceProxies.users);
-  app.use('/api/events', authenticate, dependencies.serviceProxies.events);
+  app.use('/api/users', dependencies.serviceProxies.users);
+  app.use('/api/events', dependencies.serviceProxies.events);
   app.use('/api/search/route', routeRateLimiter.middleware());
-  app.use('/api/search', authenticate, dependencies.serviceProxies.search);
-  app.use(
-    '/api/participation',
-    authenticate,
-    dependencies.serviceProxies.participation,
-  );
-  app.use(
-    '/api/notifications',
-    authenticate,
-    dependencies.serviceProxies.notifications,
-  );
-  app.use('/api/messages', authenticate, dependencies.serviceProxies.messages);
+  app.use('/api/search', dependencies.serviceProxies.search);
+  app.use('/api/participation', dependencies.serviceProxies.participation);
+  app.use('/api/notifications', dependencies.serviceProxies.notifications);
+  app.use('/api/messages', dependencies.serviceProxies.messages);
   app.use(
     '/api/event-log',
-    authenticate,
     requireRole('ADMIN'),
     dependencies.serviceProxies.eventLog,
   );
@@ -100,7 +93,6 @@ export function createApp(dependencies: GatewayAppDependencies): Express {
 
   app.use(
     '/api/system',
-    authenticate,
     requireRole('ADMIN'),
     systemRoutes(new SystemController(dependencies.clients)),
   );

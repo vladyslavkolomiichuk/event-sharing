@@ -4,6 +4,7 @@ import { AuthSessionSchema } from '../schemas/auth-session.schema.js';
 
 export type GatewayIdentity = {
   token: string;
+  username: string | null;
   user: {
     id: string;
     role: UserRole;
@@ -24,10 +25,16 @@ export class AuthServiceClient {
     }
 
     try {
-      const response = await fetch(new URL('/backend/auth/get-session', this.baseUrl), {
-        headers: { cookie },
-        signal: AbortSignal.timeout(this.timeoutMs),
-      });
+      const response = await fetch(
+        new URL(
+          '/backend/auth/get-session?disableCookieCache=true',
+          this.baseUrl,
+        ),
+        {
+          headers: { cookie },
+          signal: AbortSignal.timeout(this.timeoutMs),
+        },
+      );
 
       if (!response.ok) {
         throw new AuthServiceUnavailableError();
@@ -46,6 +53,7 @@ export class AuthServiceClient {
 
       return {
         token,
+        username: session.user.username,
         user: {
           id: session.user.id,
           role: session.user.role,

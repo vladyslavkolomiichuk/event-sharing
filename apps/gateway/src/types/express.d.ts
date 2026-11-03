@@ -5,6 +5,7 @@ declare global {
     interface Request {
       requestId?: string;
       internalUserJwt?: string;
+      profileComplete?: boolean;
       authenticatedUser?: {
         id: string;
         role: UserRole;

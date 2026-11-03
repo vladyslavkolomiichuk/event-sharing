@@ -4,7 +4,7 @@ import { gateway } from './GatewayClient';
 export type SessionUser = {
   id: string;
   name: string;
-  username: string;
+  username: string | null;
   email: string;
   role: UserRole;
 };
@@ -18,15 +18,27 @@ export type AccountCapabilities = {
 
 export class AuthClient {
   getSession(): Promise<AuthSession> {
-    return gateway.get<AuthSession>('/auth/get-session');
+    return gateway.get<AuthSession>(
+      '/auth/get-session?disableCookieCache=true',
+    );
   }
 
   signIn(email: string, password: string): Promise<unknown> {
     return gateway.post('/auth/sign-in/email', { email, password });
   }
 
-  signUp(name: string, email: string, password: string): Promise<unknown> {
-    return gateway.post('/auth/sign-up/email', { name, email, password });
+  signUp(
+    name: string,
+    username: string,
+    email: string,
+    password: string,
+  ): Promise<unknown> {
+    return gateway.post('/auth/sign-up/email', {
+      name,
+      username,
+      email,
+      password,
+    });
   }
 
   signOut(): Promise<unknown> {
@@ -76,6 +88,12 @@ export class AuthClient {
   usernameAvailable(username: string): Promise<{ available: boolean }> {
     return gateway.get(
       `/auth/username-availability?username=${encodeURIComponent(username)}`,
+    );
+  }
+
+  usernameSuggestions(name: string): Promise<{ suggestions: string[] }> {
+    return gateway.get(
+      `/auth/username-suggestions?name=${encodeURIComponent(name)}`,
     );
   }
 

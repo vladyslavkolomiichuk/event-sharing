@@ -1,4 +1,8 @@
-import { UpdateIdentitySchema, UsernameSchema } from '@event-sharing/contracts';
+import {
+  UpdateIdentitySchema,
+  ChosenUsernameSchema,
+  DisplayNameSchema,
+} from '@event-sharing/contracts';
 import type { RequestHandler } from 'express';
 import { UnauthorizedError } from '../domain/errors/UnauthorizedError.js';
 import { UserIdentityService } from '../services/UserIdentityService.js';
@@ -14,9 +18,14 @@ export class UserIdentityController {
   };
 
   readonly availability: RequestHandler = async (request, response) => {
-    const username = UsernameSchema.parse(request.query.username);
+    const username = ChosenUsernameSchema.parse(request.query.username);
     response
       .status(200)
       .json({ available: await this.service.available(username) });
+  };
+
+  readonly suggestions: RequestHandler = async (request, response) => {
+    const name = DisplayNameSchema.parse(request.query.name);
+    response.status(200).json({ suggestions: await this.service.suggestions(name) });
   };
 }

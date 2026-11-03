@@ -3,7 +3,6 @@ import {
   UserProfileUpdatedPayloadSchema,
   type UpdateUserProfile,
 } from '@event-sharing/contracts';
-import { randomUUID } from 'node:crypto';
 import type {
   Prisma,
   UserPreference,
@@ -97,12 +96,13 @@ export class UserProfileRepository {
       });
       if (inbox.count === 0) return false;
 
+      if (!username) return true;
+
       await transaction.userProfile.createMany({
         data: {
           userId,
           name: name ?? 'Member',
-          username:
-            username ?? `user_${randomUUID().replaceAll('-', '').slice(0, 24)}`,
+          username,
         },
         skipDuplicates: true,
       });
@@ -151,6 +151,7 @@ export class UserProfileRepository {
     userId: string,
     username: string,
     eventType: typeof EVENT_TYPES.userUsernameUpdated,
+    name?: string,
   ): Promise<boolean> {
     return prisma.$transaction(async (transaction) => {
       const inbox = await transaction.inboxEvent.createMany({
@@ -158,9 +159,14 @@ export class UserProfileRepository {
         skipDuplicates: true,
       });
       if (inbox.count === 0) return false;
-      await transaction.userProfile.updateMany({
+      await transaction.userProfile.upsert({
         where: { userId },
-        data: { username },
+        create: { userId, username, name: name ?? 'Member' },
+        update: { username },
+      });
+      await transaction.userPreference.createMany({
+        data: { userId },
+        skipDuplicates: true,
       });
       return true;
     });

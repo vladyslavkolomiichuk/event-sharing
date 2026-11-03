@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { connectRealtime } from '@/lib/realtime/connectRealtime';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
+import { needsUsernameSelection } from '@event-sharing/contracts';
 
 export function NotificationsRealtimeProvider({
   children,
@@ -14,7 +15,7 @@ export function NotificationsRealtimeProvider({
   const { show } = useToast();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || needsUsernameSelection(user.username)) return;
     return connectRealtime({
       path: '/realtime/notifications',
       signalType: 'notifications.changed',
@@ -25,7 +26,7 @@ export function NotificationsRealtimeProvider({
         show('Live notifications are disconnected. Reconnecting…', 'warning'),
       onRestored: () => show('Live notifications restored.', 'success'),
     });
-  }, [user?.id, show]);
+  }, [user?.id, user?.username, show]);
 
   return children;
 }

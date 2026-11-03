@@ -8,7 +8,11 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { SearchMode, SearchPreference } from '@event-sharing/contracts';
+import {
+  needsUsernameSelection,
+  type SearchMode,
+  type SearchPreference,
+} from '@event-sharing/contracts';
 import { searchClient } from '@/lib/api/SearchClient';
 import { useAuth } from './AuthContext';
 
@@ -78,7 +82,7 @@ export function SearchPreferenceProvider({
     setPosition(null);
     setReady(false);
     setOwnerId(null);
-    if (!requestedUserId) return;
+    if (!requestedUserId || needsUsernameSelection(user?.username)) return;
     void searchClient.preference().then(
       (preference) => {
         if (
@@ -98,7 +102,7 @@ export function SearchPreferenceProvider({
           setReady(false);
       },
     );
-  }, [user?.id]);
+  }, [user?.id, user?.username]);
 
   useEffect(() => {
     void checkPermission();

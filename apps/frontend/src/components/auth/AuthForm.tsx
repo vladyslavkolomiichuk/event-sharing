@@ -3,16 +3,20 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
+import { ChosenUsernameSchema } from '@event-sharing/contracts';
 import { authClient, type SocialProvider } from '@/lib/api/AuthClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Notice } from '@/components/feedback/Notice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { UsernameSuggestions } from './UsernameSuggestions';
 
 export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const router = useRouter();
   const { refresh } = useAuth();
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [availability, setAvailability] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -37,6 +41,38 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       );
     }
   }, []);
+
+  useEffect(() => {
+    if (mode !== 'sign-up' || !username.trim()) {
+      setAvailability('');
+      return;
+    }
+    const parsed = ChosenUsernameSchema.safeParse(username);
+    if (!parsed.success) {
+      setAvailability(parsed.error.issues[0]?.message ?? 'Invalid username.');
+      return;
+    }
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void authClient.usernameAvailable(parsed.data).then(
+        (result) => {
+          if (active)
+            setAvailability(
+              result.available
+                ? 'Username is available.'
+                : 'Username is already taken.',
+            );
+        },
+        () => {
+          if (active) setAvailability('Availability could not be checked.');
+        },
+      );
+    }, 350);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [mode, username]);
 
   async function startSocial(provider: SocialProvider) {
     setBusy(true);
@@ -69,9 +105,12 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     setError('');
     setBusy(true);
     try {
-      if (mode === 'sign-up')
-        await authClient.signUp(name.trim(), email.trim(), password);
-      else await authClient.signIn(email.trim(), password);
+      if (mode === 'sign-up') {
+        const chosen = ChosenUsernameSchema.parse(username);
+        const available = await authClient.usernameAvailable(chosen);
+        if (!available.available) throw new Error('Username is already taken.');
+        await authClient.signUp(name.trim(), chosen, email.trim(), password);
+      } else await authClient.signIn(email.trim(), password);
       await refresh();
       const returnTo = new URLSearchParams(window.location.search).get(
         'returnTo',
@@ -109,17 +148,46 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         className="space-y-5 rounded-xl border border-neutral-200 bg-white p-7"
       >
         {mode === 'sign-up' && (
-          <div>
-            <label htmlFor="name">Name</label>
-            <Input
-              id="name"
-              autoComplete="name"
-              required
-              minLength={2}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </div>
+          <>
+            <div>
+              <label htmlFor="name">Name</label>
+              <Input
+                id="name"
+                autoComplete="name"
+                required
+                minLength={2}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="signup-username">Username</label>
+              <Input
+                id="signup-username"
+                autoComplete="username"
+                required
+                minLength={3}
+                maxLength={30}
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder="alex_2026"
+                aria-describedby="signup-username-help"
+              />
+              <p
+                id="signup-username-help"
+                className="mt-2 text-xs text-neutral-600"
+              >
+                Choose 3–30 letters, numbers, or underscores. Start with a
+                letter.
+              </p>
+              <UsernameSuggestions name={name} onChoose={setUsername} />
+              {availability && (
+                <p className="mt-2 text-xs" aria-live="polite">
+                  {availability}
+                </p>
+              )}
+            </div>
+          </>
         )}
         <div>
           <label htmlFor="email">Email</label>
@@ -164,9 +232,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         </Button>
       </form>
       <div className="mt-5 space-y-3 rounded-xl border border-neutral-200 bg-white p-7">
-        <p className="text-sm text-neutral-600">
-          Sign in or create an account
-        </p>
+        <p className="text-sm text-neutral-600">Sign in or create an account</p>
         {(['google', 'github'] as const).map((provider) => (
           <Button
             key={provider}

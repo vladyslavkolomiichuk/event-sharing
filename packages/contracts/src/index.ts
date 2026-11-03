@@ -3,6 +3,7 @@ export * from './auth/user-registered.event.js';
 export * from './auth/user-name-updated.event.js';
 export * from './auth/user-username-updated.event.js';
 export * from './auth/user-identity.schema.js';
+export * from './auth/username-suggestions.js';
 export * from './auth/user-role-changed.event.js';
 export * from './auth/internal-user-jwt-claims.schema.js';
 export * from './users/user-profile-updated.event.js';
