@@ -82,12 +82,21 @@ export function MapView({
       map.on('error', () =>
         setError('Map tiles could not load. Check your connection.'),
       );
-      map.on('click', (event) =>
+      map.on('click', (event) => {
+        const target = event.originalEvent.target;
+        if (
+          target instanceof Element &&
+          target.closest(
+            '.maplibregl-control-container, .maplibregl-marker, .maplibregl-popup',
+          )
+        )
+          return;
+        const point = event.lngLat.wrap();
         onPickRef.current?.({
-          latitude: event.lngLat.lat,
-          longitude: event.lngLat.lng,
-        }),
-      );
+          latitude: point.lat,
+          longitude: point.lng,
+        });
+      });
       mapRef.current = map;
       return () => {
         markerRef.current.forEach((marker) => marker.remove());
@@ -215,7 +224,7 @@ export function MapView({
         .addTo(map);
       if (item.draggable) {
         marker.on('dragend', () => {
-          const point = marker.getLngLat();
+          const point = marker.getLngLat().wrap();
           onMarkerDragRef.current?.(item.id, {
             latitude: point.lat,
             longitude: point.lng,

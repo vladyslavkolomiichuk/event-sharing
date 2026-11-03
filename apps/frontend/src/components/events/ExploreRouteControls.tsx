@@ -97,6 +97,10 @@ export function ExploreRouteControls({
           Start: {originLabel || 'Map point'}. Drag the marker to change it.
         </p>
       )}
+      <p className="text-xs text-neutral-600">
+        When you build a route, the routing provider receives its start and
+        destination coordinates.
+      </p>
       {route && (
         <p className="text-sm font-semibold">
           {(route.distanceMeters / 1000).toFixed(1)} km · About{' '}

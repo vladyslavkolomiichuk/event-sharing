@@ -44,11 +44,13 @@ export class ValhallaClient {
       directions_type: 'none',
       units: 'kilometers',
     };
-    const response = await fetch(new URL('/route', env.VALHALLA_URL), {
+    const routeUrl = new URL(`${env.VALHALLA_URL.replace(/\/+$/, '')}/route`);
+    const response = await fetch(routeUrl, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         'X-Client-Id': env.VALHALLA_CLIENT_ID,
+        ...(env.VALHALLA_API_KEY ? { apikey: env.VALHALLA_API_KEY } : {}),
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(12000),
