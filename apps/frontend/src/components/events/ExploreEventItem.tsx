@@ -7,10 +7,12 @@ export function ExploreEventItem({
   event,
   selected,
   onSelect,
+  onRoute,
 }: {
   event: SearchEvent;
   selected: boolean;
   onSelect: () => void;
+  onRoute?: () => void;
 }) {
   return (
     <article
@@ -50,13 +52,24 @@ export function ExploreEventItem({
               ? ` · ${(event.distanceMeters / 1000).toFixed(1)} km`
               : ` · about ${Math.round(event.distanceMeters / 10000) * 10} km`)}
         </span>
-        <button
-          type="button"
-          className="font-semibold text-black underline"
-          onClick={onSelect}
-        >
-          Show on map
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            className="font-semibold text-black underline"
+            onClick={onSelect}
+          >
+            Show on map
+          </button>
+          {onRoute && (
+            <button
+              type="button"
+              className="font-semibold text-black underline"
+              onClick={onRoute}
+            >
+              Plan route
+            </button>
+          )}
+        </div>
       </div>
     </article>
   );

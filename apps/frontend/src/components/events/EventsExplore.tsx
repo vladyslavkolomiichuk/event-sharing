@@ -23,6 +23,8 @@ import { ExploreEventItem } from './ExploreEventItem';
 import { EventSearchToolbar } from './EventSearchToolbar';
 import { EventLocationFilters } from './EventLocationFilters';
 import { EventViewSwitch } from './EventViewSwitch';
+import { ExploreRouteControls } from './ExploreRouteControls';
+import { useExploreRoute } from './useExploreRoute';
 import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/feedback/Loading';
 
@@ -62,6 +64,11 @@ export function EventsExplore() {
   const [mobileView, setMobileView] = useState<'list' | 'map'>('list');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [panelMode, setPanelMode] = useState<'search' | 'route'>('search');
+  const [mapPickMode, setMapPickMode] = useState<'search' | 'route-origin'>(
+    'search',
+  );
+  const routePlanner = useExploreRoute(user?.id, requestPosition);
   const requestId = useRef(0);
   const locationRequestId = useRef(0);
   const locationSelected = useRef(false);
@@ -268,7 +275,9 @@ export function EventsExplore() {
     const publicPins = items
       .filter(
         (item) =>
-          item.location.latitude !== null && item.location.longitude !== null,
+          item.location.latitude !== null &&
+          item.location.longitude !== null &&
+          !(panelMode === 'route' && item.id === routePlanner.destination?.id),
       )
       .map((item) => ({
         id: item.id,
@@ -316,13 +325,33 @@ export function EventsExplore() {
             },
           ]
         : []),
-      ...(anchor && anchorSource !== 'DEVICE'
+      ...(panelMode === 'search' && anchor && anchorSource !== 'DEVICE'
         ? [
             {
               id: 'search-anchor',
               label: 'Search center. Drag to move it.',
               ...anchor,
               draggable: true,
+            },
+          ]
+        : []),
+      ...(panelMode === 'route' && routePlanner.origin
+        ? [
+            {
+              id: 'route-origin',
+              label: 'Route start. Drag to move it.',
+              ...routePlanner.origin,
+              draggable: true,
+            },
+          ]
+        : []),
+      ...(panelMode === 'route' && routePlanner.destination
+        ? [
+            {
+              id: 'route-destination',
+              label: `Destination: ${routePlanner.destination.title}`,
+              ...routePlanner.destination.point,
+              selected: true,
             },
           ]
         : []),
@@ -335,7 +364,26 @@ export function EventsExplore() {
     userLocation,
     anchor,
     anchorSource,
+    panelMode,
+    routePlanner.origin,
+    routePlanner.destination,
   ]);
+
+  async function chooseRouteEvent(id: string) {
+    setPanelMode('route');
+    setMapPickMode('route-origin');
+    const destination = await routePlanner.chooseEvent(id);
+    if (!destination) return;
+    setSelectedId(id);
+    setCenter(destination.point);
+    setZoom(11);
+    setMobileView('map');
+  }
+
+  function clearRoute() {
+    routePlanner.clear();
+    setMapPickMode('search');
+  }
 
   async function choosePlace(point: MapPoint, label: string) {
     const currentRequest = ++locationRequestId.current;
@@ -481,6 +529,11 @@ export function EventsExplore() {
   }
 
   function selectMarker(id: string) {
+    if (id === 'route-destination') return;
+    if (panelMode === 'route' && !id.startsWith('city:')) {
+      void chooseRouteEvent(id);
+      return;
+    }
     if (id.startsWith('city:')) {
       const region = id.slice(5);
       setSelectedRegion(region);
@@ -500,53 +553,123 @@ export function EventsExplore() {
   if (authLoading) return <Loading />;
   if (!user)
     return (
-      <div className="rounded-xl border border-neutral-200 bg-white p-8">
-        <p className="mb-5 text-neutral-600">
-          Sign in to search events and view their map.
-        </p>
-        <Button asChild>
-          <Link href="/sign-in">Sign in</Link>
-        </Button>
+      <div className="grid gap-4 lg:grid-cols-[minmax(240px,340px)_minmax(0,1fr)]">
+        <div className="h-fit space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
+          <h2>Find your next event</h2>
+          <p className="text-sm text-neutral-600">
+            Sign in to search events, use your location, and plan a route.
+          </p>
+          <Button asChild>
+            <Link href="/sign-in">Sign in</Link>
+          </Button>
+        </div>
+        <MapView
+          center={worldCenter}
+          zoom={2}
+          markers={[]}
+          className="h-[min(72dvh,760px)] min-h-[440px]"
+        />
       </div>
     );
 
   return (
     <div className="space-y-4">
-      <EventSearchToolbar
-        text={text}
-        onTextChange={setText}
-        categories={categories}
-        categoryId={categoryId}
-        onCategoryChange={setCategoryId}
-        sort={sort}
-        onSortChange={setSort}
-        canSortByDistance={Boolean(anchor)}
-        canSortByRelevance={Boolean(searchText)}
-        onUseLocation={() => void useMyLocation()}
-      />
-      {mode === 'DEVICE' && permission !== 'granted' && !userLocation && (
-        <p className="rounded-xl border border-neutral-200 bg-white p-4 text-sm text-neutral-700">
-          Current location is paused. Choose “Use my location” to try again, or
-          search around a city. Browser permission: {permission}.
-        </p>
+      <div
+        role="group"
+        aria-label="Map tools"
+        className="inline-flex rounded-lg border border-neutral-200 bg-white p-1"
+      >
+        <button
+          type="button"
+          aria-pressed={panelMode === 'search'}
+          className={`rounded-md px-4 py-2 text-sm ${panelMode === 'search' ? 'bg-black text-white' : 'text-neutral-600'}`}
+          onClick={() => {
+            setPanelMode('search');
+            setMapPickMode('search');
+          }}
+        >
+          Search
+        </button>
+        <button
+          type="button"
+          aria-pressed={panelMode === 'route'}
+          className={`rounded-md px-4 py-2 text-sm ${panelMode === 'route' ? 'bg-black text-white' : 'text-neutral-600'}`}
+          onClick={() => {
+            setPanelMode('route');
+            setMapPickMode('route-origin');
+          }}
+        >
+          Route
+        </button>
+      </div>
+      {panelMode === 'search' ? (
+        <>
+          <EventSearchToolbar
+            text={text}
+            onTextChange={setText}
+            categories={categories}
+            categoryId={categoryId}
+            onCategoryChange={setCategoryId}
+            sort={sort}
+            onSortChange={setSort}
+            canSortByDistance={Boolean(anchor)}
+            canSortByRelevance={Boolean(searchText)}
+            onUseLocation={() => void useMyLocation()}
+          />
+          {mode === 'DEVICE' && permission !== 'granted' && !userLocation && (
+            <p className="rounded-xl border border-neutral-200 bg-white p-4 text-sm text-neutral-700">
+              Current location is paused. Choose “Use my location” to try again,
+              or search around a city. Browser permission: {permission}.
+            </p>
+          )}
+          <EventLocationFilters
+            placeQuery={placeQuery}
+            onPlaceQueryChange={changePlace}
+            placeKind={placeKind}
+            onPlaceKindChange={changePlaceKind}
+            onPlaceSelect={(point, label) => void choosePlace(point, label)}
+            locationActive={Boolean(anchor && anchorSource)}
+            radiusKm={radiusKm}
+            onRadiusChange={setRadiusKm}
+            startFrom={startFrom}
+            onStartFromChange={setStartFrom}
+            startTo={startTo}
+            onStartToChange={setStartTo}
+            status={status}
+            onStatusChange={setStatus}
+            onClearLocation={() => void clearLocation()}
+          />
+          <p className="text-xs text-neutral-600">
+            {anchor && anchorSource
+              ? `Search center: ${anchorSource === 'DEVICE' ? 'GPS' : anchorSource === 'MAP' ? 'Map point' : placeQuery || anchorSource.toLowerCase()}; radius: ${radiusKm} km.`
+              : 'Searching everywhere. Click the map to search around a point.'}
+            {categoryId &&
+              ` Category: ${categories.find((category) => category.id === categoryId)?.name ?? 'Uncategorized'}.`}
+            {anchor &&
+              ' Approximate event locations may appear just outside the circle.'}
+          </p>
+        </>
+      ) : (
+        <ExploreRouteControls
+          eventTitle={routePlanner.destination?.title ?? null}
+          origin={routePlanner.origin}
+          originLabel={routePlanner.originLabel}
+          onOriginLabelChange={routePlanner.changeOriginLabel}
+          onOriginChange={routePlanner.chooseOrigin}
+          mode={routePlanner.mode}
+          onModeChange={routePlanner.setMode}
+          onUseLocation={() => void routePlanner.useCurrentLocation()}
+          onPickOnMap={() => {
+            setMapPickMode('route-origin');
+            setMobileView('map');
+          }}
+          onBuild={routePlanner.build}
+          onClear={clearRoute}
+          route={routePlanner.route}
+          loading={routePlanner.loading}
+          error={routePlanner.error}
+        />
       )}
-      <EventLocationFilters
-        placeQuery={placeQuery}
-        onPlaceQueryChange={changePlace}
-        placeKind={placeKind}
-        onPlaceKindChange={changePlaceKind}
-        onPlaceSelect={(point, label) => void choosePlace(point, label)}
-        locationActive={Boolean(anchor && anchorSource)}
-        radiusKm={radiusKm}
-        onRadiusChange={setRadiusKm}
-        startFrom={startFrom}
-        onStartFromChange={setStartFrom}
-        startTo={startTo}
-        onStartToChange={setStartTo}
-        status={status}
-        onStatusChange={setStatus}
-        onClearLocation={() => void clearLocation()}
-      />
       <EventViewSwitch view={mobileView} onChange={setMobileView} />
       <div className="grid gap-4 lg:grid-cols-[minmax(340px,440px)_minmax(0,1fr)]">
         <section
@@ -574,6 +697,7 @@ export function EventsExplore() {
                     )
                   }
                   onSelect={() => selectEvent(item)}
+                  onRoute={() => void chooseRouteEvent(item.id)}
                 />
               ))
             ) : (
@@ -601,19 +725,45 @@ export function EventsExplore() {
           className={`relative ${mobileView === 'list' ? 'hidden lg:block' : 'block'}`}
         >
           <p className="pointer-events-none absolute left-3 top-3 z-10 max-w-[15rem] rounded bg-white/95 px-3 py-2 text-xs text-neutral-800 shadow-sm">
-            {anchorSource === 'DEVICE'
-              ? 'Click the map to search from another point.'
-              : anchor
-                ? 'Drag the search marker or click another point.'
-                : 'Click the map to search for nearby events.'}
+            {panelMode === 'route'
+              ? mapPickMode === 'route-origin'
+                ? 'Click the map to choose the route start.'
+                : 'Choose an event to plan a route.'
+              : anchorSource === 'DEVICE'
+                ? 'Click the map to search from another point.'
+                : anchor
+                  ? 'Drag the search marker or click another point.'
+                  : 'Click the map to search for nearby events.'}
           </p>
           <MapView
             center={center}
             zoom={zoom}
             markers={markers}
-            onPick={(point) => void chooseMapPoint(point)}
+            radius={
+              anchor && panelMode === 'search'
+                ? { center: anchor, radiusMeters: radiusKm * 1000 }
+                : undefined
+            }
+            route={
+              panelMode === 'route'
+                ? routePlanner.route?.coordinates.map(
+                    ([longitude, latitude]) => ({
+                      latitude,
+                      longitude,
+                    }),
+                  )
+                : undefined
+            }
+            onPick={(point) => {
+              if (panelMode === 'route') {
+                routePlanner.chooseOrigin(point, 'Map point');
+              } else void chooseMapPoint(point);
+            }}
             onMarkerDrag={(id, point) => {
               if (id === 'search-anchor') void chooseMapPoint(point);
+              if (id === 'route-origin') {
+                routePlanner.chooseOrigin(point, 'Map point');
+              }
             }}
             onMarkerClick={selectMarker}
             visible={mobileView === 'map'}

@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { createContext, useCallback, useContext, useState } from 'react';
 
-export type ToastTone = 'info' | 'success' | 'warning' | 'error';
+export type ToastTone =
+  'info' | 'success' | 'warning' | 'error' | 'action_required';
 type ToastItem = {
   id: number;
   message: string;
@@ -39,10 +40,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 
   const colors: Record<ToastTone, string> = {
-    info: 'border-neutral-400 bg-white text-neutral-950',
-    success: 'border-green-600 bg-green-50 text-green-950',
-    warning: 'border-amber-600 bg-amber-50 text-amber-950',
-    error: 'border-red-600 bg-red-50 text-red-950',
+    info: 'border-blue-200 bg-blue-50 text-blue-950',
+    success: 'border-green-200 bg-green-50 text-green-950',
+    warning: 'border-amber-200 bg-amber-50 text-amber-950',
+    error: 'border-red-200 bg-red-50 text-red-950',
+    action_required: 'border-neutral-800 bg-neutral-900 text-white',
   };
 
   return (
@@ -56,10 +58,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <div
             key={item.id}
             role={item.tone === 'error' ? 'alert' : 'status'}
-            className={`pointer-events-auto rounded-lg border-l-4 p-4 shadow-lg ${colors[item.tone]}`}
+            className={`pointer-events-auto rounded-lg border p-4 shadow-lg ${colors[item.tone]}`}
           >
             <div className="flex items-start justify-between gap-4">
-              <p className="text-sm leading-6">{item.message}</p>
+              <p className="flex-1 text-center text-sm leading-6">
+                {item.message}
+              </p>
               <button
                 type="button"
                 aria-label="Dismiss message"

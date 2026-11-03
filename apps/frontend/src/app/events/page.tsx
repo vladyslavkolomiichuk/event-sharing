@@ -3,7 +3,7 @@ import { EventsExplore } from '@/components/events/EventsExplore';
 import { Button } from '@/components/ui/button';
 export default function EventsPage() {
   return (
-    <div className="relative left-1/2 w-[min(1680px,calc(100vw-2.5rem))] -translate-x-1/2 space-y-4">
+    <div className="w-full space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div className="space-y-1">
           <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">

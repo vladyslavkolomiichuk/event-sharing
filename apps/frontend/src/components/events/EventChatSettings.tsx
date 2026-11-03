@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import type { EventDetail } from '@event-sharing/contracts';
 import { eventsClient } from '@/lib/api/EventsClient';
-import { Notice } from '@/components/feedback/Notice';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/contexts/ToastContext';
 
 export function EventChatSettings({
   event,
@@ -13,21 +14,22 @@ export function EventChatSettings({
   onChanged: (event: EventDetail) => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const { show } = useToast();
 
   async function change(chatEnabled: boolean) {
     setBusy(true);
-    setError('');
-    setNotice('');
     try {
       onChanged(await eventsClient.updateChatSetting(event.id, chatEnabled));
-      setNotice(chatEnabled ? 'Event chats enabled.' : 'Event chats disabled.');
+      show(
+        chatEnabled ? 'Event chats enabled.' : 'Event chats disabled.',
+        'success',
+      );
     } catch (cause) {
-      setError(
+      show(
         cause instanceof Error
           ? cause.message
           : 'Could not change event chats.',
+        'error',
       );
     } finally {
       setBusy(false);
@@ -37,20 +39,20 @@ export function EventChatSettings({
   return (
     <section className="space-y-3 rounded-xl border border-neutral-200 bg-white p-7">
       <h2>Chat settings</h2>
-      <label className="flex items-center gap-3 text-sm">
-        <input
-          type="checkbox"
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <label htmlFor="event-chat-toggle" className="mb-0">
+          Enable event chats for participants
+        </label>
+        <Switch
+          id="event-chat-toggle"
           checked={event.chatEnabled}
           disabled={busy || Boolean(event.pendingStatus)}
-          onChange={(changeEvent) => void change(changeEvent.target.checked)}
+          onCheckedChange={(value) => void change(value)}
         />
-        Enable event chats for participants
-      </label>
+      </div>
       <p className="text-sm text-neutral-600">
         Disabling chats hides the rooms and keeps their history for later.
       </p>
-      {error && <Notice message={error} tone="error" />}
-      {notice && <Notice message={notice} tone="success" />}
     </section>
   );
 }

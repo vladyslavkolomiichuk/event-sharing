@@ -19,6 +19,7 @@ import { Loading } from '@/components/feedback/Loading';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { eventLocalTime, eventUtcTime } from '@/lib/event-time';
 import { InviteParticipants } from './InviteParticipants';
 import { invitationClient } from '@/lib/api/InvitationClient';
@@ -296,9 +297,7 @@ export function EventForm({
           message="This event has ended. Create a new draft from its details to run it again."
           tone="info"
         />
-        <Button
-          onClick={() => router.push(`/events/new?from=${existing.id}`)}
-        >
+        <Button onClick={() => router.push(`/events/new?from=${existing.id}`)}>
           Create next event
         </Button>
       </div>
@@ -430,14 +429,16 @@ export function EventForm({
               <option value="INVITE_ONLY">Invitation required</option>
             </select>
           </div>
-          <label className="flex items-center gap-3 text-sm">
-            <input
-              type="checkbox"
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <label htmlFor="event-chat-enabled" className="mb-0">
+              Enable event chats for registered participants
+            </label>
+            <Switch
+              id="event-chat-enabled"
               checked={chatEnabled}
-              onChange={(event) => setChatEnabled(event.target.checked)}
+              onCheckedChange={setChatEnabled}
             />
-            Enable event chats for registered participants
-          </label>
+          </div>
           {chatEnabled && !eventId && (
             <ChatGroupDraftForm groups={chatGroups} onChange={setChatGroups} />
           )}
@@ -465,7 +466,8 @@ export function EventForm({
             placeholder="Start typing a city"
           />
           <p className="text-xs text-neutral-500">
-            City or region is public. Enter only a broad area when the venue is private.
+            City or region is public. Enter only a broad area when the venue is
+            private.
           </p>
           <PlaceAutocomplete
             id="address"

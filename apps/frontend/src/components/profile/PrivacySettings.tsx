@@ -7,6 +7,7 @@ import { authClient } from '@/lib/api/AuthClient';
 import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/feedback/Loading';
+import { Switch } from '@/components/ui/switch';
 
 type Preferences = UserProfilePrivate['preferences'];
 
@@ -165,14 +166,19 @@ export function PrivacySettings() {
             ],
           ] as const
         ).map(([key, label]) => (
-          <label key={key} className="flex items-center gap-3 font-normal">
-            <input
-              type="checkbox"
+          <div
+            key={key}
+            className="flex items-center justify-between gap-4 rounded-lg border border-neutral-200 p-3"
+          >
+            <label htmlFor={`privacy-${key}`} className="mb-0 font-normal">
+              {label}
+            </label>
+            <Switch
+              id={`privacy-${key}`}
               checked={preferences[key]}
-              onChange={(event) => setBoolean(key, event.target.checked)}
+              onCheckedChange={(value) => setBoolean(key, value)}
             />
-            {label}
-          </label>
+          </div>
         ))}
         <p className="text-sm text-neutral-600">
           Your sign-in email and exact location are never part of your public

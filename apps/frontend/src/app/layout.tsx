@@ -29,12 +29,14 @@ export default function RootLayout({
               <NotificationsRealtimeProvider>
                 <MessagesRealtimeProvider>
                   <ChatUnreadProvider>
-                    <div className="flex min-h-screen flex-col">
+                    <div className="min-h-screen lg:flex">
                       <SiteHeader />
-                      <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-10 sm:px-8">
-                        {children}
-                      </main>
-                      <SiteFooter />
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <main className="mx-auto w-full max-w-[1680px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+                          {children}
+                        </main>
+                        <SiteFooter />
+                      </div>
                     </div>
                   </ChatUnreadProvider>
                 </MessagesRealtimeProvider>

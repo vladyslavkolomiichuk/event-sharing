@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { Notice } from '@/components/feedback/Notice';
 
 export type MapPoint = { latitude: number; longitude: number };
+export type MapRadius = { center: MapPoint; radiusMeters: number };
 export type MapMarker = MapPoint & {
   id: string;
   label: string;
@@ -28,6 +29,7 @@ export function MapView({
   zoom,
   markers,
   route,
+  radius,
   onPick,
   onMarkerClick,
   onMarkerDrag,
@@ -38,6 +40,7 @@ export function MapView({
   zoom: number;
   markers: MapMarker[];
   route?: MapPoint[];
+  radius?: MapRadius;
   onPick?: (point: MapPoint) => void;
   onMarkerClick?: (id: string) => void;
   onMarkerDrag?: (id: string, point: MapPoint) => void;
@@ -109,6 +112,41 @@ export function MapView({
   useEffect(() => {
     if (visible) requestAnimationFrame(() => mapRef.current?.resize());
   }, [visible]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const coordinates = radius ? radiusCoordinates(radius) : [];
+    const data = coordinates.length
+      ? {
+          type: 'Feature' as const,
+          properties: {},
+          geometry: { type: 'Polygon' as const, coordinates: [coordinates] },
+        }
+      : { type: 'FeatureCollection' as const, features: [] };
+    const source = map.getSource('search-radius') as GeoJSONSource | undefined;
+    if (source) source.setData(data);
+    else {
+      map.addSource('search-radius', { type: 'geojson', data });
+      map.addLayer({
+        id: 'search-radius-fill',
+        type: 'fill',
+        source: 'search-radius',
+        paint: { 'fill-color': '#525252', 'fill-opacity': 0.12 },
+      });
+      map.addLayer({
+        id: 'search-radius-outline',
+        type: 'line',
+        source: 'search-radius',
+        paint: { 'line-color': '#262626', 'line-width': 2 },
+      });
+    }
+  }, [
+    ready,
+    radius?.center.latitude,
+    radius?.center.longitude,
+    radius?.radiusMeters,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -208,4 +246,31 @@ export function MapView({
       {error && <Notice message={error} tone="error" />}
     </div>
   );
+}
+
+function radiusCoordinates({
+  center,
+  radiusMeters,
+}: MapRadius): [number, number][] {
+  const latitude = (center.latitude * Math.PI) / 180;
+  const longitude = (center.longitude * Math.PI) / 180;
+  const distance = radiusMeters / 6371000;
+  const points: [number, number][] = [];
+  for (let index = 0; index <= 96; index++) {
+    const bearing = (index / 96) * 2 * Math.PI;
+    const nextLatitude = Math.asin(
+      Math.sin(latitude) * Math.cos(distance) +
+        Math.cos(latitude) * Math.sin(distance) * Math.cos(bearing),
+    );
+    const nextLongitude =
+      longitude +
+      Math.atan2(
+        Math.sin(bearing) * Math.sin(distance) * Math.cos(latitude),
+        Math.cos(distance) - Math.sin(latitude) * Math.sin(nextLatitude),
+      );
+    const normalizedLongitude =
+      (((nextLongitude * 180) / Math.PI + 540) % 360) - 180;
+    points.push([normalizedLongitude, (nextLatitude * 180) / Math.PI]);
+  }
+  return points;
 }
