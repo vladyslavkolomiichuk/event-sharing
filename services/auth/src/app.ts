@@ -25,30 +25,30 @@ export function createApp(readinessCheck: ReadinessCheck): Express {
     new UserRoleService(new UserRoleRepository()),
   );
   app.use(
-    '/auth/admin',
+    '/backend/auth/admin',
     requireTrustedOrigin,
     express.json(),
     userRoleRoutes(roleController),
   );
   app.patch(
-    '/auth/identity',
+    '/backend/auth/identity',
     requireTrustedOrigin,
     express.json(),
     requireUserSession,
     new UserIdentityController().update,
   );
   app.get(
-    '/auth/username-availability',
+    '/backend/auth/username-availability',
     new UserIdentityController().availability,
   );
-  app.get('/auth/account-capabilities', (_request, response) => {
+  app.get('/backend/auth/account-capabilities', (_request, response) => {
     response.status(200).json({
       emailDeliveryAvailable: accountMailAvailable,
       socialProviders: socialProvidersAvailable,
     });
   });
   app.get(
-    '/auth/social-accounts',
+    '/backend/auth/social-accounts',
     requireUserSession,
     async (request, response) => {
       const accounts = await prisma.account.findMany({
@@ -63,7 +63,7 @@ export function createApp(readinessCheck: ReadinessCheck): Express {
         .json({ providers: accounts.map((account) => account.providerId) });
     },
   );
-  app.all('/auth/*splat', toNodeHandler(auth));
+  app.all('/backend/auth/*splat', toNodeHandler(auth));
   app.use(express.json());
 
   app.get('/health', (_request, response) => {

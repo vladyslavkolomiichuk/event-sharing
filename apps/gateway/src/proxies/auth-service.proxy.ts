@@ -4,7 +4,7 @@ import { sendProxyError } from './proxy-error.js';
 
 export function createAuthProxy(baseUrl: string): RequestHandler {
   return createProxyMiddleware<Request, Response>({
-    target: `${baseUrl.replace(/\/+$/, '')}/auth`,
+    target: `${baseUrl.replace(/\/+$/, '')}/backend/auth`,
     changeOrigin: true,
     proxyTimeout: 5000,
     on: {

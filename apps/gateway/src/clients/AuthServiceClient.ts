@@ -24,7 +24,7 @@ export class AuthServiceClient {
     }
 
     try {
-      const response = await fetch(new URL('/auth/get-session', this.baseUrl), {
+      const response = await fetch(new URL('/backend/auth/get-session', this.baseUrl), {
         headers: { cookie },
         signal: AbortSignal.timeout(this.timeoutMs),
       });
