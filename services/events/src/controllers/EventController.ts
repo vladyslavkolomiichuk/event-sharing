@@ -72,6 +72,13 @@ export class EventController {
       .json(await this.service.listMine(user.id, cursor, limit));
   };
 
+  exportMine: RequestHandler = async (request, response) => {
+    const user = this.requireUser(request.authenticatedUser);
+    response
+      .set('cache-control', 'no-store')
+      .json({ events: await this.service.exportMine(user.id) });
+  };
+
   update: RequestHandler = async (request, response) => {
     const user = this.requireUser(request.authenticatedUser);
     const id = z.uuid().parse(request.params.eventId);

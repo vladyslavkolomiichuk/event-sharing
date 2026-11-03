@@ -5,11 +5,12 @@ import {
   type EventSnapshotPayload,
 } from '@event-sharing/contracts';
 import type { EventWithCategory } from '../models/EventWithCategory.js';
+import { approximateLocation } from '../lib/approximate-location.js';
 
 export class EventResponseFactory {
   detail(event: EventWithCategory, revealLocation: boolean): EventDetail {
     const publicVenueVisible =
-      event.visibility !== 'INVITE_ONLY' &&
+      event.visibility === 'PUBLIC' &&
       event.locationVisibility === 'PUBLIC' &&
       ['PUBLISHED', 'ONGOING'].includes(event.status);
     const visible = revealLocation || publicVenueVisible;
@@ -56,6 +57,17 @@ export class EventResponseFactory {
       pendingParticipantLimit,
       ...snapshot
     } = this.detail(event, false);
+    if (
+      event.visibility === 'PUBLIC' &&
+      event.locationVisibility === 'PARTICIPANTS_ONLY'
+    ) {
+      const point = approximateLocation(
+        Number(event.latitude),
+        Number(event.longitude),
+      );
+      snapshot.location.latitude = point.latitude;
+      snapshot.location.longitude = point.longitude;
+    }
     return EventSnapshotPayloadSchema.parse(snapshot);
   }
 }

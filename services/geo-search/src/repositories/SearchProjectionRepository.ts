@@ -79,9 +79,9 @@ export class SearchProjectionRepository {
         where: { id: snapshot.id },
       });
       if (previous && previous.version >= snapshot.version) return 'ignored';
+      const publicEvent = snapshot.visibility === 'PUBLIC';
       const publicVenue =
-        snapshot.visibility === 'PUBLIC' &&
-        snapshot.location.visibility === 'PUBLIC';
+        publicEvent && snapshot.location.visibility === 'PUBLIC';
       const data = {
         organizerId: snapshot.organizerId,
         categoryId: snapshot.categoryId,
@@ -96,8 +96,8 @@ export class SearchProjectionRepository {
         region: snapshot.location.region,
         visibility: snapshot.location.visibility,
         address: publicVenue ? snapshot.location.address : null,
-        latitude: publicVenue ? snapshot.location.latitude : null,
-        longitude: publicVenue ? snapshot.location.longitude : null,
+        latitude: publicEvent ? snapshot.location.latitude : null,
+        longitude: publicEvent ? snapshot.location.longitude : null,
         version: snapshot.version,
         updatedAt: new Date(snapshot.updatedAt),
       };

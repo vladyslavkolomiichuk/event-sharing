@@ -1,4 +1,5 @@
 import { RequireAuth } from '@/components/auth/RequireAuth';
+import Link from 'next/link';
 import { ProfileForm } from '@/components/profile/ProfileForm';
 import { AccountSecurity } from '@/components/profile/AccountSecurity';
 import { IdentityForm } from '@/components/profile/IdentityForm';
@@ -16,6 +17,12 @@ export default function ProfilePage() {
           <p className="text-neutral-600">
             Manage your public details and privacy preferences.
           </p>
+          <Link
+            className="inline-block text-sm font-semibold underline"
+            href="/profile/privacy"
+          >
+            Privacy settings
+          </Link>
         </div>
         <IdentityForm />
         <SearchPreferenceSettings />

@@ -464,6 +464,9 @@ export function EventForm({
             }}
             placeholder="Start typing a city"
           />
+          <p className="text-xs text-neutral-500">
+            City or region is public. Enter only a broad area when the venue is private.
+          </p>
           <PlaceAutocomplete
             id="address"
             label="Venue address"
@@ -575,12 +578,15 @@ export function EventForm({
               <option value="PARTICIPANTS_ONLY">
                 Registered participants only
               </option>
-              <option value="PUBLIC">Public while the event is active</option>
+              <option value="PUBLIC">
+                Public while a public event is active
+              </option>
             </select>
             <p className="mt-2 text-xs leading-5 text-neutral-500">
               Organizers and administrators can always see the location. Private
               locations become visible to registered participants after the
-              registration event is processed.
+              registration event is processed. Public search uses an approximate
+              map point for private venues.
             </p>
           </div>
           <p className="text-xs leading-5 text-neutral-500">

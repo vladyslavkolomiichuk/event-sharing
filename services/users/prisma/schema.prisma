@@ -8,30 +8,36 @@ datasource db {
 }
 
 model UserProfile {
-  userId    String   @id @db.Uuid
-  name      String   @default("Member")
-  username  String
+  userId   String @id @db.Uuid
+  name     String @default("Member")
+  username String
 
-  avatarUrl String?
-  bio       String?
-  phone     String?
-  city      String?
-  version   Int      @default(1)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  avatarUrl  String?
+  bio        String?
+  phone      String?
+  city       String?
+  version    Int             @default(1)
+  createdAt  DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime        @updatedAt @db.Timestamptz(3)
+  preference UserPreference?
 
   @@unique([username])
   @@map("user_profile")
 }
 
 model UserPreference {
-  userId               String   @id @db.Uuid
-  showPhone            Boolean  @default(false)
-  showCity             Boolean  @default(true)
-  notificationsEnabled Boolean  @default(true)
-  allowFriendRequests   Boolean  @default(true)
-  allowInvitesFromStrangers Boolean @default(true)
-  updatedAt            DateTime @updatedAt @db.Timestamptz(3)
+  userId                    String   @id @db.Uuid
+  showPhone                 Boolean  @default(false)
+  showCity                  Boolean  @default(true)
+  notificationsEnabled      Boolean  @default(true)
+  allowFriendRequests       Boolean  @default(true)
+  allowInvitesFromStrangers Boolean  @default(true)
+  profileVisibility         String   @default("PUBLIC")
+  discoverableByUsername    Boolean  @default(true)
+  showParticipationHistory  Boolean  @default(false)
+  updatedAt                 DateTime @updatedAt @db.Timestamptz(3)
+
+  profile UserProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
   @@map("user_preference")
 }

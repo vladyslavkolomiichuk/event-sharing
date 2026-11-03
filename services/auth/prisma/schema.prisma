@@ -8,17 +8,18 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid()) @db.Uuid
-  name          String
-  username      String    @unique @default(dbgenerated())
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  role          String    @default("USER")
-  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
-  sessions      Session[]
-  accounts      Account[]
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String
+  username        String           @unique @default(dbgenerated())
+  email           String           @unique
+  emailVerified   Boolean          @default(false)
+  image           String?
+  role            String           @default("USER")
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
+  sessions        Session[]
+  accounts        Account[]
+  privacyRequests PrivacyRequest[]
 
   @@index([role])
   @@map("user")
@@ -55,8 +56,8 @@ model Account {
   createdAt             DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
 
-  @@index([userId])
   @@unique([providerId, accountId])
+  @@index([userId])
   @@map("account")
 }
 
@@ -82,6 +83,18 @@ model Jwks {
   crv        String?
 
   @@map("jwks")
+}
+
+model PrivacyRequest {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  status      String    @default("PENDING")
+  requestedAt DateTime  @default(now()) @db.Timestamptz(3)
+  resolvedAt  DateTime? @db.Timestamptz(3)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, requestedAt])
+  @@map("privacy_request")
 }
 
 model OutboxEvent {

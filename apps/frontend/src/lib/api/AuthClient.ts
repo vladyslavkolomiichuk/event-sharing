@@ -41,6 +41,24 @@ export class AuthClient {
     return gateway.get('/auth/social-accounts');
   }
 
+  deletionRequest(): Promise<{ status: string; requestedAt?: string }> {
+    return gateway.get('/auth/privacy/deletion-request');
+  }
+
+  requestDeletion(): Promise<{ status: string; requestedAt: string }> {
+    return gateway.post('/auth/privacy/deletion-request');
+  }
+
+  pendingDeletionRequests(): Promise<{
+    requests: {
+      id: string;
+      requestedAt: string;
+      user: { name: string; username: string; email: string };
+    }[];
+  }> {
+    return gateway.get('/auth/admin/privacy-requests');
+  }
+
   async startSocial(
     provider: SocialProvider,
     callbackURL: string,

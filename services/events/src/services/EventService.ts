@@ -120,6 +120,11 @@ export class EventService {
     );
   }
 
+  async exportMine(userId: string): Promise<EventDetail[]> {
+    const events = await this.events.findAllByOrganizer(userId);
+    return events.map((event) => this.responses.detail(event, true));
+  }
+
   async update(
     id: string,
     userId: string,

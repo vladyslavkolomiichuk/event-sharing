@@ -1,6 +1,7 @@
 import {
   UserProfilePrivateSchema,
   UserProfilePublicSchema,
+  ProfileVisibilitySchema,
   type UpdateUserProfile,
   type UserProfilePrivate,
   type UserProfilePublic,
@@ -22,19 +23,59 @@ export class UserProfileService {
     return this.toPrivate(await this.getSnapshot(userId));
   }
 
-  async getPublic(userId: string): Promise<UserProfilePublic> {
-    return this.toPublic(await this.getSnapshot(userId));
-  }
-
-  async getPublicByUsername(username: string): Promise<UserProfilePublic> {
-    const snapshot = await this.repository.findByUsername(username);
-    if (!snapshot) throw new ProfileNotFoundError();
+  async getPublic(userId: string, actorId: string): Promise<UserProfilePublic> {
+    const snapshot = await this.getSnapshot(userId);
+    if (!(await this.canView(snapshot, actorId)))
+      throw new ProfileNotFoundError();
     return this.toPublic(snapshot);
   }
 
-  async getPublicMany(userIds: string[]): Promise<UserProfilePublic[]> {
+  async getPublicByUsername(
+    username: string,
+    actorId: string,
+  ): Promise<UserProfilePublic> {
+    const snapshot = await this.repository.findByUsername(username);
+    if (!snapshot) throw new ProfileNotFoundError();
+    if (
+      snapshot.profile.userId !== actorId &&
+      !snapshot.preferences.discoverableByUsername
+    )
+      throw new ProfileNotFoundError();
+    if (!(await this.canView(snapshot, actorId)))
+      throw new ProfileNotFoundError();
+    return this.toPublic(snapshot);
+  }
+
+  async canViewHistory(userId: string, actorId: string): Promise<boolean> {
+    const snapshot = await this.repository.findById(userId);
+    if (!snapshot) return false;
+    if (userId === actorId) return true;
+    return (
+      snapshot.preferences.showParticipationHistory &&
+      (await this.canView(snapshot, actorId))
+    );
+  }
+
+  async getPublicMany(
+    userIds: string[],
+    actorId: string,
+  ): Promise<UserProfilePublic[]> {
     const snapshots = await this.repository.findManyByIds(userIds);
-    return snapshots.map((snapshot) => this.toPublic(snapshot));
+    const [relationships, blocked] = await Promise.all([
+      this.friends.statuses(actorId, userIds),
+      this.friends.blocked(actorId, userIds),
+    ]);
+    return snapshots.map((snapshot) =>
+      this.toPublic(
+        snapshot,
+        blocked.has(snapshot.profile.userId) ||
+          !this.isVisible(
+            snapshot,
+            actorId,
+            relationships.get(snapshot.profile.userId),
+          ),
+      ),
+    );
   }
 
   async searchByUsername(username: string, actorId: string, cursor?: string) {
@@ -49,30 +90,58 @@ export class UserProfileService {
     );
     return {
       items: items.map((snapshot) => ({
-        ...this.toPublic(snapshot),
-        phone: null,
-        city: null,
+        ...this.toPublic(snapshot, true),
         relationship: relationships.get(snapshot.profile.userId) ?? 'NONE',
       })),
       nextCursor,
     };
   }
 
-  private toPublic({
-    profile,
-    preferences,
-  }: UserProfileSnapshot): UserProfilePublic {
+  private toPublic(
+    { profile, preferences }: UserProfileSnapshot,
+    limited = false,
+  ): UserProfilePublic {
     return UserProfilePublicSchema.parse({
       userId: profile.userId,
       name: profile.name,
       username: profile.username,
-      avatarUrl: profile.avatarUrl,
-      bio: profile.bio,
-      phone: preferences.showPhone ? profile.phone : null,
-      city: preferences.showCity ? profile.city : null,
+      avatarUrl: limited ? null : profile.avatarUrl,
+      bio: limited ? null : profile.bio,
+      phone: !limited && preferences.showPhone ? profile.phone : null,
+      city: !limited && preferences.showCity ? profile.city : null,
       updatedAt: profile.updatedAt.toISOString(),
       createdAt: profile.createdAt.toISOString(),
     });
+  }
+
+  private async canView(
+    snapshot: UserProfileSnapshot,
+    actorId: string,
+  ): Promise<boolean> {
+    if (snapshot.profile.userId === actorId) return true;
+    const [relationships, blocked] = await Promise.all([
+      this.friends.statuses(actorId, [snapshot.profile.userId]),
+      this.friends.blocked(actorId, [snapshot.profile.userId]),
+    ]);
+    if (blocked.has(snapshot.profile.userId)) return false;
+    return this.isVisible(
+      snapshot,
+      actorId,
+      relationships.get(snapshot.profile.userId),
+    );
+  }
+
+  private isVisible(
+    snapshot: UserProfileSnapshot,
+    actorId: string,
+    relationship?: 'FRIENDS' | 'SENT' | 'RECEIVED',
+  ): boolean {
+    if (snapshot.profile.userId === actorId) return true;
+    if (snapshot.preferences.profileVisibility === 'PUBLIC') return true;
+    return (
+      snapshot.preferences.profileVisibility === 'FRIENDS' &&
+      relationship === 'FRIENDS'
+    );
   }
 
   async update(
@@ -111,6 +180,11 @@ export class UserProfileService {
         notificationsEnabled: preferences.notificationsEnabled,
         allowFriendRequests: preferences.allowFriendRequests,
         allowInvitesFromStrangers: preferences.allowInvitesFromStrangers,
+        profileVisibility: ProfileVisibilitySchema.parse(
+          preferences.profileVisibility,
+        ),
+        discoverableByUsername: preferences.discoverableByUsername,
+        showParticipationHistory: preferences.showParticipationHistory,
       },
     });
   }

@@ -1,11 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { EventDetail, UserProfilePublic } from '@event-sharing/contracts';
+import Link from 'next/link';
+import type {
+  EventDetail,
+  ParticipationHistory,
+  UserProfilePublic,
+} from '@event-sharing/contracts';
 import { usersClient } from '@/lib/api/UsersClient';
 import { friendsClient } from '@/lib/api/FriendsClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { eventsClient } from '@/lib/api/EventsClient';
+import { participationClient } from '@/lib/api/ParticipationClient';
+import { ApiError } from '@/lib/api/GatewayClient';
+import { useToast } from '@/contexts/ToastContext';
 import { EventCard } from '@/components/events/EventCard';
 import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/feedback/Loading';
@@ -14,6 +22,7 @@ import { ProfileAvatar } from './ProfileAvatar';
 
 export function PublicProfile({ userId }: { userId: string }) {
   const { user } = useAuth();
+  const { show } = useToast();
   const [profile, setProfile] = useState<UserProfilePublic | null>(null);
   const [events, setEvents] = useState<EventDetail[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -22,6 +31,8 @@ export function PublicProfile({ userId }: { userId: string }) {
   const [eventsLoading, setEventsLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [friendMessage, setFriendMessage] = useState('');
+  const [history, setHistory] = useState<ParticipationHistory['items']>([]);
+  const [historyNextPage, setHistoryNextPage] = useState<number | null>(null);
 
   async function addFriend() {
     if (!profile) return;
@@ -43,11 +54,25 @@ export function PublicProfile({ userId }: { userId: string }) {
     setError('');
     setEventsError('');
     setEventsLoading(true);
+    setHistory([]);
+    setHistoryNextPage(null);
     usersClient
       .get(userId)
       .then((person) => {
         if (!active) return;
         setProfile(person);
+        void participationClient.history(userId).then(
+          (result) => {
+            if (!active) return;
+            setHistory(result.items);
+            setHistoryNextPage(result.nextPage);
+          },
+          (cause) => {
+            if (!active) return;
+            if (cause instanceof ApiError && cause.status === 403) return;
+            show('Could not load participation history.', 'error');
+          },
+        );
       })
       .catch((cause) => {
         if (active) {
@@ -91,6 +116,17 @@ export function PublicProfile({ userId }: { userId: string }) {
       );
     } finally {
       setLoadingMore(false);
+    }
+  }
+
+  async function loadMoreHistory() {
+    if (historyNextPage === null) return;
+    try {
+      const result = await participationClient.history(userId, historyNextPage);
+      setHistory((current) => [...current, ...result.items]);
+      setHistoryNextPage(result.nextPage);
+    } catch {
+      show('Could not load more participation history.', 'error');
     }
   }
 
@@ -172,6 +208,34 @@ export function PublicProfile({ userId }: { userId: string }) {
           </div>
         </dl>
       </section>
+      {(history.length > 0 || historyNextPage !== null) && (
+        <section className="space-y-5">
+          <h2>Participation history</h2>
+          <ul className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white px-6">
+            {history.map((item) => (
+              <li
+                key={item.eventId}
+                className="flex flex-wrap justify-between gap-3 py-4"
+              >
+                <Link
+                  href={`/events/${item.eventId}`}
+                  className="font-semibold underline"
+                >
+                  {item.title}
+                </Link>
+                <span className="text-sm text-neutral-500">
+                  Ended {new Date(item.endTime).toLocaleDateString('en-US')}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {historyNextPage !== null && (
+            <Button variant="outline" onClick={() => void loadMoreHistory()}>
+              Load more history
+            </Button>
+          )}
+        </section>
+      )}
       <section className="space-y-5">
         <h2>Organized events</h2>
         {eventsLoading ? (

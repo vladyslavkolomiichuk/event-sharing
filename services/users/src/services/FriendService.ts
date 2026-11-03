@@ -21,6 +21,22 @@ class FriendActionError extends AppError {
 }
 
 export class FriendService {
+  async blocked(actorId: string, userIds: string[]): Promise<Set<string>> {
+    const blocks = await prisma.userBlock.findMany({
+      where: {
+        OR: [
+          { blockerId: actorId, blockedId: { in: userIds } },
+          { blockedId: actorId, blockerId: { in: userIds } },
+        ],
+      },
+    });
+    return new Set(
+      blocks.map((block) =>
+        block.blockerId === actorId ? block.blockedId : block.blockerId,
+      ),
+    );
+  }
+
   async statuses(actorId: string, userIds: string[]) {
     const [friendships, requests] = await Promise.all([
       prisma.friendship.findMany({
@@ -81,7 +97,7 @@ export class FriendService {
     ]);
     if (
       blocks ||
-      !preference ||
+      !preference?.discoverableByUsername ||
       (!preference.allowInvitesFromStrangers && !friendship)
     ) {
       throw new FriendActionError(
@@ -134,7 +150,11 @@ export class FriendService {
       const sender = await tx.userProfile.findUniqueOrThrow({
         where: { userId: senderId },
       });
-      if (!preference?.allowFriendRequests || blocks) {
+      if (
+        !preference?.allowFriendRequests ||
+        !preference.discoverableByUsername ||
+        blocks
+      ) {
         throw new FriendActionError(
           'Friend requests are unavailable.',
           'FRIEND_REQUESTS_UNAVAILABLE',
@@ -347,30 +367,51 @@ export class FriendService {
         ...blocks.map((item) => item.blockedId),
       ]),
     ];
-    const people = await prisma.userProfile.findMany({
-      where: { userId: { in: ids } },
-      select: { userId: true, username: true, name: true, avatarUrl: true },
-    });
+    const [people, preferences] = await Promise.all([
+      prisma.userProfile.findMany({
+        where: { userId: { in: ids } },
+        select: { userId: true, username: true, name: true, avatarUrl: true },
+      }),
+      prisma.userPreference.findMany({
+        where: { userId: { in: ids } },
+        select: { userId: true, profileVisibility: true },
+      }),
+    ]);
     const byId = new Map(people.map((person) => [person.userId, person]));
+    const visibility = new Map(
+      preferences.map((item) => [item.userId, item.profileVisibility]),
+    );
+    const present = (
+      person: (typeof people)[number] | undefined,
+      friend = false,
+    ) =>
+      person && {
+        ...person,
+        avatarUrl:
+          visibility.get(person.userId) === 'PUBLIC' ||
+          (friend && visibility.get(person.userId) === 'FRIENDS')
+            ? person.avatarUrl
+            : null,
+      };
     return {
       nextPage,
       friends: friendships.flatMap((item) => {
         const person = byId.get(
           item.userIdA === actorId ? item.userIdB : item.userIdA,
         );
-        return person ? [person] : [];
+        return person ? [present(person, true)] : [];
       }),
       received: received.map((item) => ({
         ...item,
-        person: byId.get(item.senderId),
+        person: present(byId.get(item.senderId)),
       })),
       sent: sent.map((item) => ({
         ...item,
-        person: byId.get(item.recipientId),
+        person: present(byId.get(item.recipientId)),
       })),
       blocked: blocks.flatMap((item) => {
         const person = byId.get(item.blockedId);
-        return person ? [person] : [];
+        return person ? [present(person)] : [];
       }),
     };
   }

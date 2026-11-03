@@ -1,5 +1,6 @@
 import { RequireAuth } from '@/components/auth/RequireAuth';
 import { AdminWorkspace } from '@/components/admin/AdminWorkspace';
+import { PrivacyRequests } from '@/components/admin/PrivacyRequests';
 export default function AdminPage() {
   return (
     <RequireAuth role="ADMIN">
@@ -14,6 +15,7 @@ export default function AdminPage() {
           </p>
         </div>
         <AdminWorkspace />
+        <PrivacyRequests />
       </div>
     </RequireAuth>
   );

@@ -13,10 +13,12 @@ export function userProfileRoutes(controller: UserProfileController): Router {
   router.put('/blocks/:username', friends.block);
   router.delete('/blocks/:username', friends.unblock);
   router.get('/me', controller.getMe);
+  router.get('/me/export', controller.exportMe);
   router.patch('/me', controller.updateMe);
   router.get('/', controller.listPublic);
   router.get('/search', controller.searchPublic);
   router.get('/by-username/:username', controller.getByUsername);
+  router.get('/:userId/history-access', controller.historyAccess);
   router.get('/:userId', controller.getPublic);
   return router;
 }

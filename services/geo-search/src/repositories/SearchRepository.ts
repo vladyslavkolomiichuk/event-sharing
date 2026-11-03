@@ -73,7 +73,14 @@ export class SearchRepository {
       : Prisma.sql`NULL::geography`;
     if (hasLocation && query.radiusMeters !== undefined) {
       conditions.push(
-        Prisma.sql`ST_DWithin(p.location, ${origin}, ${query.radiusMeters})`,
+        Prisma.sql`ST_DWithin(
+          p.location,
+          ${origin},
+          CASE WHEN p.visibility = 'PUBLIC'
+            THEN ${query.radiusMeters}::double precision
+            ELSE ${query.radiusMeters + 16000}::double precision
+          END
+        )`,
       );
     }
 

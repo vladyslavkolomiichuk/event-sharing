@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ProfileVisibilitySchema } from './profile-visibility.schema.js';
 
 const UserPreferencesPatchSchema = z.strictObject({
   showPhone: z.boolean().optional(),
@@ -6,6 +7,9 @@ const UserPreferencesPatchSchema = z.strictObject({
   notificationsEnabled: z.boolean().optional(),
   allowFriendRequests: z.boolean().optional(),
   allowInvitesFromStrangers: z.boolean().optional(),
+  profileVisibility: ProfileVisibilitySchema.optional(),
+  discoverableByUsername: z.boolean().optional(),
+  showParticipationHistory: z.boolean().optional(),
 });
 
 export const UpdateUserProfileSchema = z

@@ -46,6 +46,29 @@ export class EventRepository {
     });
   }
 
+  async reindexPrivateVenueLocations(): Promise<number> {
+    const events = await prisma.event.findMany({
+      where: {
+        visibility: 'PUBLIC',
+        locationVisibility: 'PARTICIPANTS_ONLY',
+        status: { in: ['PUBLISHED', 'ONGOING'] },
+      },
+      select: { id: true },
+    });
+    for (const event of events) {
+      await prisma.$transaction(async (transaction) => {
+        await this.lockEvent(transaction, event.id);
+        const updated = await transaction.event.update({
+          where: { id: event.id },
+          data: { version: { increment: 1 } },
+          include: { category: true },
+        });
+        await this.addSnapshot(transaction, updated, EVENT_TYPES.eventUpdated);
+      });
+    }
+    return events.length;
+  }
+
   listPublic(
     cursor: EventListCursor | null,
     categoryId: string | undefined,
@@ -98,6 +121,14 @@ export class EventRepository {
       include: { category: true },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
+    });
+  }
+
+  findAllByOrganizer(organizerId: string): Promise<EventWithCategory[]> {
+    return prisma.event.findMany({
+      where: { organizerId },
+      include: { category: true },
+      orderBy: { createdAt: 'desc' },
     });
   }
 

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { UserProfilePublicSchema } from './user-profile-public.schema.js';
+import { ProfileVisibilitySchema } from './profile-visibility.schema.js';
 
 export const UserProfilePrivateSchema = UserProfilePublicSchema.extend({
   version: z.number().int().positive(),
@@ -9,6 +10,9 @@ export const UserProfilePrivateSchema = UserProfilePublicSchema.extend({
     notificationsEnabled: z.boolean(),
     allowFriendRequests: z.boolean(),
     allowInvitesFromStrangers: z.boolean(),
+    profileVisibility: ProfileVisibilitySchema,
+    discoverableByUsername: z.boolean(),
+    showParticipationHistory: z.boolean(),
   }),
 });
 

@@ -21,12 +21,6 @@ export function ProfileForm() {
   const [bio, setBio] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
-  const [showPhone, setShowPhone] = useState(false);
-  const [showCity, setShowCity] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [allowFriendRequests, setAllowFriendRequests] = useState(true);
-  const [allowInvitesFromStrangers, setAllowInvitesFromStrangers] =
-    useState(true);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -42,11 +36,6 @@ export function ProfileForm() {
       setBio(value.bio ?? '');
       setPhone(value.phone ?? '');
       setCity(value.city ?? '');
-      setShowPhone(value.preferences.showPhone);
-      setShowCity(value.preferences.showCity);
-      setNotificationsEnabled(value.preferences.notificationsEnabled);
-      setAllowFriendRequests(value.preferences.allowFriendRequests);
-      setAllowInvitesFromStrangers(value.preferences.allowInvitesFromStrangers);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : 'Could not load profile.',
@@ -71,13 +60,6 @@ export function ProfileForm() {
         bio,
         phone: phone.trim() || null,
         city: city.trim() || null,
-        preferences: {
-          showPhone,
-          showCity,
-          notificationsEnabled,
-          allowFriendRequests,
-          allowInvitesFromStrangers,
-        },
       });
       setProfile(await usersClient.update(input));
       setSaved(true);
@@ -99,9 +81,9 @@ export function ProfileForm() {
       </div>
     );
   return (
-    <form onSubmit={submit} className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr]">
+    <form onSubmit={submit} className="max-w-3xl space-y-6">
       <div className="space-y-6 rounded-xl border border-neutral-200 bg-white p-7">
-        <h2>Public profile</h2>
+        <h2>Profile details</h2>
         <div>
           <label>Name</label>
           <p className="text-sm text-neutral-600">
@@ -158,54 +140,7 @@ export function ProfileForm() {
           />
         </div>
       </div>
-      <div className="space-y-6 rounded-xl border border-neutral-200 bg-white p-7">
-        <h2>Privacy & preferences</h2>
-        <label className="flex items-center gap-3 font-normal">
-          <input
-            type="checkbox"
-            checked={showCity}
-            onChange={(event) => setShowCity(event.target.checked)}
-          />
-          Show my city publicly
-        </label>
-        <label className="flex items-center gap-3 font-normal">
-          <input
-            type="checkbox"
-            checked={showPhone}
-            onChange={(event) => setShowPhone(event.target.checked)}
-          />
-          Show my phone publicly
-        </label>
-        <label className="flex items-center gap-3 font-normal">
-          <input
-            type="checkbox"
-            checked={notificationsEnabled}
-            onChange={(event) => setNotificationsEnabled(event.target.checked)}
-          />
-          Receive event and participation updates
-        </label>
-        <label className="flex items-center gap-3 font-normal">
-          <input
-            type="checkbox"
-            checked={allowFriendRequests}
-            onChange={(event) => setAllowFriendRequests(event.target.checked)}
-          />
-          Allow friend requests
-        </label>
-        <label className="flex items-center gap-3 font-normal">
-          <input
-            type="checkbox"
-            checked={allowInvitesFromStrangers}
-            onChange={(event) =>
-              setAllowInvitesFromStrangers(event.target.checked)
-            }
-          />
-          Allow event invitations from people outside my friends
-        </label>
-        <p className="text-xs leading-5 text-neutral-500">
-          Notification delivery is planned. Your preference is already saved
-          with your profile.
-        </p>
+      <div className="space-y-3">
         {saved && <Notice message="Profile saved." tone="success" />}
         {error && <Notice message={error} tone="error" />}
         <Button disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</Button>

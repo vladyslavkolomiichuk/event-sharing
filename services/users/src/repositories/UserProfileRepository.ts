@@ -53,6 +53,7 @@ export class UserProfileRepository {
       where: {
         username: { contains: username, ...(cursor ? { gt: cursor } : {}) },
         userId: { notIn: [...hidden, actorId] },
+        preference: { discoverableByUsername: true },
       },
       select: { userId: true },
       orderBy: { username: 'asc' },
@@ -210,6 +211,18 @@ export class UserProfileRepository {
         if (patch.preferences.allowInvitesFromStrangers !== undefined) {
           preferenceData.allowInvitesFromStrangers =
             patch.preferences.allowInvitesFromStrangers;
+        }
+        if (patch.preferences.profileVisibility !== undefined) {
+          preferenceData.profileVisibility =
+            patch.preferences.profileVisibility;
+        }
+        if (patch.preferences.discoverableByUsername !== undefined) {
+          preferenceData.discoverableByUsername =
+            patch.preferences.discoverableByUsername;
+        }
+        if (patch.preferences.showParticipationHistory !== undefined) {
+          preferenceData.showParticipationHistory =
+            patch.preferences.showParticipationHistory;
         }
         preferences = await transaction.userPreference.update({
           where: { userId },

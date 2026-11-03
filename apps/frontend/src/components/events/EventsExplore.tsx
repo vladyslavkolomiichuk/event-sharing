@@ -272,10 +272,14 @@ export function EventsExplore() {
       )
       .map((item) => ({
         id: item.id,
-        label: item.title,
+        label:
+          item.location.visibility === 'PUBLIC'
+            ? item.title
+            : `${item.title}; approximate location`,
         latitude: item.location.latitude!,
         longitude: item.location.longitude!,
         selected: selectedId === item.id,
+        approximate: item.location.visibility !== 'PUBLIC',
       }));
     const privateRegions = new Map<string, number>();
     for (const item of items) {
@@ -471,7 +475,7 @@ export function EventsExplore() {
           : null;
     if (point) {
       setCenter(point);
-      setZoom(12);
+      setZoom(item.location.visibility === 'PUBLIC' ? 12 : 9);
       setMobileView('map');
     } else show('This event has no map position yet.', 'info');
   }

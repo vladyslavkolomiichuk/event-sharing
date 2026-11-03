@@ -4,6 +4,7 @@ import type { ReadinessCheck } from '@event-sharing/common';
 import { toNodeHandler } from 'better-auth/node';
 import { UserRoleController } from './controllers/UserRoleController.js';
 import { UserIdentityController } from './controllers/UserIdentityController.js';
+import { PrivacyController } from './controllers/PrivacyController.js';
 import {
   accountMailAvailable,
   auth,
@@ -23,6 +24,28 @@ export function createApp(readinessCheck: ReadinessCheck): Express {
   app.disable('x-powered-by');
   const roleController = new UserRoleController(
     new UserRoleService(new UserRoleRepository()),
+  );
+  const privacyController = new PrivacyController();
+  app.get(
+    '/backend/auth/privacy/export',
+    requireUserSession,
+    privacyController.export,
+  );
+  app.get(
+    '/backend/auth/privacy/deletion-request',
+    requireUserSession,
+    privacyController.deletionRequest,
+  );
+  app.post(
+    '/backend/auth/privacy/deletion-request',
+    requireTrustedOrigin,
+    requireUserSession,
+    privacyController.requestDeletion,
+  );
+  app.get(
+    '/backend/auth/admin/privacy-requests',
+    requireUserSession,
+    privacyController.pendingRequests,
   );
   app.use(
     '/backend/auth/admin',

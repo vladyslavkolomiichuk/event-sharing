@@ -57,7 +57,13 @@ async function proxy(
       cache: 'no-store',
     });
     const responseHeaders = new Headers();
-    for (const name of ['content-type', 'location', 'x-request-id']) {
+    for (const name of [
+      'content-type',
+      'location',
+      'x-request-id',
+      'cache-control',
+      'content-disposition',
+    ]) {
       const value = upstream.headers.get(name);
       if (value) responseHeaders.set(name, value);
     }

@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import type { ParticipationController } from '../controllers/ParticipationController.js';
 import { InvitationController } from '../controllers/InvitationController.js';
+import { PrivacyExportController } from '../controllers/PrivacyExportController.js';
+import { ParticipationHistoryController } from '../controllers/ParticipationHistoryController.js';
 
 export function participationRoutes(
   controller: ParticipationController,
@@ -22,6 +24,11 @@ export function participationRoutes(
     invitations.revokeLink,
   );
   router.get('/me', controller.mine);
+  router.get('/me/export', new PrivacyExportController().export);
+  router.get(
+    '/users/:userId/history',
+    new ParticipationHistoryController().list,
+  );
   router.get('/events/:eventId/availability', controller.availability);
   router.get('/events/:eventId/participants', controller.participants);
   router.get('/events/:eventId/members/:userId', controller.memberStatus);

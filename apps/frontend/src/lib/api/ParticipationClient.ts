@@ -2,6 +2,7 @@ import type {
   Availability,
   Membership,
   MembershipList,
+  ParticipationHistory,
 } from '@event-sharing/contracts';
 import { gateway } from './GatewayClient';
 
@@ -21,6 +22,12 @@ export class ParticipationClient {
   mine(cursor?: string): Promise<MembershipList> {
     return gateway.get(
       `/api/participation/me${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
+    );
+  }
+
+  history(userId: string, page = 0): Promise<ParticipationHistory> {
+    return gateway.get(
+      `/api/participation/users/${userId}/history?page=${page}`,
     );
   }
 

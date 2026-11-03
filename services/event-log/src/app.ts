@@ -2,6 +2,7 @@ import express, { type Express } from 'express';
 import { HealthResponseSchema } from '@event-sharing/contracts';
 import type { ReadinessCheck } from '@event-sharing/common';
 import { EventLogController } from './controllers/EventLogController.js';
+import { PrivacyExportController } from './controllers/PrivacyExportController.js';
 import { requireAdminJwt } from './middleware/require-admin-jwt.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFound } from './middleware/not-found.js';
@@ -12,6 +13,7 @@ export function createApp(readinessCheck: ReadinessCheck): Express {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json());
+  app.get('/api/event-log/me/export', new PrivacyExportController().export);
   app.use(
     '/api/event-log',
     requireAdminJwt,

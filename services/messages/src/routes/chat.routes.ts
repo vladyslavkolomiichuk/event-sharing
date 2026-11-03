@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import type { ChatController } from '../controllers/ChatController.js';
+import { PrivacyExportController } from '../controllers/PrivacyExportController.js';
 
 export function chatRoutes(controller: ChatController): Router {
   const router = Router();
+  router.get('/me/export', new PrivacyExportController().export);
   router.get('/overview', controller.overview);
   router.get('/events/:eventId/rooms', controller.listRooms);
   router.post('/events/:eventId/rooms', controller.createRoom);

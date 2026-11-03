@@ -46,7 +46,9 @@ export function ExploreEventItem({
         <span>
           {event.location.region || 'Location not listed'}
           {event.distanceMeters !== null &&
-            ` · ${(event.distanceMeters / 1000).toFixed(1)} km`}
+            (event.location.visibility === 'PUBLIC'
+              ? ` · ${(event.distanceMeters / 1000).toFixed(1)} km`
+              : ` · about ${Math.round(event.distanceMeters / 10000) * 10} km`)}
         </span>
         <button
           type="button"
