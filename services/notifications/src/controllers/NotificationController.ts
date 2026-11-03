@@ -37,6 +37,12 @@ export class NotificationController {
     response.status(200).json(await this.notifications.markAllRead(user.id));
   };
 
+  remove: RequestHandler = async (request, response) => {
+    const user = this.requireUser(request.authenticatedUser);
+    const id = z.uuid().parse(request.params.notificationId);
+    response.status(200).json(await this.notifications.remove(id, user.id));
+  };
+
   sendEvent: RequestHandler = async (request, response) => {
     const user = this.requireUser(request.authenticatedUser);
     const eventId = z.uuid().parse(request.params.eventId);

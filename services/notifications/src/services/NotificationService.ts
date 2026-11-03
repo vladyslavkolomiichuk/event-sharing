@@ -47,6 +47,13 @@ export class NotificationService {
     return { updatedCount: result.count };
   }
 
+  async remove(id: string, recipientId: string) {
+    const result = await this.repository.remove(id, recipientId);
+    if (result.count === 0) throw new ResourceNotFoundError();
+    this.onChanged([recipientId]);
+    return { deleted: true };
+  }
+
   private toResponse(record: {
     id: string;
     type: string;

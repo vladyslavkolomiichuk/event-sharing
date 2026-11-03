@@ -24,6 +24,10 @@ export class NotificationsClient {
     return gateway.patch('/api/notifications/read-all', {});
   }
 
+  remove(id: string): Promise<{ deleted: boolean }> {
+    return gateway.delete(`/api/notifications/${id}`);
+  }
+
   sendEvent(eventId: string, body: string): Promise<InAppMessage> {
     return gateway.post(`/api/notifications/events/${eventId}/messages`, {
       body,

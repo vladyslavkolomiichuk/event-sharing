@@ -91,7 +91,8 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
       <h2>Route to this event</h2>
       <p className="text-sm text-neutral-600">
         Choose a starting point by address, city, map, or your current location.
-        Valhalla receives both route points when you request a route.
+        Interline&apos;s Transitland Valhalla API receives both route points when
+        you request a route.
       </p>
       <div className="grid gap-3 sm:grid-cols-[140px_1fr_auto] sm:items-end">
         <div>

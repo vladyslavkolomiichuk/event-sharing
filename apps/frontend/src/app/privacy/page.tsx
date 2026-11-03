@@ -28,8 +28,10 @@ export default function PrivacyPolicyPage() {
           the selected coordinates to Geo Search for that request; search
           analytics record only whether a location was used and the result
           count. Map tiles come from OpenFreeMap, place suggestions from Photon,
-          and route requests may be sent to the configured Valhalla provider.
-          These providers receive the requests needed to serve those features.
+          and routes currently use Interline&apos;s Transitland Valhalla API. A
+          route request sends its start and destination coordinates and travel
+          mode to that provider, without your account ID. These providers
+          receive the requests needed to serve those features.
         </p>
       </section>
       <section>

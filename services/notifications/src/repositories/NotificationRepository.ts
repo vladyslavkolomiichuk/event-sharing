@@ -64,6 +64,12 @@ export class NotificationRepository {
     });
   }
 
+  remove(id: string, recipientId: string) {
+    return prisma.inAppNotification.deleteMany({
+      where: { id, recipientId },
+    });
+  }
+
   find(id: string, recipientId: string) {
     return prisma.inAppNotification.findFirst({ where: { id, recipientId } });
   }

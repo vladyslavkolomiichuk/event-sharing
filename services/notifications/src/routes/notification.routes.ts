@@ -10,6 +10,7 @@ export function notificationRoutes(controller: NotificationController): Router {
   router.post('/events/:eventId/messages', controller.sendEvent);
   router.get('/messages/:messageId', controller.getMessage);
   router.patch('/:notificationId/read', controller.markRead);
+  router.delete('/:notificationId', controller.remove);
   router.get('/', controller.list);
   return router;
 }

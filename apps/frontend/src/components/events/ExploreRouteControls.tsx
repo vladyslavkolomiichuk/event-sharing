@@ -98,8 +98,8 @@ export function ExploreRouteControls({
         </p>
       )}
       <p className="text-xs text-neutral-600">
-        When you build a route, the routing provider receives its start and
-        destination coordinates.
+        When you build a route, Interline&apos;s Transitland Valhalla API receives
+        its start and destination coordinates.
       </p>
       {route && (
         <p className="text-sm font-semibold">

@@ -6,19 +6,19 @@ import { useEffect, useRef, useState } from 'react';
 import type { InAppMessage, InAppNotification } from '@event-sharing/contracts';
 import { notificationsClient } from '@/lib/api/NotificationsClient';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/feedback/Notice';
 import { Loading } from '@/components/feedback/Loading';
+import { useToast } from '@/contexts/ToastContext';
+import { NotificationItem } from './NotificationItem';
 
 export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
   const router = useRouter();
+  const { show } = useToast();
   const [items, setItems] = useState<InAppNotification[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
   const [message, setMessage] = useState<InAppMessage | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const firstPageRequest = useRef(0);
 
   useEffect(() => {
@@ -33,10 +33,11 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
       })
       .catch((cause) => {
         if (firstPageRequest.current !== currentRequest) return;
-        setError(
+        show(
           cause instanceof Error
             ? cause.message
             : 'Could not load notifications.',
+          'error',
         );
       })
       .finally(() => {
@@ -45,7 +46,7 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
     return () => {
       firstPageRequest.current++;
     };
-  }, []);
+  }, [show]);
   useEffect(() => {
     const refresh = () => {
       const currentRequest = ++firstPageRequest.current;
@@ -53,28 +54,13 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
         .list()
         .then((page) => {
           if (firstPageRequest.current !== currentRequest) return;
-          setItems((current) => {
-            const merged = new Map(current.map((item) => [item.id, item]));
-            for (const item of page.items) merged.set(item.id, item);
-            return [...merged.values()]
-              .map((item) =>
-                page.unreadCount === 0 && !item.readAt
-                  ? { ...item, readAt: new Date().toISOString() }
-                  : item,
-              )
-              .sort(
-                (left, right) =>
-                  right.createdAt.localeCompare(left.createdAt) ||
-                  right.id.localeCompare(left.id),
-              );
-          });
+          setItems(page.items);
           setUnread(page.unreadCount);
-          setCursor((current) => current ?? page.nextCursor);
-          setError('');
+          setCursor(page.nextCursor);
         })
         .catch(() => {
           if (firstPageRequest.current === currentRequest)
-            setError('Could not refresh notifications.');
+            show('Could not refresh notifications.', 'error');
         })
         .finally(() => {
           if (firstPageRequest.current === currentRequest) setLoading(false);
@@ -85,14 +71,14 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
       firstPageRequest.current++;
       window.removeEventListener('notifications:remote', refresh);
     };
-  }, []);
+  }, [show]);
   useEffect(() => {
     if (messageId)
       notificationsClient
         .getMessage(messageId)
         .then(setMessage)
-        .catch(() => setError('Could not open the announcement.'));
-  }, [messageId]);
+        .catch(() => show('Could not open the announcement.', 'error'));
+  }, [messageId, show]);
 
   async function open(item: InAppNotification) {
     try {
@@ -109,8 +95,9 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
         router.push(`/notifications?message=${item.messageId}`);
       } else router.push(item.href);
     } catch (cause) {
-      setError(
+      show(
         cause instanceof Error ? cause.message : 'Could not open notification.',
+        'error',
       );
     }
   }
@@ -126,13 +113,14 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
         })),
       );
       setUnread(0);
-      setNotice('All notifications marked as read.');
+      show('All notifications marked as read.', 'success');
       window.dispatchEvent(new Event('notifications:changed'));
     } catch (cause) {
-      setError(
+      show(
         cause instanceof Error
           ? cause.message
           : 'Could not update notifications.',
+        'error',
       );
     } finally {
       setBusy(false);
@@ -151,10 +139,29 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
       setCursor(page.nextCursor);
       setUnread(page.unreadCount);
     } catch (cause) {
-      setError(
+      show(
         cause instanceof Error
           ? cause.message
           : 'Could not load more notifications.',
+        'error',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(item: InAppNotification) {
+    setBusy(true);
+    try {
+      await notificationsClient.remove(item.id);
+      setItems((current) => current.filter((entry) => entry.id !== item.id));
+      if (!item.readAt) setUnread((count) => Math.max(0, count - 1));
+      window.dispatchEvent(new Event('notifications:changed'));
+      show('Notification deleted.', 'success');
+    } catch (cause) {
+      show(
+        cause instanceof Error ? cause.message : 'Could not delete notification.',
+        'error',
       );
     } finally {
       setBusy(false);
@@ -199,24 +206,13 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
       ) : (
         <div className="space-y-3">
           {items.map((item) => (
-            <div
+            <NotificationItem
               key={item.id}
-              className={`rounded-xl border p-5 ${item.readAt ? 'border-neutral-200 bg-white' : 'border-neutral-900 bg-neutral-50'}`}
-            >
-              <h3 className="font-semibold">{item.title}</h3>
-              <p className="mt-2 text-sm text-neutral-700">{item.body}</p>
-              <p className="mt-2 text-xs text-neutral-500">
-                {new Date(item.createdAt).toLocaleString('en-US')}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                onClick={() => void open(item)}
-              >
-                {item.messageId ? 'Read announcement' : 'Open event'}
-              </Button>
-            </div>
+              item={item}
+              busy={busy}
+              onOpen={(entry) => void open(entry)}
+              onRemove={(entry) => void remove(entry)}
+            />
           ))}
           {cursor && (
             <Button
@@ -229,8 +225,6 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
           )}
         </div>
       )}
-      {notice && <Notice message={notice} tone="success" />}
-      {error && <Notice message={error} tone="error" />}
     </div>
   );
 }
