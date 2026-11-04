@@ -121,6 +121,10 @@ export class EventService {
     );
   }
 
+  hasActiveEvents(userId: string): Promise<boolean> {
+    return this.events.hasActiveEvents(userId);
+  }
+
   async listModeration(role: UserRole, cursor?: string, limit = 20) {
     if (role !== 'ADMIN') throw new ForbiddenError();
     const scope: EventListScope = { list: 'moderation' };

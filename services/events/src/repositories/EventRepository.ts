@@ -140,6 +140,18 @@ export class EventRepository {
     });
   }
 
+  async hasActiveEvents(organizerId: string): Promise<boolean> {
+    const event = await prisma.event.findFirst({
+      where: {
+        organizerId,
+        status: { in: ['PUBLISHED', 'ONGOING'] },
+        endTime: { gt: new Date() },
+      },
+      select: { id: true },
+    });
+    return Boolean(event);
+  }
+
   listModeration(cursor: EventListCursor | null, limit: number) {
     const where: Prisma.EventWhereInput = { status: 'MODERATION' };
     if (cursor) where.OR = this.afterCursor(cursor);

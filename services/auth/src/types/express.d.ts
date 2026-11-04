@@ -6,6 +6,7 @@ declare global {
       authUser?: {
         id: string;
         role: UserRole;
+        internalToken?: string;
       };
     }
   }

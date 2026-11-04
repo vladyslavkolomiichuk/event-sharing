@@ -72,6 +72,13 @@ export class EventController {
       .json(await this.service.listMine(user.id, cursor, limit));
   };
 
+  deletionCheck: RequestHandler = async (request, response) => {
+    const user = this.requireUser(request.authenticatedUser);
+    response.set('cache-control', 'no-store').json({
+      hasActiveEvents: await this.service.hasActiveEvents(user.id),
+    });
+  };
+
   listModeration: RequestHandler = async (request, response) => {
     const user = this.requireUser(request.authenticatedUser);
     const { cursor, limit } = ListOwnedEventsQuerySchema.parse(request.query);

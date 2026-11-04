@@ -2,8 +2,11 @@ import type { RequestHandler } from 'express';
 import { randomUUID } from 'node:crypto';
 import { prisma } from '../database/client.js';
 import { ForbiddenError } from '../domain/errors/ForbiddenError.js';
+import { ActiveEventsBlockDeletionError } from '../domain/errors/ActiveEventsBlockDeletionError.js';
+import { DeletionEligibilityClient } from '../clients/DeletionEligibilityClient.js';
 
 export class PrivacyController {
+  constructor(private readonly eligibility = new DeletionEligibilityClient()) {}
   export: RequestHandler = async (request, response) => {
     const userId = request.authUser!.id;
     const user = await prisma.user.findUniqueOrThrow({
@@ -42,6 +45,8 @@ export class PrivacyController {
 
   requestDeletion: RequestHandler = async (request, response) => {
     const userId = request.authUser!.id;
+    if (await this.eligibility.hasActiveEvents(request.authUser!.internalToken))
+      throw new ActiveEventsBlockDeletionError();
     await prisma.privacyRequest.createMany({
       data: { id: randomUUID(), userId },
       skipDuplicates: true,

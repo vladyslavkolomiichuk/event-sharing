@@ -285,7 +285,8 @@ export function PrivacySettings() {
           <p className="text-sm text-neutral-600">
             Submit a request for manual review. Your account and data remain
             active while it is pending. The request itself does not erase your
-            data. Use the contact address below to follow up.
+            data. Cancel active events you organize before requesting deletion.
+            Use the contact address below to follow up.
           </p>
           {deletionRequestedAt ? (
             <p className="text-sm">

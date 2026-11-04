@@ -9,11 +9,17 @@ export const requireUserSession: RequestHandler = async (
 ) => {
   const cookie = request.get('cookie');
   if (!cookie) throw new UnauthorizedError();
-  const session = await auth.api.getSession({
+  const { response: session, headers } = await auth.api.getSession({
     headers: new Headers({ cookie }),
     query: { disableCookieCache: true },
+    returnHeaders: true,
   });
   if (!session) throw new UnauthorizedError();
-  request.authUser = { id: session.user.id, role: session.user.role ?? 'USER' };
+  const internalToken = headers.get('set-auth-jwt');
+  request.authUser = {
+    id: session.user.id,
+    role: session.user.role ?? 'USER',
+    ...(internalToken ? { internalToken } : {}),
+  };
   next();
 };
