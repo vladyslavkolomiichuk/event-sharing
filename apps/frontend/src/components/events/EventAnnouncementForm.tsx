@@ -44,6 +44,7 @@ export function EventAnnouncementForm({ eventId }: { eventId: string }) {
           onChange={(event) => setBody(event.target.value)}
           maxLength={2000}
           required
+          validate={(value) => (value.trim() ? '' : 'Enter an announcement.')}
           rows={4}
         />
         <Button disabled={busy || !body.trim()}>

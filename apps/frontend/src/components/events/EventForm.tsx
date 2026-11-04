@@ -57,6 +57,9 @@ export function EventForm({
   const [error, setError] = useState('');
   const [step, setStep] = useState(0);
   const [reachedStep, setReachedStep] = useState(0);
+  const [validationAttempted, setValidationAttempted] = useState<
+    Record<number, boolean>
+  >({});
   const submitLock = useRef(false);
   const stepContent = useRef<HTMLDivElement>(null);
   const stepVisited = useRef(false);
@@ -313,6 +316,7 @@ export function EventForm({
       for (let index = 0; index < next; index++) {
         const message = validateStep(index);
         if (message) {
+          setValidationAttempted((current) => ({ ...current, [index]: true }));
           setStep(index);
           setError(message);
           show(message, 'error');
@@ -337,6 +341,7 @@ export function EventForm({
     for (let index = 0; index < EVENT_FORM_STEPS.length - 1; index++) {
       const message = validateStep(index);
       if (message) {
+        setValidationAttempted((current) => ({ ...current, [index]: true }));
         setStep(index);
         setError(message);
         show(message, 'error');
@@ -539,6 +544,20 @@ export function EventForm({
                     id="event-avatar"
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
+                    forceValidation={validationAttempted[0]}
+                    validate={(_, element) => {
+                      const file = element.files?.[0];
+                      if (!file) return '';
+                      if (
+                        !['image/png', 'image/jpeg', 'image/webp'].includes(
+                          file.type,
+                        )
+                      )
+                        return 'Use a PNG, JPEG, or WebP image.';
+                      return file.size > 0 && file.size <= 5 * 1024 * 1024
+                        ? ''
+                        : 'Choose an image between 1 byte and 5 MB.';
+                    }}
                     onChange={(event) => {
                       setAvatarFile(event.target.files?.[0] ?? null);
                       setRemoveAvatar(false);
@@ -575,6 +594,20 @@ export function EventForm({
                     id="event-cover"
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
+                    forceValidation={validationAttempted[0]}
+                    validate={(_, element) => {
+                      const file = element.files?.[0];
+                      if (!file) return '';
+                      if (
+                        !['image/png', 'image/jpeg', 'image/webp'].includes(
+                          file.type,
+                        )
+                      )
+                        return 'Use a PNG, JPEG, or WebP image.';
+                      return file.size > 0 && file.size <= 5 * 1024 * 1024
+                        ? ''
+                        : 'Choose an image between 1 byte and 5 MB.';
+                    }}
                     onChange={(event) => {
                       setCoverFile(event.target.files?.[0] ?? null);
                       setRemoveCover(false);
@@ -604,6 +637,10 @@ export function EventForm({
                   id="title"
                   required
                   maxLength={160}
+                  forceValidation={validationAttempted[0]}
+                  validate={(value) =>
+                    value.trim() ? '' : 'Enter an event title.'
+                  }
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
                 />
@@ -614,6 +651,10 @@ export function EventForm({
                   id="description"
                   required
                   maxLength={10000}
+                  forceValidation={validationAttempted[0]}
+                  validate={(value) =>
+                    value.trim() ? '' : 'Enter an event description.'
+                  }
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                 />
@@ -641,6 +682,22 @@ export function EventForm({
                     id="start"
                     type="datetime-local"
                     required
+                    forceValidation={validationAttempted[0]}
+                    validate={(value) => {
+                      if (!value) return '';
+                      try {
+                        const start = eventUtcTime(value, timeZone);
+                        const changed =
+                          !existing || start !== existing.startTime;
+                        return changed && Date.parse(start) <= Date.now()
+                          ? 'The event must start in the future.'
+                          : '';
+                      } catch (cause) {
+                        return cause instanceof Error
+                          ? cause.message
+                          : 'Enter a valid start time.';
+                      }
+                    }}
                     value={startTime}
                     onChange={(event) => setStartTime(event.target.value)}
                   />
@@ -651,6 +708,20 @@ export function EventForm({
                     id="end"
                     type="datetime-local"
                     required
+                    forceValidation={validationAttempted[0]}
+                    validate={(value) => {
+                      if (!value || !startTime) return '';
+                      try {
+                        return Date.parse(eventUtcTime(value, timeZone)) >
+                          Date.parse(eventUtcTime(startTime, timeZone))
+                          ? ''
+                          : 'End time must be after start time.';
+                      } catch (cause) {
+                        return cause instanceof Error
+                          ? cause.message
+                          : 'Enter a valid end time.';
+                      }
+                    }}
                     value={endTime}
                     onChange={(event) => setEndTime(event.target.value)}
                   />
@@ -679,6 +750,7 @@ export function EventForm({
                   min={1}
                   step={1}
                   required
+                  forceValidation={validationAttempted[0]}
                   value={participantLimit}
                   onChange={(event) => setParticipantLimit(event.target.value)}
                 />
@@ -775,6 +847,10 @@ export function EventForm({
                 }}
                 placeholder="Start typing a street or venue"
                 required
+                forceValidation={validationAttempted[1]}
+                validate={(value) =>
+                  value.trim() ? '' : 'Enter the venue address.'
+                }
               />
               <MapView
                 center={mapCenter}
@@ -799,6 +875,12 @@ export function EventForm({
                   ? `Selected point: ${latitude}, ${longitude}`
                   : 'Click the map or select an address suggestion to set the venue point.'}
               </p>
+              {validationAttempted[1] && !validVenuePoint && (
+                <p role="alert" className="text-sm font-medium text-red-700">
+                  Choose a valid venue point on the map or enter valid
+                  coordinates below.
+                </p>
+              )}
               <p className="text-xs text-neutral-500">
                 Choosing a point sends its coordinates to Photon to suggest an
                 address. Verify the result before saving.
@@ -821,6 +903,8 @@ export function EventForm({
                       min={-90}
                       max={90}
                       step="any"
+                      required
+                      forceValidation={validationAttempted[1]}
                       value={latitude}
                       onChange={(event) => {
                         cancelReverseLookup();
@@ -836,6 +920,8 @@ export function EventForm({
                       min={-180}
                       max={180}
                       step="any"
+                      required
+                      forceValidation={validationAttempted[1]}
                       value={longitude}
                       onChange={(event) => {
                         cancelReverseLookup();

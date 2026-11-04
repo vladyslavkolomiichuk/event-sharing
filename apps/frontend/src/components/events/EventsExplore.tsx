@@ -41,6 +41,8 @@ export function EventsExplore() {
   const [text, setText] = useState('');
   const [searchText, setSearchText] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [organizerId, setOrganizerId] = useState('');
+  const [organizerQuery, setOrganizerQuery] = useState('');
   const [status, setStatus] = useState('');
   const [startFrom, setStartFrom] = useState('');
   const [startTo, setStartTo] = useState('');
@@ -213,6 +215,7 @@ export function EventsExplore() {
       if (!user) return;
       if (needsLocation) {
         setLoading(false);
+        setError('');
         return;
       }
       const current = ++requestId.current;
@@ -223,6 +226,7 @@ export function EventsExplore() {
         limit: 20,
         ...(searchText ? { text: searchText } : {}),
         ...(categoryId ? { categoryId } : {}),
+        ...(organizerId ? { organizerId } : {}),
         ...(status ? { status: status as EventSearchQuery['status'] } : {}),
         ...(startFrom
           ? { startFrom: new Date(`${startFrom}T00:00:00`).toISOString() }
@@ -252,7 +256,6 @@ export function EventsExplore() {
         const message =
           cause instanceof Error ? cause.message : 'Could not search events.';
         setError(message);
-        show(message, 'error');
       } finally {
         if (current === requestId.current) setLoading(false);
       }
@@ -261,6 +264,7 @@ export function EventsExplore() {
       user?.id,
       searchText,
       categoryId,
+      organizerId,
       status,
       startFrom,
       startTo,
@@ -670,6 +674,16 @@ export function EventsExplore() {
     categories,
     categoryId,
     onCategoryChange: setCategoryId,
+    organizerId,
+    organizerQuery,
+    onOrganizerQueryChange: (value: string) => {
+      setOrganizerQuery(value);
+      setOrganizerId('');
+    },
+    onOrganizerSelect: (id: string, label: string) => {
+      setOrganizerId(id);
+      setOrganizerQuery(label);
+    },
     sort,
     onSortChange: setSort,
     canSortByDistance: Boolean(anchor),
@@ -691,6 +705,17 @@ export function EventsExplore() {
     onStartToChange: setStartTo,
     status,
     onStatusChange: setStatus,
+    onClearFilters: () => {
+      setText('');
+      setSearchText('');
+      setCategoryId('');
+      setOrganizerId('');
+      setOrganizerQuery('');
+      setStartFrom('');
+      setStartTo('');
+      setStatus('');
+      setSort('start_time');
+    },
     onClearLocation: () => void clearLocation(),
     onUseLocation: () => void useMyLocation(),
     onPickMap: () => {
@@ -737,6 +762,9 @@ export function EventsExplore() {
               onSelect={selectEvent}
               onRoute={(id) => void chooseRouteEvent(id)}
               onLoadMore={(next) => void load(next)}
+              onRetry={() =>
+                void load(items.length && cursor ? cursor : undefined)
+              }
               needsLocation={needsLocation}
               grid={view === 'list'}
             />
@@ -873,6 +901,7 @@ export function EventsExplore() {
                 onBuild={routePlanner.build}
                 onClear={clearRoute}
                 route={routePlanner.route}
+                error={routePlanner.error}
                 loading={routePlanner.loading}
               />
             </details>

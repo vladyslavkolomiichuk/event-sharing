@@ -3,13 +3,15 @@
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import { authClient } from '@/lib/api/AuthClient';
-import { Notice } from '@/components/feedback/Notice';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState('');
-  const [available, setAvailable] = useState(false);
+  const [capability, setCapability] = useState<
+    'loading' | 'available' | 'unavailable' | 'error'
+  >('loading');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
@@ -17,8 +19,12 @@ export function ForgotPasswordForm() {
   useEffect(() => {
     authClient
       .accountCapabilities()
-      .then((value) => setAvailable(value.emailDeliveryAvailable))
-      .catch(() => setAvailable(false));
+      .then((value) =>
+        setCapability(
+          value.emailDeliveryAvailable ? 'available' : 'unavailable',
+        ),
+      )
+      .catch(() => setCapability('error'));
   }, []);
 
   async function submit(event: FormEvent) {
@@ -62,23 +68,32 @@ export function ForgotPasswordForm() {
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            disabled={!available || busy || sent}
+            disabled={capability !== 'available' || busy || sent}
           />
         </div>
-        {!available && (
-          <Notice
-            message="Password reset email is unavailable until mail delivery is configured."
+        {capability === 'loading' && (
+          <InlineFeedback message="Checking email availability…" />
+        )}
+        {capability === 'unavailable' && (
+          <InlineFeedback
+            message="Password reset email is unavailable right now. Please try again later."
             tone="warning"
           />
         )}
+        {capability === 'error' && (
+          <InlineFeedback
+            message="Could not check email availability. Reload the page to try again."
+            tone="error"
+          />
+        )}
         {sent && (
-          <Notice
+          <InlineFeedback
             message="If this account exists, check your email for the reset link."
             tone="success"
           />
         )}
-        {error && <Notice message={error} tone="error" />}
-        <Button disabled={!available || busy || sent}>
+        {error && <InlineFeedback message={error} tone="error" />}
+        <Button disabled={capability !== 'available' || busy || sent}>
           {busy ? 'Sending…' : 'Send reset link'}
         </Button>
       </form>

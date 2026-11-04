@@ -4,11 +4,23 @@ import type {
   MembershipList,
   ParticipationHistory,
 } from '@event-sharing/contracts';
-import { gateway } from './GatewayClient';
+import { ApiError, gateway } from './GatewayClient';
 
 export class ParticipationClient {
   availability(eventId: string): Promise<Availability> {
     return gateway.get(`/api/participation/events/${eventId}/availability`);
+  }
+
+  async joined(eventId: string, userId: string): Promise<boolean> {
+    try {
+      const result = await gateway.get<{ status: string | null }>(
+        `/api/participation/events/${eventId}/members/${userId}`,
+      );
+      return result.status === 'JOINED';
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 404) return false;
+      throw cause;
+    }
   }
 
   join(eventId: string): Promise<Membership> {

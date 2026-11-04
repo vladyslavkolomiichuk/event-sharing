@@ -18,12 +18,12 @@ export function ExploreEventItem({
   return (
     <article
       id={`event-result-${event.id}`}
-      className={`overflow-hidden rounded-xl border bg-white transition-colors hover:border-neutral-500 focus-within:border-black ${selected ? 'border-black' : 'border-neutral-200'}`}
+      className={`overflow-hidden rounded-xl border bg-white transition-colors hover:border-orange-500 focus-within:border-orange-700 ${selected ? 'border-orange-700 bg-orange-50/30' : 'border-neutral-200'}`}
     >
       <Link
         href={`/events/${event.id}`}
         aria-label={`Open ${event.title}`}
-        className="block rounded-t-xl p-3 focus-visible:outline-2 focus-visible:outline-black"
+        className="block rounded-t-xl p-3 focus-visible:outline-2 focus-visible:outline-orange-700"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
@@ -65,7 +65,7 @@ export function ExploreEventItem({
         <div className="flex gap-3">
           <button
             type="button"
-            className="font-semibold text-black underline"
+            className="font-semibold text-orange-800 underline"
             onClick={onSelect}
           >
             Show on map
@@ -73,7 +73,7 @@ export function ExploreEventItem({
           {onRoute && (
             <button
               type="button"
-              className="font-semibold text-black underline"
+              className="font-semibold text-orange-800 underline"
               onClick={onRoute}
             >
               Plan route

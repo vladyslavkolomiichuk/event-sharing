@@ -12,10 +12,9 @@ import { useSearchPreference } from '@/contexts/SearchPreferenceContext';
 import { PlaceAutocomplete } from '@/components/map/PlaceAutocomplete';
 import { MapView } from '@/components/map/MapView';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/contexts/ToastContext';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 
 export function EventRoutePlanner({ event }: { event: EventDetail }) {
-  const { show } = useToast();
   const { requestPosition } = useSearchPreference();
   const [origin, setOrigin] = useState<RoutePoint | null>(null);
   const [originLabel, setOriginLabel] = useState('');
@@ -24,6 +23,7 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
   const [route, setRoute] = useState<EventRouteResponse | null>(null);
   const [routeRequestId, setRouteRequestId] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const destination =
     event.location.latitude !== null && event.location.longitude !== null
@@ -38,14 +38,14 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
     const controller = new AbortController();
     setLoading(true);
     setRoute(null);
+    setError('');
     void eventRouteClient
       .route({ eventId: event.id, origin, mode }, controller.signal)
       .then(setRoute)
       .catch((cause) => {
         if (!controller.signal.aborted) {
-          show(
+          setError(
             cause instanceof Error ? cause.message : 'Could not build a route.',
-            'error',
           );
         }
       })
@@ -61,20 +61,19 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
     destination?.latitude,
     destination?.longitude,
     routeRequestId,
-    show,
   ]);
 
   async function useCurrentPosition() {
+    setError('');
     try {
       const position = await requestPosition();
       setOrigin({ latitude: position.latitude, longitude: position.longitude });
       setOriginLabel('Current location');
     } catch (cause) {
-      show(
+      setError(
         cause instanceof Error
           ? cause.message
           : 'Current location is unavailable.',
-        'error',
       );
     }
   }
@@ -106,6 +105,7 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
               setOriginLabel('');
               setOrigin(null);
               setRoute(null);
+              setError('');
             }}
           >
             <option value="address">Address</option>
@@ -125,6 +125,7 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
             setOriginLabel(value);
             setOrigin(null);
             setRoute(null);
+            setError('');
           }}
           onSelect={(place) => {
             setOrigin({ latitude: place.latitude, longitude: place.longitude });
@@ -196,6 +197,12 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
         className="h-[420px]"
       />
       {loading && <p className="text-sm text-neutral-600">Building route…</p>}
+      {error && (
+        <InlineFeedback
+          message={`${error} Try another starting point or travel mode, then build the route again.`}
+          tone="error"
+        />
+      )}
       {route && (
         <p className="text-sm font-semibold">
           {(route.distanceMeters / 1000).toFixed(1)} km · About{' '}

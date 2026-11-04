@@ -93,6 +93,7 @@ export function ChatRoomList({
               maxLength={80}
               placeholder="Room name"
               required
+              validate={(value) => (value.trim() ? '' : 'Enter a room name.')}
               autoFocus
             />
             <select
@@ -126,7 +127,7 @@ export function ChatRoomList({
             key={room.id}
             type="button"
             onClick={() => onSelect(room.id)}
-            className={`flex w-full items-center gap-3 border-b border-neutral-100 px-5 py-4 text-left transition-colors hover:bg-neutral-50 ${room.id === selectedId ? 'bg-emerald-50' : ''}`}
+            className={`flex w-full items-center gap-3 border-b border-neutral-100 px-5 py-4 text-left transition-colors hover:bg-orange-50 ${room.id === selectedId ? 'bg-orange-50' : ''}`}
           >
             <span className="grid size-11 shrink-0 place-items-center rounded-full bg-neutral-200 text-sm font-bold text-neutral-700">
               {room.name.slice(0, 2).toUpperCase()}

@@ -1,3 +1,7 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+
 export function ProfileAvatar({
   name,
   avatarUrl,
@@ -7,13 +11,16 @@ export function ProfileAvatar({
   avatarUrl: string | null;
   size?: 'md' | 'lg';
 }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [avatarUrl]);
   const dimension = size === 'lg' ? 'h-24 w-24 text-3xl' : 'h-10 w-10 text-sm';
 
-  return avatarUrl ? (
+  return avatarUrl && !failed ? (
     <img
       src={avatarUrl}
       alt={`${name}'s avatar`}
       className={`${dimension} rounded-full border border-neutral-200 object-cover`}
+      onError={() => setFailed(true)}
     />
   ) : (
     <span

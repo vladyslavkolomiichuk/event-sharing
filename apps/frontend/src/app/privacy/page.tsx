@@ -79,9 +79,9 @@ export default function PrivacyPolicyPage() {
           volumes. Host application log retention is managed separately and is
           not yet fixed by this project. You can download your data and submit
           an account deletion request in Privacy settings. Requests are reviewed
-          manually; shared event and message records may be anonymized to
-          preserve other participants&apos; history. For access, correction, or
-          other requests, contact the address above.
+          manually. Submitting a request does not itself delete or anonymize
+          data. For access, correction, or other requests, contact the address
+          above.
         </p>
       </section>
       <section>

@@ -27,7 +27,7 @@ export function EventStepNavigation({
               disabled={index > reached}
               aria-current={index === current ? 'step' : undefined}
               onClick={() => onSelect(index)}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:text-neutral-400 ${index === current ? 'bg-neutral-100 font-semibold text-black' : 'text-neutral-600 hover:bg-neutral-100'}`}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:text-neutral-400 ${index === current ? 'bg-orange-50 font-semibold text-orange-800' : 'text-neutral-600 hover:bg-neutral-100'}`}
             >
               <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-neutral-300 text-xs">
                 {index + 1}

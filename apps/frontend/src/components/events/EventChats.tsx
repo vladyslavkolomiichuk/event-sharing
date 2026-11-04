@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { messagesClient } from '@/lib/api/MessagesClient';
 import { ApiError } from '@/lib/api/GatewayClient';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/feedback/Notice';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { ChatRoomList } from '@/components/messages/ChatRoomList';
 import { ChatConversation } from '@/components/messages/ChatConversation';
 import { invitationClient } from '@/lib/api/InvitationClient';
@@ -60,6 +60,8 @@ export function EventChats({
     } catch (cause) {
       if (roomsRequest.current !== currentRequest) return;
       if (cause instanceof ApiError && cause.status === 403) {
+        setRooms([]);
+        setSelectedId('');
         setLocked(true);
         return;
       }
@@ -67,6 +69,8 @@ export function EventChats({
         cause instanceof ApiError &&
         (cause.status === 404 || cause.code === 'CHAT_UNAVAILABLE')
       ) {
+        setRooms([]);
+        setSelectedId('');
         return;
       }
       setError(
@@ -99,6 +103,7 @@ export function EventChats({
   ): Promise<boolean> {
     setBusy(true);
     setError('');
+    setNotice('');
     try {
       const room = await messagesClient.createRoom(eventId, input);
       setRooms((current) => [...current, room]);
@@ -127,6 +132,7 @@ export function EventChats({
   async function archiveRoom(roomId: string): Promise<void> {
     setBusy(true);
     setError('');
+    setNotice('');
     try {
       const archived = await messagesClient.archiveRoom(eventId, roomId);
       setRooms((current) =>
@@ -196,15 +202,15 @@ export function EventChats({
             onBack={() => setMobileOpen(false)}
           />
         ) : desktop ? (
-          <div className="grid min-h-96 flex-1 place-items-center bg-[#efeae2] p-8 text-center text-sm text-neutral-600">
+          <div className="grid min-h-96 flex-1 place-items-center bg-neutral-100 p-8 text-center text-sm text-neutral-600">
             {rooms.length > 0
               ? 'Select a chat to start talking.'
               : 'Waiting for chat rooms to become available.'}
           </div>
         ) : null}
       </div>
-      {error && <Notice message={error} tone="error" />}
-      {notice && <Notice message={notice} tone="success" />}
+      {error && <InlineFeedback message={error} tone="error" />}
+      {notice && <InlineFeedback message={notice} tone="success" />}
     </section>
   );
 }

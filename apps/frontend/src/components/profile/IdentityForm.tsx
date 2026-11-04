@@ -4,12 +4,14 @@ import { useEffect, useState, type FormEvent } from 'react';
 import {
   UpdateIdentitySchema,
   ChosenUsernameSchema,
+  DisplayNameSchema,
 } from '@event-sharing/contracts';
 import { authClient } from '@/lib/api/AuthClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 
 export function IdentityForm() {
   const { user, refresh } = useAuth();
@@ -18,60 +20,70 @@ export function IdentityForm() {
   const [username, setUsername] = useState('');
   const [busy, setBusy] = useState(false);
   const [availability, setAvailability] = useState('');
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     setName(user?.name ?? '');
     setUsername(user?.username ?? '');
   }, [user?.id, user?.name, user?.username]);
 
+  useEffect(() => {
+    if (!username.trim() || username === user?.username) {
+      setAvailability('');
+      return;
+    }
+    const parsed = ChosenUsernameSchema.safeParse(username);
+    if (!parsed.success) {
+      setAvailability('');
+      return;
+    }
+    let active = true;
+    setAvailability('Checking availability…');
+    const timer = window.setTimeout(() => {
+      void authClient.usernameAvailable(parsed.data).then(
+        (result) => {
+          if (active)
+            setAvailability(
+              result.available
+                ? 'Username is available.'
+                : 'Username is already taken.',
+            );
+        },
+        () => {
+          if (active) setAvailability('Availability could not be checked.');
+        },
+      );
+    }, 350);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [username, user?.username]);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
+    setFormError('');
     try {
       const input = UpdateIdentitySchema.safeParse({ name, username });
       if (!input.success) {
-        show(
+        setFormError(
           input.error.issues[0]?.message ?? 'Invalid identity details.',
-          'error',
         );
         return;
       }
+      if (availability === 'Username is already taken.') return;
       const updated = await authClient.updateIdentity(input.data);
       setName(updated.name);
       setUsername(updated.username);
       await refresh();
       show('Name and username updated.', 'success');
     } catch (cause) {
-      show(
+      setFormError(
         cause instanceof Error ? cause.message : 'Could not update identity.',
-        'error',
       );
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function checkAvailability() {
-    const parsed = ChosenUsernameSchema.safeParse(username);
-    if (!parsed.success) {
-      setAvailability(parsed.error.issues[0]?.message ?? 'Invalid username.');
-      return;
-    }
-    if (parsed.data === user?.username) {
-      setAvailability('This is your current username.');
-      return;
-    }
-    try {
-      const result = await authClient.usernameAvailable(parsed.data);
-      setAvailability(
-        result.available
-          ? 'Username is available.'
-          : 'Username is already taken.',
-      );
-    } catch (cause) {
-      setAvailability(
-        cause instanceof Error ? cause.message : 'Could not check username.',
-      );
     }
   }
 
@@ -91,6 +103,11 @@ export function IdentityForm() {
           required
           value={name}
           onChange={(event) => setName(event.target.value)}
+          validate={(value) =>
+            DisplayNameSchema.safeParse(value).success
+              ? ''
+              : 'Use letters, numbers, spaces, apostrophes, periods, or hyphens.'
+          }
         />
       </div>
       <div>
@@ -106,21 +123,29 @@ export function IdentityForm() {
             setUsername(event.target.value);
             setAvailability('');
           }}
+          validate={(value) => {
+            const parsed = ChosenUsernameSchema.safeParse(value);
+            if (!parsed.success)
+              return parsed.error.issues[0]?.message ?? 'Invalid username.';
+            return availability === 'Username is already taken.'
+              ? availability
+              : '';
+          }}
         />
         <p className="mt-2 text-xs text-neutral-500">
           Use 3–30 lowercase letters, numbers, or underscores. Start with a
           letter.
         </p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => void checkAvailability()}
-        >
-          Check availability
-        </Button>
-        {availability && <p className="mt-2 text-sm">{availability}</p>}
+        {availability && (
+          <p
+            className={`mt-2 text-sm ${availability === 'Username is already taken.' ? 'text-red-700' : 'text-neutral-600'}`}
+            aria-live="polite"
+          >
+            {availability}
+          </p>
+        )}
       </div>
+      {formError && <InlineFeedback message={formError} tone="error" />}
       <Button disabled={busy}>{busy ? 'Saving…' : 'Save identity'}</Button>
     </form>
   );

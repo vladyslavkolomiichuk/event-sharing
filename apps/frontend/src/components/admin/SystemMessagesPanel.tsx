@@ -114,6 +114,11 @@ export function SystemMessagesPanel() {
             minLength={3}
             maxLength={120}
             required
+            validate={(value) =>
+              value.trim().length < 3
+                ? 'Use at least 3 visible characters.'
+                : ''
+            }
             value={title}
             onChange={(event) => setTitle(event.target.value)}
           />
@@ -124,6 +129,7 @@ export function SystemMessagesPanel() {
             id="system-body"
             maxLength={2000}
             required
+            validate={(value) => (value.trim() ? '' : 'Enter a message.')}
             value={body}
             onChange={(event) => setBody(event.target.value)}
           />

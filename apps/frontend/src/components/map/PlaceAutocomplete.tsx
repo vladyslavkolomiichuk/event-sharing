@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { placesClient } from '@/lib/api/PlacesClient';
 import type { Place, PlaceKind } from '@/lib/places/place.schema';
 import { Input } from '@/components/ui/input';
-import { Notice } from '@/components/feedback/Notice';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 
 export function PlaceAutocomplete({
   id,
@@ -15,6 +15,8 @@ export function PlaceAutocomplete({
   onSelect,
   placeholder,
   required,
+  forceValidation,
+  validate,
   context,
 }: {
   id: string;
@@ -25,6 +27,8 @@ export function PlaceAutocomplete({
   onSelect: (place: Place) => void;
   placeholder?: string;
   required?: boolean;
+  forceValidation?: boolean;
+  validate?: (value: string) => string;
   context?: string;
 }) {
   const listId = useId();
@@ -91,6 +95,8 @@ export function PlaceAutocomplete({
         id={id}
         value={value}
         required={required}
+        forceValidation={forceValidation}
+        validate={validate}
         maxLength={kind === 'city' ? 100 : 300}
         placeholder={placeholder}
         autoComplete="off"
@@ -131,7 +137,7 @@ export function PlaceAutocomplete({
       {loading && (
         <p className="mt-2 text-xs text-neutral-500">Looking up places…</p>
       )}
-      {error && <Notice message={error} tone="error" />}
+      {error && <InlineFeedback message={error} tone="error" />}
       {open && items.length > 0 && (
         <div
           id={listId}

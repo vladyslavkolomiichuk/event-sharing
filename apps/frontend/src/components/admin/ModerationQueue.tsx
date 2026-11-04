@@ -201,6 +201,9 @@ export function ModerationQueue({
                       id={`moderation-reason-${event.id}`}
                       required
                       maxLength={1000}
+                      validate={(value) =>
+                        value.trim() ? '' : 'Enter a reason for declining.'
+                      }
                       value={reason}
                       onChange={(change) => setReason(change.target.value)}
                     />

@@ -52,7 +52,7 @@ function NavigationContent({ close }: { close?: () => void }) {
     const active =
       href === '/'
         ? pathname === '/' || pathname === '/events'
-        : href === '/profile' || href === '/admin'
+        : href === '/profile'
           ? pathname === '/profile'
           : pathname === href || pathname.startsWith(`${href}/`);
     const color = dangerous
@@ -61,7 +61,7 @@ function NavigationContent({ close }: { close?: () => void }) {
     const selected = active
       ? dangerous
         ? 'bg-red-50 font-semibold'
-        : 'bg-neutral-100 font-semibold text-black'
+        : 'bg-orange-50 font-semibold text-orange-800'
       : '';
     return (
       <Link
@@ -83,7 +83,7 @@ function NavigationContent({ close }: { close?: () => void }) {
         onClick={close}
         className="px-3 py-2 text-lg font-semibold tracking-tight"
       >
-        Event Sharing<span className="ml-2 text-neutral-400">/</span>
+        Event Sharing<span className="ml-2 text-orange-700">/</span>
       </Link>
       <nav
         aria-label="Main navigation"
@@ -184,7 +184,7 @@ export function SiteHeader() {
       </aside>
       <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-4 py-3 lg:hidden">
         <Link href="/" className="text-base font-semibold tracking-tight">
-          Event Sharing<span className="ml-2 text-neutral-400">/</span>
+          Event Sharing<span className="ml-2 text-orange-700">/</span>
         </Link>
         <Dialog.Root open={open} onOpenChange={setOpen}>
           <Dialog.Trigger asChild>

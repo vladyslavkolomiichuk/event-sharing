@@ -161,7 +161,7 @@ export function PersonalActivities() {
               key={option.value}
               type="button"
               aria-current={category === option.value ? 'page' : undefined}
-              className={`shrink-0 rounded-lg px-3 py-2 text-left transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-black ${category === option.value ? 'bg-neutral-100 font-semibold' : 'text-neutral-600'}`}
+              className={`shrink-0 rounded-lg px-3 py-2 text-left transition-colors hover:bg-orange-50 focus-visible:outline-2 focus-visible:outline-orange-700 ${category === option.value ? 'bg-orange-50 font-semibold text-orange-800' : 'text-neutral-600'}`}
               onClick={() => setCategory(option.value)}
             >
               {option.label}

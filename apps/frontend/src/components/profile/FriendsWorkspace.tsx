@@ -38,6 +38,7 @@ export function FriendsWorkspace({
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
 
   async function refresh() {
@@ -45,20 +46,28 @@ export function FriendsWorkspace({
   }
 
   async function moreLists() {
-    if (list?.nextPage === null || list?.nextPage === undefined) return;
+    if (list?.nextPage === null || list?.nextPage === undefined || loadingMore)
+      return;
+    setLoadingMore(true);
     try {
       const next = await friendsClient.list(list.nextPage);
-      setList({
-        nextPage: next.nextPage,
-        friends: [...list.friends, ...next.friends],
-        received: [...list.received, ...next.received],
-        sent: [...list.sent, ...next.sent],
-        blocked: [...list.blocked, ...next.blocked],
-      });
+      setList((current) =>
+        current?.nextPage === list.nextPage
+          ? {
+              nextPage: next.nextPage,
+              friends: [...current.friends, ...next.friends],
+              received: [...current.received, ...next.received],
+              sent: [...current.sent, ...next.sent],
+              blocked: [...current.blocked, ...next.blocked],
+            }
+          : current,
+      );
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : 'Could not load more friends.',
       );
+    } finally {
+      setLoadingMore(false);
     }
   }
 
@@ -154,7 +163,7 @@ export function FriendsWorkspace({
                 item.key === 'friends' ? '/friends' : `/friends/${item.key}`
               }
               aria-current={section === item.key ? 'page' : undefined}
-              className={`shrink-0 rounded-lg px-3 py-2 hover:bg-neutral-100 ${section === item.key ? 'bg-neutral-100 font-semibold' : 'text-neutral-600'}`}
+              className={`shrink-0 rounded-lg px-3 py-2 hover:bg-orange-50 ${section === item.key ? 'bg-orange-50 font-semibold text-orange-800' : 'text-neutral-600'}`}
             >
               {item.label}
             </Link>
@@ -165,15 +174,17 @@ export function FriendsWorkspace({
             <section className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
               <h2>Find people</h2>
               <form onSubmit={search} className="flex gap-3">
-                <Input
-                  aria-label="Search by username"
-                  minLength={2}
-                  maxLength={31}
-                  required
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search by @username"
-                />
+                <div className="min-w-0 flex-1">
+                  <Input
+                    aria-label="Search by username"
+                    minLength={2}
+                    maxLength={31}
+                    required
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search by @username"
+                  />
+                </div>
                 <Button>Search</Button>
               </form>
               <ul className="divide-y divide-neutral-200">
@@ -307,9 +318,20 @@ export function FriendsWorkspace({
                   <option value="username">Sort by username</option>
                 </select>
               </div>
-              {shownFriends.length === 0 && (
+              <p className="text-sm text-neutral-600" role="status">
+                {list
+                  ? `${list.friends.length} friends loaded${list.nextPage !== null ? '; more pages available' : ''}. Search and sort apply to loaded friends.`
+                  : 'Loading friends…'}
+              </p>
+              {list && shownFriends.length === 0 && (
                 <p>
-                  {friendFilter ? 'No matching friends.' : 'No friends yet.'}
+                  {friendFilter
+                    ? list && list.nextPage !== null
+                      ? 'No matches in the loaded friends. Load more to continue searching.'
+                      : 'No matching friends.'
+                    : list && list.nextPage !== null
+                      ? 'No friends on this page. Load more to continue.'
+                      : 'No friends yet.'}
                 </p>
               )}
               {shownFriends.map((person) => (
@@ -391,8 +413,12 @@ export function FriendsWorkspace({
           {section !== 'find' &&
             list?.nextPage !== null &&
             list?.nextPage !== undefined && (
-              <Button variant="outline" onClick={() => void moreLists()}>
-                Load more
+              <Button
+                variant="outline"
+                disabled={loadingMore}
+                onClick={() => void moreLists()}
+              >
+                {loadingMore ? 'Loading…' : 'Load more friends'}
               </Button>
             )}
         </div>

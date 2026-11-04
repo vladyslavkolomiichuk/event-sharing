@@ -5,13 +5,14 @@ import { useEffect, useState } from 'react';
 import type { EventDetail, UserProfilePublic } from '@event-sharing/contracts';
 import { eventsClient } from '@/lib/api/EventsClient';
 import { usersClient } from '@/lib/api/UsersClient';
+import { ApiError } from '@/lib/api/GatewayClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { EventActions } from './EventActions';
 import { RegistrationPanel } from './RegistrationPanel';
 import { ParticipantsList } from './ParticipantsList';
 import { Button } from '@/components/ui/button';
 import { EventStatusBadge } from './EventStatusBadge';
-import { Notice } from '@/components/feedback/Notice';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { Loading } from '@/components/feedback/Loading';
 import { UserProfileLink } from '@/components/profile/UserProfileLink';
 import { EventAnnouncementForm } from './EventAnnouncementForm';
@@ -49,6 +50,13 @@ export function EventDetailView({
       );
       setError('');
     } catch (cause) {
+      if (
+        cause instanceof ApiError &&
+        (cause.status === 403 || cause.status === 404)
+      ) {
+        setEvent(null);
+        setOrganizer(null);
+      }
       setError(
         cause instanceof Error ? cause.message : 'Could not load event.',
       );
@@ -83,7 +91,7 @@ export function EventDetailView({
   if (error && !event)
     return (
       <div className="space-y-4">
-        <Notice message={error} tone="error" />
+        <InlineFeedback message={error} tone="error" />
         <Button variant="outline" onClick={() => void load()}>
           Retry
         </Button>
@@ -92,7 +100,7 @@ export function EventDetailView({
   if (!event || !user)
     return (
       <div className="space-y-4">
-        <Notice message="Sign in to view this event." />
+        <InlineFeedback message="Sign in to view this event." />
         <Button asChild>
           <Link href="/sign-in">Sign in</Link>
         </Button>
@@ -137,6 +145,7 @@ export function EventDetailView({
 
   return (
     <div className="space-y-9">
+      {error && <InlineFeedback message={error} tone="error" />}
       <div className="space-y-5 border-b border-neutral-200 pb-8">
         <EventImage
           key={`${id}-cover`}
@@ -292,7 +301,6 @@ export function EventDetailView({
                     Cancellation: {event.cancellationReason}
                   </p>
                 )}
-                {error && <Notice message={error} tone="error" />}
               </aside>
             </div>
           )}

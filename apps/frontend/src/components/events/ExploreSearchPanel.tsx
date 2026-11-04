@@ -9,6 +9,7 @@ import { PlaceAutocomplete } from '@/components/map/PlaceAutocomplete';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { ExploreView } from './ExploreViewSwitch';
+import { OrganizerFilter } from './OrganizerFilter';
 
 type Panel = 'search' | 'location' | 'filters' | 'sort';
 export type ExploreSearchProps = {
@@ -18,6 +19,10 @@ export type ExploreSearchProps = {
   categories: Category[];
   categoryId: string;
   onCategoryChange: (value: string) => void;
+  organizerId: string;
+  organizerQuery: string;
+  onOrganizerQueryChange: (value: string) => void;
+  onOrganizerSelect: (id: string, label: string) => void;
   sort: EventSearchQuery['sort'];
   onSortChange: (value: EventSearchQuery['sort']) => void;
   canSortByDistance: boolean;
@@ -38,6 +43,7 @@ export type ExploreSearchProps = {
   onStartToChange: (value: string) => void;
   status: string;
   onStatusChange: (value: string) => void;
+  onClearFilters: () => void;
   onClearLocation: () => void;
   onUseLocation: () => void;
   onPickMap: () => void;
@@ -48,6 +54,16 @@ export function ExploreSearchPanel(props: ExploreSearchProps) {
   const [open, setOpen] = useState<Panel | null>(null);
   const [width, setWidth] = useState(800);
   const root = useRef<HTMLDivElement>(null);
+  const filterCount = [
+    props.categoryId,
+    props.organizerId,
+    props.startFrom,
+    props.startTo,
+    props.status,
+  ].filter(Boolean).length;
+  const canClearFilters = Boolean(
+    props.text || filterCount || props.sort !== 'start_time',
+  );
 
   useEffect(() => {
     if (!root.current) return;
@@ -85,6 +101,7 @@ export function ExploreSearchPanel(props: ExploreSearchProps) {
       <label htmlFor="explore-text">Search events</label>
       <Input
         id="explore-text"
+        type="search"
         value={props.text}
         onChange={(event) => props.onTextChange(event.target.value)}
         placeholder="Title, description, city, category"
@@ -131,6 +148,14 @@ export function ExploreSearchPanel(props: ExploreSearchProps) {
         )}
       </select>
     </div>
+  );
+  const organizer = (
+    <OrganizerFilter
+      query={props.organizerQuery}
+      selectedId={props.organizerId}
+      onQueryChange={props.onOrganizerQueryChange}
+      onSelect={props.onOrganizerSelect}
+    />
   );
   const dates = (
     <>
@@ -275,9 +300,22 @@ export function ExploreSearchPanel(props: ExploreSearchProps) {
     </p>
   );
   const filters = (
-    <div className="grid grid-cols-2 gap-3">
-      {category}
-      {dates}
+    <div className="space-y-3">
+      {organizer}
+      <div className="grid grid-cols-2 gap-3">
+        {category}
+        {dates}
+      </div>
+      {canClearFilters && (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={props.onClearFilters}
+        >
+          Clear search filters
+        </Button>
+      )}
     </div>
   );
   const locationPanel = (
@@ -314,9 +352,10 @@ export function ExploreSearchPanel(props: ExploreSearchProps) {
         ref={root}
         className="space-y-2 rounded-lg border border-neutral-200 bg-white p-3"
       >
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(180px,2fr)_minmax(130px,1fr)_repeat(2,minmax(125px,1fr))_minmax(120px,1fr)_minmax(110px,1fr)]">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(180px,2fr)_minmax(130px,1fr)_minmax(150px,1fr)_repeat(2,minmax(125px,1fr))_minmax(120px,1fr)_minmax(110px,1fr)]">
           {search}
           {category}
+          {organizer}
           {dates}
           {sort}
         </div>
@@ -324,7 +363,19 @@ export function ExploreSearchPanel(props: ExploreSearchProps) {
           {location}
           {locationActions}
         </div>
-        {locationInfo}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {locationInfo}
+          {canClearFilters && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={props.onClearFilters}
+            >
+              Clear search filters
+            </Button>
+          )}
+        </div>
       </div>
     );
 
@@ -345,6 +396,7 @@ export function ExploreSearchPanel(props: ExploreSearchProps) {
         {width >= 750 ? (
           <Input
             aria-label="Search events"
+            type="search"
             value={props.text}
             onChange={(event) => props.onTextChange(event.target.value)}
             placeholder="Search events…"
@@ -358,9 +410,7 @@ export function ExploreSearchPanel(props: ExploreSearchProps) {
           button('location', props.locationActive ? 'Location •' : 'Location')}
         {button(
           'filters',
-          props.categoryId || props.startFrom || props.startTo || props.status
-            ? 'Filters •'
-            : 'Filters',
+          filterCount ? `Filters (${filterCount})` : 'Filters',
         )}
         {width >= 450 && button('sort', 'Sort')}
       </div>

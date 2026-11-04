@@ -3,12 +3,15 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
-import { ChosenUsernameSchema } from '@event-sharing/contracts';
+import {
+  ChosenUsernameSchema,
+  DisplayNameSchema,
+} from '@event-sharing/contracts';
 import { authClient, type SocialProvider } from '@/lib/api/AuthClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { Notice } from '@/components/feedback/Notice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { UsernameSuggestions } from './UsernameSuggestions';
 
 export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
@@ -25,12 +28,18 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     google: false,
     github: false,
   });
+  const [socialStatus, setSocialStatus] = useState<
+    'loading' | 'ready' | 'error'
+  >('loading');
 
   useEffect(() => {
     void authClient
       .accountCapabilities()
-      .then((value) => setSocial(value.socialProviders))
-      .catch(() => undefined);
+      .then((value) => {
+        setSocial(value.socialProviders);
+        setSocialStatus('ready');
+      })
+      .catch(() => setSocialStatus('error'));
     const oauthError = new URLSearchParams(window.location.search).get('error');
     if (oauthError) {
       setError(
@@ -49,10 +58,11 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     }
     const parsed = ChosenUsernameSchema.safeParse(username);
     if (!parsed.success) {
-      setAvailability(parsed.error.issues[0]?.message ?? 'Invalid username.');
+      setAvailability('');
       return;
     }
     let active = true;
+    setAvailability('Checking availability…');
     const timer = window.setTimeout(() => {
       void authClient.usernameAvailable(parsed.data).then(
         (result) => {
@@ -108,7 +118,10 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       if (mode === 'sign-up') {
         const chosen = ChosenUsernameSchema.parse(username);
         const available = await authClient.usernameAvailable(chosen);
-        if (!available.available) throw new Error('Username is already taken.');
+        if (!available.available) {
+          setAvailability('Username is already taken.');
+          return;
+        }
         await authClient.signUp(name.trim(), chosen, email.trim(), password);
       } else await authClient.signIn(email.trim(), password);
       await refresh();
@@ -158,6 +171,11 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
                 minLength={2}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
+                validate={(value) =>
+                  DisplayNameSchema.safeParse(value).success
+                    ? ''
+                    : 'Use letters, numbers, spaces, apostrophes, periods, or hyphens.'
+                }
               />
             </div>
             <div>
@@ -170,6 +188,16 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
                 maxLength={30}
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
+                validate={(value) => {
+                  const parsed = ChosenUsernameSchema.safeParse(value);
+                  if (!parsed.success)
+                    return (
+                      parsed.error.issues[0]?.message ?? 'Invalid username.'
+                    );
+                  return availability === 'Username is already taken.'
+                    ? availability
+                    : '';
+                }}
                 placeholder="alex_2026"
                 aria-describedby="signup-username-help"
               />
@@ -182,7 +210,10 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
               </p>
               <UsernameSuggestions name={name} onChoose={setUsername} />
               {availability && (
-                <p className="mt-2 text-xs" aria-live="polite">
+                <p
+                  className={`mt-2 text-xs ${availability === 'Username is already taken.' ? 'text-red-700' : 'text-neutral-600'}`}
+                  aria-live="polite"
+                >
                   {availability}
                 </p>
               )}
@@ -222,7 +253,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             </Link>
           )}
         </div>
-        {error && <Notice message={error} tone="error" />}
+        {error && <InlineFeedback message={error} tone="error" />}
         <Button className="w-full" disabled={busy}>
           {busy
             ? 'Please wait…'
@@ -245,10 +276,20 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             Continue with {provider === 'google' ? 'Google' : 'GitHub'}
           </Button>
         ))}
-        {!social.google && !social.github && (
-          <p className="text-xs text-neutral-500">
-            Social sign-in is awaiting provider configuration.
-          </p>
+        {socialStatus === 'loading' && (
+          <InlineFeedback message="Checking social sign-in availability…" />
+        )}
+        {socialStatus === 'error' && (
+          <InlineFeedback
+            message="Could not check social sign-in availability. Reload the page to try again."
+            tone="error"
+          />
+        )}
+        {socialStatus === 'ready' && !social.google && !social.github && (
+          <InlineFeedback
+            message="Social sign-in is unavailable right now. You can use email and password."
+            tone="warning"
+          />
         )}
       </div>
       <p className="mt-5 text-sm text-neutral-600">

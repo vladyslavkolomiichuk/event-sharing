@@ -22,10 +22,11 @@ export function UsernameOnboarding() {
     }
     const parsed = ChosenUsernameSchema.safeParse(username);
     if (!parsed.success) {
-      setAvailability(parsed.error.issues[0]?.message ?? 'Invalid username.');
+      setAvailability('');
       return;
     }
     let active = true;
+    setAvailability('Checking availability…');
     const timer = window.setTimeout(() => {
       void authClient.usernameAvailable(parsed.data).then(
         (result) => {
@@ -55,7 +56,10 @@ export function UsernameOnboarding() {
     try {
       const chosen = ChosenUsernameSchema.parse(username);
       const result = await authClient.usernameAvailable(chosen);
-      if (!result.available) throw new Error('Username is already taken.');
+      if (!result.available) {
+        setAvailability('Username is already taken.');
+        return;
+      }
       await authClient.updateIdentity({ username: chosen });
       await refresh();
     } catch (cause) {
@@ -93,6 +97,14 @@ export function UsernameOnboarding() {
             maxLength={30}
             value={username}
             onChange={(event) => setUsername(event.target.value)}
+            validate={(value) => {
+              const parsed = ChosenUsernameSchema.safeParse(value);
+              if (!parsed.success)
+                return parsed.error.issues[0]?.message ?? 'Invalid username.';
+              return availability === 'Username is already taken.'
+                ? availability
+                : '';
+            }}
             placeholder="alex_2026"
             aria-describedby="onboarding-username-help"
           />
@@ -104,7 +116,10 @@ export function UsernameOnboarding() {
           </p>
           <UsernameSuggestions name={user?.name ?? ''} onChoose={setUsername} />
           {availability && (
-            <p className="mt-2 text-xs" aria-live="polite">
+            <p
+              className={`mt-2 text-xs ${availability === 'Username is already taken.' ? 'text-red-700' : 'text-neutral-600'}`}
+              aria-live="polite"
+            >
               {availability}
             </p>
           )}

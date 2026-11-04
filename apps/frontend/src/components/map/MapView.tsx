@@ -182,13 +182,13 @@ export function MapView({
         id: 'search-radius-fill',
         type: 'fill',
         source: 'search-radius',
-        paint: { 'fill-color': '#525252', 'fill-opacity': 0.12 },
+        paint: { 'fill-color': '#c2410c', 'fill-opacity': 0.1 },
       });
       map.addLayer({
         id: 'search-radius-outline',
         type: 'line',
         source: 'search-radius',
-        paint: { 'line-color': '#262626', 'line-width': 2 },
+        paint: { 'line-color': '#c2410c', 'line-width': 2 },
       });
     }
   }, [

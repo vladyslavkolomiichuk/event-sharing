@@ -48,7 +48,7 @@ export function EventNavigation({
               : `/events/${eventId}?view=${item}`
           }
           aria-current={section === item ? 'page' : undefined}
-          className={`flex shrink-0 items-center justify-between gap-3 rounded-lg px-3 py-2 hover:bg-neutral-100 ${section === item ? 'bg-neutral-100 font-semibold' : 'text-neutral-600'}`}
+          className={`flex shrink-0 items-center justify-between gap-3 rounded-lg px-3 py-2 hover:bg-orange-50 ${section === item ? 'bg-orange-50 font-semibold text-orange-800' : 'text-neutral-600'}`}
         >
           {labels[item]}
           {item === 'chats' && <UnreadCountBadge count={unreadCount} />}

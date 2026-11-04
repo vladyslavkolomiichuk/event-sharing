@@ -44,14 +44,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     success: 'border-green-200 bg-green-50 text-green-950',
     warning: 'border-amber-200 bg-amber-50 text-amber-950',
     error: 'border-red-200 bg-red-50 text-red-950',
-    action_required: 'border-neutral-800 bg-neutral-900 text-white',
+    action_required: 'border-orange-800 bg-orange-700 text-white',
   };
 
   return (
     <ToastContext.Provider value={{ show }}>
       {children}
       <div
-        className="pointer-events-none fixed right-4 top-4 z-[100] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3"
+        className="pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-[100] flex w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-3"
         aria-live="polite"
       >
         {items.map((item) => (

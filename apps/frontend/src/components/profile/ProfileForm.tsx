@@ -13,6 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { PlaceAutocomplete } from '@/components/map/PlaceAutocomplete';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { ProfileAvatar } from './ProfileAvatar';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 
 export function ProfileForm() {
   const { user } = useAuth();
@@ -25,6 +27,7 @@ export function ProfileForm() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [saveError, setSaveError] = useState('');
 
   async function load() {
     setLoading(true);
@@ -53,6 +56,7 @@ export function ProfileForm() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
+    setSaveError('');
     try {
       const input = UpdateUserProfileSchema.parse({
         avatarUrl: avatarUrl.trim() || null,
@@ -63,9 +67,8 @@ export function ProfileForm() {
       setProfile(await usersClient.update(input));
       show('Profile saved.', 'success');
     } catch (cause) {
-      show(
+      setSaveError(
         cause instanceof Error ? cause.message : 'Could not save profile.',
-        'error',
       );
     } finally {
       setBusy(false);
@@ -91,16 +94,32 @@ export function ProfileForm() {
           </p>
         </div>
         <div>
-          <label htmlFor="avatar">Avatar URL</label>
-          <Input
-            id="avatar"
-            type="url"
-            value={avatarUrl}
-            onChange={(event) => setAvatarUrl(event.target.value)}
-            placeholder="https://example.com/avatar.jpg"
-          />
+          <div className="flex items-center gap-4">
+            <ProfileAvatar
+              name={user?.name ?? profile.name}
+              avatarUrl={profile.avatarUrl}
+              size="lg"
+            />
+            <div className="min-w-0 flex-1">
+              <label htmlFor="avatar">Avatar URL</label>
+              <Input
+                id="avatar"
+                type="url"
+                maxLength={2048}
+                value={avatarUrl}
+                onChange={(event) => {
+                  setAvatarUrl(event.target.value);
+                  setSaveError('');
+                }}
+                placeholder="https://example.com/avatar.jpg"
+              />
+            </div>
+          </div>
           <p className="mt-2 text-xs text-neutral-500">
-            Image uploads will be available in a later release.
+            This preview shows the saved avatar. Use a direct image link and
+            save to update it. The image host may receive requests from people
+            who can view your profile. Profile file uploads are not available
+            yet.
           </p>
         </div>
         <div>
@@ -134,13 +153,23 @@ export function ProfileForm() {
           <Input
             id="phone"
             type="tel"
+            maxLength={16}
             value={phone}
-            onChange={(event) => setPhone(event.target.value)}
+            onChange={(event) => {
+              setPhone(event.target.value);
+              setSaveError('');
+            }}
+            validate={(value) =>
+              value.trim() && !/^\+[1-9]\d{1,14}$/.test(value.trim())
+                ? 'Use E.164 format, for example +33123456789.'
+                : ''
+            }
             placeholder="+33123456789"
           />
         </div>
       </div>
       <div className="space-y-3">
+        {saveError && <InlineFeedback message={saveError} tone="error" />}
         <Button disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</Button>
       </div>
     </form>

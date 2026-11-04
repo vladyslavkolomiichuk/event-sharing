@@ -99,6 +99,11 @@ export function OrganizerRoleRequestDialog() {
                   required
                   minLength={20}
                   maxLength={1000}
+                  validate={(value) =>
+                    value.trim().length < 20
+                      ? 'Describe your plans in at least 20 characters.'
+                      : ''
+                  }
                   value={reason}
                   onChange={(event) => setReason(event.target.value)}
                   placeholder="Describe the events you plan to organize"

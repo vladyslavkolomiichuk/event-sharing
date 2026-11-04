@@ -137,6 +137,8 @@ export function ChatGroupSettings({
           aria-label="Group name"
           value={name}
           maxLength={80}
+          required
+          validate={(value) => (value.trim() ? '' : 'Enter a group name.')}
           onChange={(event) => setName(event.target.value)}
         />
         <select

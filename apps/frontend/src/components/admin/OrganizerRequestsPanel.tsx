@@ -155,6 +155,11 @@ export function OrganizerRequestsPanel({
                     minLength={10}
                     maxLength={1000}
                     required
+                    validate={(value) =>
+                      value.trim().length < 10
+                        ? 'Use at least 10 visible characters.'
+                        : ''
+                    }
                     value={decisionReason}
                     onChange={(event) => setDecisionReason(event.target.value)}
                   />

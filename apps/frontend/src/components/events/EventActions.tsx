@@ -5,7 +5,7 @@ import type { EventDetail, UserRole } from '@event-sharing/contracts';
 import { eventsClient, type EventAction } from '@/lib/api/EventsClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Notice } from '@/components/feedback/Notice';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 
 const transitions: Record<
   string,
@@ -54,6 +54,7 @@ export function EventActions({
   const [selected, setSelected] = useState<EventAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [reasonAttempted, setReasonAttempted] = useState(false);
   const available = [
     ...(transitions[event.status] ?? []),
     ...(['PUBLISHED', 'ONGOING'].includes(event.status) &&
@@ -81,11 +82,12 @@ export function EventActions({
   async function run(action: EventAction, requiresReason?: boolean) {
     if (requiresReason && selected !== action) {
       setSelected(action);
+      setReasonAttempted(false);
       setError('');
       return;
     }
     if (requiresReason && !reason.trim()) {
-      setError('A reason is required.');
+      setReasonAttempted(true);
       return;
     }
     setBusy(true);
@@ -100,6 +102,7 @@ export function EventActions({
       );
       setSelected(null);
       setReason('');
+      setReasonAttempted(false);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : 'Could not update event.',
@@ -114,12 +117,14 @@ export function EventActions({
     <div className="space-y-5">
       <h3>Manage event</h3>
       {event.pendingStatus && (
-        <Notice
+        <InlineFeedback
           message={`Processing ${event.pendingStatus.replaceAll('_', ' ').toLowerCase()}. This page will update when the policy is confirmed.`}
           tone="warning"
         />
       )}
-      {event.policyError && <Notice message={event.policyError} tone="error" />}
+      {event.policyError && (
+        <InlineFeedback message={event.policyError} tone="error" />
+      )}
       <div className="flex flex-wrap gap-2">
         {available.map((item) => (
           <Button
@@ -142,6 +147,9 @@ export function EventActions({
           <Input
             id="reason"
             maxLength={1000}
+            required
+            forceValidation={reasonAttempted}
+            validate={(value) => (value.trim() ? '' : 'Enter a reason.')}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             placeholder="Explain this decision"
@@ -155,6 +163,7 @@ export function EventActions({
               onClick={() => {
                 setSelected(null);
                 setReason('');
+                setReasonAttempted(false);
               }}
             >
               Back
@@ -162,7 +171,7 @@ export function EventActions({
           </div>
         </div>
       )}
-      {error && <Notice message={error} tone="error" />}
+      {error && <InlineFeedback message={error} tone="error" />}
     </div>
   );
 }

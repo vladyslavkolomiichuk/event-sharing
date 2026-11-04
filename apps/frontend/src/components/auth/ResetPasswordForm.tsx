@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { authClient } from '@/lib/api/AuthClient';
-import { Notice } from '@/components/feedback/Notice';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -47,7 +47,7 @@ export function ResetPasswordForm({
     <div className="mx-auto max-w-md space-y-6 py-10">
       <h1>Choose a new password</h1>
       {!token && (
-        <Notice
+        <InlineFeedback
           message={
             errorCode
               ? 'This reset link is invalid or expired.'
@@ -70,7 +70,10 @@ export function ResetPasswordForm({
               minLength={8}
               required
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setError('');
+              }}
             />
           </div>
           <div>
@@ -82,15 +85,21 @@ export function ResetPasswordForm({
               minLength={8}
               required
               value={confirmation}
-              onChange={(event) => setConfirmation(event.target.value)}
+              onChange={(event) => {
+                setConfirmation(event.target.value);
+                setError('');
+              }}
+              validate={(value) =>
+                value && value !== password ? 'Passwords do not match.' : ''
+              }
             />
           </div>
-          {error && <Notice message={error} tone="error" />}
+          {error && <InlineFeedback message={error} tone="error" />}
           <Button disabled={busy}>{busy ? 'Saving…' : 'Reset password'}</Button>
         </form>
       )}
       {done && (
-        <Notice
+        <InlineFeedback
           message="Password reset. Sign in with your new password."
           tone="success"
         />

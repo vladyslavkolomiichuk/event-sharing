@@ -20,6 +20,7 @@ export function PrivacySettings() {
     null,
   );
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
   const [requestingDeletion, setRequestingDeletion] = useState(false);
 
   useEffect(() => {
@@ -46,12 +47,18 @@ export function PrivacySettings() {
 
   async function downloadData() {
     setExporting(true);
+    setExportError('');
     try {
       const response = await fetch('/backend/api/privacy/export', {
         credentials: 'include',
         cache: 'no-store',
       });
-      if (!response.ok) throw new Error('Could not prepare your data export.');
+      if (!response.ok)
+        throw new Error(
+          response.status === 503
+            ? 'Your export is unavailable while a service is offline. Please try again later.'
+            : 'Could not prepare your data export. Please try again.',
+        );
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement('a');
       link.href = url;
@@ -62,9 +69,8 @@ export function PrivacySettings() {
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       show('Your data export is ready.', 'success');
     } catch (cause) {
-      show(
+      setExportError(
         cause instanceof Error ? cause.message : 'Data export failed.',
-        'error',
       );
     } finally {
       setExporting(false);
@@ -202,12 +208,20 @@ export function PrivacySettings() {
         >
           {exporting ? 'Preparing export…' : 'Download my data'}
         </Button>
+        {exportError && (
+          <p
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900"
+          >
+            {exportError}
+          </p>
+        )}
         <div className="space-y-3 border-t border-neutral-200 pt-5">
           <h3>Account deletion</h3>
           <p className="text-sm text-neutral-600">
-            Submit a request for review. Your account remains active while the
-            request is pending. We may anonymize shared event and chat records
-            to preserve other participants&apos; history.
+            Submit a request for manual review. Your account and data remain
+            active while it is pending. The request itself does not erase your
+            data. Use the contact address below to follow up.
           </p>
           {deletionRequestedAt ? (
             <p className="text-sm">

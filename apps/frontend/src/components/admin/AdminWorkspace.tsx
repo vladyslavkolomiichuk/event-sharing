@@ -179,7 +179,7 @@ export function AdminWorkspace({
               key={key}
               href={key === 'overview' ? '/admin' : `/admin/${key}`}
               aria-current={section === key ? 'page' : undefined}
-              className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 ${key === 'danger-zone' ? 'text-red-700 hover:bg-red-50' : 'hover:bg-neutral-100'} ${section === key ? 'bg-neutral-100 font-semibold' : ''}`}
+              className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 ${key === 'danger-zone' ? 'text-red-700 hover:bg-red-50' : 'hover:bg-orange-50'} ${section === key ? (key === 'danger-zone' ? 'bg-red-50 font-semibold' : 'bg-orange-50 font-semibold text-orange-800') : ''}`}
             >
               {label}
               {count !== null && <Badge>{count}</Badge>}
@@ -246,14 +246,19 @@ export function AdminWorkspace({
           >
             <h2>Categories</h2>
             <form onSubmit={createCategory} className="flex gap-2">
-              <Input
-                aria-label="Category name"
-                maxLength={100}
-                required
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="New category"
-              />
+              <div className="min-w-0 flex-1">
+                <Input
+                  aria-label="Category name"
+                  maxLength={100}
+                  required
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="New category"
+                  validate={(value) =>
+                    value.trim() ? '' : 'Enter a category name.'
+                  }
+                />
+              </div>
               <Button disabled={busy}>Add</Button>
             </form>
             <ul className="divide-y divide-neutral-200 text-sm">

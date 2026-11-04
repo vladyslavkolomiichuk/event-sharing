@@ -4,47 +4,57 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { z } from 'zod';
 import { authClient } from '@/lib/api/AuthClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 
 export function AccountSecurity() {
   const { user } = useAuth();
-  const { show } = useToast();
-  const [emailAvailable, setEmailAvailable] = useState(false);
+  const [emailCapability, setEmailCapability] = useState<
+    'loading' | 'available' | 'unavailable' | 'error'
+  >('loading');
   const [newEmail, setNewEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [emailBusy, setEmailBusy] = useState(false);
   const [passwordBusy, setPasswordBusy] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [emailSuccess, setEmailSuccess] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
 
   useEffect(() => {
     authClient
       .accountCapabilities()
-      .then((value) => setEmailAvailable(value.emailDeliveryAvailable))
-      .catch(() => setEmailAvailable(false));
+      .then((value) =>
+        setEmailCapability(
+          value.emailDeliveryAvailable ? 'available' : 'unavailable',
+        ),
+      )
+      .catch(() => setEmailCapability('error'));
   }, []);
 
   async function submitEmail(event: FormEvent) {
     event.preventDefault();
+    setEmailError('');
+    setEmailSuccess('');
     const parsed = z.email().safeParse(newEmail.trim());
     if (!parsed.success) {
-      show('Enter a valid email address.', 'error');
+      setEmailError('Enter a valid email address.');
       return;
     }
     setEmailBusy(true);
     try {
       await authClient.changeEmail(
         parsed.data,
-        `${window.location.origin}/profile`,
+        `${window.location.origin}/profile/security`,
       );
-      show('Check your email to confirm the change.', 'success');
+      setEmailSuccess('Check your email to confirm the change.');
       setNewEmail('');
     } catch (cause) {
-      show(
+      setEmailError(
         cause instanceof Error ? cause.message : 'Could not change email.',
-        'error',
       );
     } finally {
       setEmailBusy(false);
@@ -53,25 +63,26 @@ export function AccountSecurity() {
 
   async function submitPassword(event: FormEvent) {
     event.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
     if (newPassword.length < 8) {
-      show('The new password must have at least 8 characters.', 'error');
+      setPasswordError('The new password must have at least 8 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      show('The new passwords do not match.', 'error');
+      setPasswordError('The new passwords do not match.');
       return;
     }
     setPasswordBusy(true);
     try {
       await authClient.changePassword(currentPassword, newPassword);
-      show('Password changed. Other sessions were signed out.', 'success');
+      setPasswordSuccess('Password changed. Other sessions were signed out.');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (cause) {
-      show(
+      setPasswordError(
         cause instanceof Error ? cause.message : 'Could not change password.',
-        'error',
       );
     } finally {
       setPasswordBusy(false);
@@ -102,17 +113,31 @@ export function AccountSecurity() {
               type="email"
               autoComplete="email"
               required
-              disabled={!emailAvailable || emailBusy}
+              disabled={emailCapability !== 'available' || emailBusy}
               value={newEmail}
               onChange={(event) => setNewEmail(event.target.value)}
             />
           </div>
-          {!emailAvailable && (
-            <p className="text-sm text-amber-800">
-              Email changes will be available after mail delivery is configured.
-            </p>
+          {emailCapability === 'loading' && (
+            <InlineFeedback message="Checking email availability…" />
           )}
-          <Button disabled={!emailAvailable || emailBusy}>
+          {emailCapability === 'unavailable' && (
+            <InlineFeedback
+              message="Email changes are unavailable right now. Please try again later."
+              tone="warning"
+            />
+          )}
+          {emailCapability === 'error' && (
+            <InlineFeedback
+              message="Could not check email availability. Reload the page to try again."
+              tone="error"
+            />
+          )}
+          {emailError && <InlineFeedback message={emailError} tone="error" />}
+          {emailSuccess && (
+            <InlineFeedback message={emailSuccess} tone="success" />
+          )}
+          <Button disabled={emailCapability !== 'available' || emailBusy}>
             {emailBusy ? 'Sending…' : 'Send confirmation email'}
           </Button>
         </form>
@@ -141,7 +166,10 @@ export function AccountSecurity() {
               minLength={8}
               required
               value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
+              onChange={(event) => {
+                setNewPassword(event.target.value);
+                setPasswordError('');
+              }}
             />
           </div>
           <div>
@@ -153,9 +181,21 @@ export function AccountSecurity() {
               minLength={8}
               required
               value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
+              onChange={(event) => {
+                setConfirmPassword(event.target.value);
+                setPasswordError('');
+              }}
+              validate={(value) =>
+                value && value !== newPassword ? 'Passwords do not match.' : ''
+              }
             />
           </div>
+          {passwordError && (
+            <InlineFeedback message={passwordError} tone="error" />
+          )}
+          {passwordSuccess && (
+            <InlineFeedback message={passwordSuccess} tone="success" />
+          )}
           <Button disabled={passwordBusy}>
             {passwordBusy ? 'Saving…' : 'Change password'}
           </Button>

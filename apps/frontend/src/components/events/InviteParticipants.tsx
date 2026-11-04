@@ -69,6 +69,7 @@ export function InviteParticipants({
 
   async function search(event: FormEvent) {
     event.preventDefault();
+    if (tab === 'friends') return;
     try {
       const page = await usersClient.searchByUsername(query);
       setResults(page.items);
@@ -150,15 +151,19 @@ export function InviteParticipants({
         </Button>
       </div>
       <form className="flex gap-2" onSubmit={search}>
-        <Input
-          aria-label={
-            tab === 'search' ? 'Search by username' : 'Search friends'
-          }
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={tab === 'search' ? '@username' : 'Find a friend'}
-          minLength={2}
-        />
+        <div className="min-w-0 flex-1">
+          <Input
+            aria-label={
+              tab === 'search' ? 'Search by username' : 'Search friends'
+            }
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={tab === 'search' ? '@username' : 'Find a friend'}
+            minLength={tab === 'search' ? 2 : undefined}
+            maxLength={31}
+            required={tab === 'search'}
+          />
+        </div>
         {tab === 'search' && <Button type="submit">Find</Button>}
       </form>
       {shown.length === 0 && (

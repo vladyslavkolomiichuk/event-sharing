@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ChatMessage, ChatRoom } from '@event-sharing/contracts';
 import { messagesClient } from '@/lib/api/MessagesClient';
+import { ApiError } from '@/lib/api/GatewayClient';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Notice } from '@/components/feedback/Notice';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { ChatGroupSettings } from './ChatGroupSettings';
 
@@ -38,14 +39,26 @@ export function ChatConversation({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [accessDenied, setAccessDenied] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const readRef = useRef('');
   const knownLatestRef = useRef('');
   const draftIdRef = useRef('');
   const attemptedRef = useRef(false);
+  const refreshIdRef = useRef(0);
   const activityRef = useRef(onActivity);
   activityRef.current = onActivity;
+
+  function denyAccess() {
+    refreshIdRef.current++;
+    setMessages([]);
+    setBefore(null);
+    setBody('');
+    setAccessDenied(true);
+    setError('');
+    setLoading(false);
+  }
 
   async function markRead(messageId: string) {
     if (document.visibilityState !== 'visible' || readRef.current === messageId)
@@ -56,9 +69,13 @@ export function ChatConversation({
       activityRef.current();
     } catch (cause) {
       readRef.current = '';
-      setError(
-        cause instanceof Error ? cause.message : 'Could not mark chat as read.',
-      );
+      if (cause instanceof ApiError && cause.status === 403) denyAccess();
+      else
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : 'Could not mark chat as read.',
+        );
     }
   }
 
@@ -71,8 +88,11 @@ export function ChatConversation({
     setBefore(null);
     setLoading(true);
     setError('');
+    setAccessDenied(false);
+    refreshIdRef.current++;
 
     const refresh = async () => {
+      const current = ++refreshIdRef.current;
       try {
         const page = await messagesClient.messages(eventId, room.id);
         const incoming = [...page.items];
@@ -86,7 +106,7 @@ export function ChatConversation({
           incoming.push(...older.items);
           cursor = older.nextBefore;
         }
-        if (!active) return;
+        if (!active || current !== refreshIdRef.current) return;
         knownLatestRef.current = page.items[0]?.id ?? knownLatestRef.current;
         const panel = scrollRef.current;
         const nearBottom =
@@ -116,20 +136,14 @@ export function ChatConversation({
         const newest = page.items[0];
         if (newest && (wasInitial || nearBottom)) void markRead(newest.id);
       } catch (cause) {
-        if (active) {
-          if (
-            cause instanceof Error &&
-            'status' in cause &&
-            cause.status === 403
-          ) {
-            setMessages([]);
-            setBefore(null);
-          }
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : 'Could not load chat messages.',
-          );
+        if (active && current === refreshIdRef.current) {
+          if (cause instanceof ApiError && cause.status === 403) denyAccess();
+          else
+            setError(
+              cause instanceof Error
+                ? cause.message
+                : 'Could not load chat messages.',
+            );
           setLoading(false);
         }
       }
@@ -182,11 +196,13 @@ export function ChatConversation({
           panel.scrollTop = panel.scrollHeight - previousHeight + previousTop;
       });
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : 'Could not load older messages.',
-      );
+      if (cause instanceof ApiError && cause.status === 403) denyAccess();
+      else
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : 'Could not load older messages.',
+        );
     } finally {
       setBusy(false);
     }
@@ -221,22 +237,24 @@ export function ChatConversation({
           scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       });
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : 'Could not send message.',
-      );
+      if (cause instanceof ApiError && cause.status === 403) denyAccess();
+      else
+        setError(
+          cause instanceof Error ? cause.message : 'Could not send message.',
+        );
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="flex min-h-[36rem] min-w-0 flex-1 flex-col bg-[#efeae2] lg:h-[42rem]">
-      <div className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-[#f0f2f5] px-5 py-3">
+    <div className="flex min-h-[36rem] min-w-0 flex-1 flex-col bg-neutral-100 lg:h-[42rem]">
+      <div className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-5 py-3">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
             onClick={onBack}
-            className="text-sm font-semibold text-emerald-800 lg:hidden"
+            className="text-sm font-semibold text-orange-800 lg:hidden"
           >
             Back
           </button>
@@ -248,7 +266,7 @@ export function ChatConversation({
             <p className="truncate text-xs text-neutral-500">{eventTitle}</p>
           </div>
         </div>
-        {canArchive && room.status !== 'ARCHIVED' && (
+        {!accessDenied && canArchive && room.status !== 'ARCHIVED' && (
           <Button
             type="button"
             size="sm"
@@ -260,13 +278,16 @@ export function ChatConversation({
           </Button>
         )}
       </div>
-      {canManage && room.status === 'ACTIVE' && room.name !== 'General' && (
-        <ChatGroupSettings
-          eventId={eventId}
-          room={room}
-          onChanged={onActivity}
-        />
-      )}
+      {!accessDenied &&
+        canManage &&
+        room.status === 'ACTIVE' &&
+        room.name !== 'General' && (
+          <ChatGroupSettings
+            eventId={eventId}
+            room={room}
+            onChanged={onActivity}
+          />
+        )}
       <div
         ref={scrollRef}
         onScroll={() => {
@@ -312,7 +333,17 @@ export function ChatConversation({
           />
         ))}
       </div>
-      {readOnly ? (
+      {accessDenied ? (
+        <div className="space-y-2 border-t border-neutral-200 bg-white p-4 text-center">
+          <InlineFeedback
+            message="Your access to this chat has ended. Messages and sending are unavailable."
+            tone="warning"
+          />
+          <Button type="button" variant="outline" onClick={onBack}>
+            Back to chats
+          </Button>
+        </div>
+      ) : readOnly ? (
         <p className="border-t border-neutral-200 bg-white p-4 text-center text-sm text-neutral-600">
           {room.status === 'ARCHIVED'
             ? 'This chat is archived.'
@@ -323,41 +354,39 @@ export function ChatConversation({
         <form
           ref={formRef}
           onSubmit={send}
-          className="flex items-end gap-3 border-t border-neutral-200 bg-[#f0f2f5] p-3 sm:p-4"
+          className="flex items-end gap-3 border-t border-neutral-200 bg-white p-3 sm:p-4"
         >
           <label htmlFor="chat-message" className="sr-only">
             Message
           </label>
-          <Textarea
-            id="chat-message"
-            value={body}
-            onChange={(event) => {
-              if (attemptedRef.current) {
-                draftIdRef.current = '';
-                attemptedRef.current = false;
-              }
-              setBody(event.target.value);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                formRef.current?.requestSubmit();
-              }
-            }}
-            maxLength={2000}
-            rows={2}
-            placeholder={`Message ${room.name}`}
-            className="max-h-32 min-h-11 flex-1 resize-none border-0 bg-white"
-          />
-          <Button
-            disabled={busy || !body.trim()}
-            className="bg-emerald-700 text-white hover:bg-emerald-800"
-          >
-            Send
-          </Button>
+          <div className="min-w-0 flex-1">
+            <Textarea
+              id="chat-message"
+              value={body}
+              onChange={(event) => {
+                if (attemptedRef.current) {
+                  draftIdRef.current = '';
+                  attemptedRef.current = false;
+                }
+                setBody(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  formRef.current?.requestSubmit();
+                }
+              }}
+              maxLength={2000}
+              validate={(value) => (value.trim() ? '' : 'Enter a message.')}
+              rows={2}
+              placeholder={`Message ${room.name}`}
+              className="max-h-32 min-h-11 flex-1 resize-none border-0 bg-white"
+            />
+          </div>
+          <Button disabled={busy || !body.trim()}>Send</Button>
         </form>
       )}
-      {error && <Notice message={error} tone="error" />}
+      {error && <InlineFeedback message={error} tone="error" />}
     </div>
   );
 }

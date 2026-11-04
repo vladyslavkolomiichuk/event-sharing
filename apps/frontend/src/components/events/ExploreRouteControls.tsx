@@ -19,6 +19,7 @@ export function ExploreRouteControls({
   onBuild,
   onClear,
   route,
+  error,
   loading,
 }: {
   eventTitle: string | null;
@@ -34,6 +35,7 @@ export function ExploreRouteControls({
   onBuild: () => void;
   onClear: () => void;
   route: EventRouteResponse | null;
+  error: string;
   loading: boolean;
 }) {
   return (
@@ -115,6 +117,15 @@ export function ExploreRouteControls({
         <p className="text-sm font-semibold">
           {(route.distanceMeters / 1000).toFixed(1)} km · About{' '}
           {Math.max(1, Math.round(route.durationSeconds / 60))} min
+        </p>
+      )}
+      {error && (
+        <p
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900"
+        >
+          {error} Try another starting point or travel mode, then build the
+          route again.
         </p>
       )}
     </div>

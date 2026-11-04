@@ -20,6 +20,7 @@ export function ChatMemberPicker({
   const [results, setResults] = useState<ChatPerson[]>([]);
   const [friends, setFriends] = useState<ChatPerson[]>([]);
   const [error, setError] = useState('');
+  const [searchAttempted, setSearchAttempted] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -35,8 +36,10 @@ export function ChatMemberPicker({
   }, []);
 
   async function search() {
+    setSearchAttempted(true);
+    if (query.trim().length < 2) return;
     try {
-      const page = await usersClient.searchByUsername(query);
+      const page = await usersClient.searchByUsername(query.trim());
       setResults(page.items);
       setError('');
     } catch (cause) {
@@ -86,12 +89,25 @@ export function ChatMemberPicker({
         </Button>
       </div>
       <div className="flex gap-2">
-        <Input
-          aria-label="Search users by username"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="@username"
-        />
+        <div className="min-w-0 flex-1">
+          <Input
+            aria-label="Search users by username"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setError('');
+            }}
+            placeholder="@username"
+            minLength={tab === 'search' ? 2 : undefined}
+            maxLength={31}
+            forceValidation={tab === 'search' && searchAttempted}
+            validate={(value) =>
+              tab === 'search' && value.trim().length < 2
+                ? 'Enter at least 2 characters.'
+                : ''
+            }
+          />
+        </div>
         {tab === 'search' && (
           <Button type="button" size="sm" onClick={() => void search()}>
             Find

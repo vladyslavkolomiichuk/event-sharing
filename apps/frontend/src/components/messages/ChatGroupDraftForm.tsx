@@ -69,6 +69,14 @@ export function ChatGroupDraftForm({
           value={name}
           onChange={(event) => setName(event.target.value)}
           maxLength={80}
+          validate={(value) => {
+            const trimmed = value.trim().toLowerCase();
+            if (!trimmed) return 'Enter a group name.';
+            if (trimmed === 'general') return 'General is reserved.';
+            return groups.some((group) => group.name.toLowerCase() === trimmed)
+              ? 'A group with this name already exists.'
+              : '';
+          }}
           placeholder="Group name"
         />
         <select

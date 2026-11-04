@@ -20,6 +20,7 @@ export function useExploreRoute(
   const [originLabel, setOriginLabel] = useState('');
   const [mode, setMode] = useState<TravelMode>('walk');
   const [route, setRoute] = useState<EventRouteResponse | null>(null);
+  const [error, setError] = useState('');
   const [request, setRequest] = useState(0);
   const [loading, setLoading] = useState(false);
   const eventRequestId = useRef(0);
@@ -30,6 +31,7 @@ export function useExploreRoute(
     setOrigin(null);
     setOriginLabel('');
     setRoute(null);
+    setError('');
     setRequest(0);
     setLoading(false);
   }
@@ -41,6 +43,7 @@ export function useExploreRoute(
     const controller = new AbortController();
     setLoading(true);
     setRoute(null);
+    setError('');
     void eventRouteClient
       .route({ eventId: destination.id, origin, mode }, controller.signal)
       .then((result) => {
@@ -48,9 +51,8 @@ export function useExploreRoute(
       })
       .catch((cause) => {
         if (!controller.signal.aborted)
-          show(
+          setError(
             cause instanceof Error ? cause.message : 'Could not build a route.',
-            'error',
           );
       })
       .finally(() => {
@@ -131,6 +133,7 @@ export function useExploreRoute(
     setOriginLabel(value);
     setOrigin(null);
     setRoute(null);
+    setError('');
   }
 
   return {
@@ -139,6 +142,7 @@ export function useExploreRoute(
     originLabel,
     mode,
     route,
+    error,
     loading,
     chooseEvent,
     chooseOrigin,

@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import type { EventDetail } from '@event-sharing/contracts';
 import { invitationClient, type InviteLink } from '@/lib/api/InvitationClient';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/feedback/Notice';
+import { Input } from '@/components/ui/input';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 
 export function ShareEvent({
   event,
@@ -16,15 +17,27 @@ export function ShareEvent({
   const [links, setLinks] = useState<InviteLink[]>([]);
   const [createdUrl, setCreatedUrl] = useState('');
   const [message, setMessage] = useState('');
+  const [messageTone, setMessageTone] = useState<
+    'success' | 'warning' | 'error'
+  >('success');
+  const [linksError, setLinksError] = useState('');
   const [maxUses, setMaxUses] = useState('');
+  const [maxUsesAttempted, setMaxUsesAttempted] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (isOwner && event.visibility === 'INVITE_ONLY') {
       void invitationClient
         .links(event.id)
-        .then(setLinks)
-        .catch(() => setLinks([]));
+        .then((value) => {
+          setLinks(value);
+          setLinksError('');
+        })
+        .catch(() =>
+          setLinksError(
+            'Could not load invitation links. Reload the page to try again.',
+          ),
+        );
     }
   }, [event.id, event.visibility, isOwner]);
 
@@ -34,12 +47,14 @@ export function ShareEvent({
       else {
         await navigator.clipboard.writeText(url);
         setMessage('Link copied.');
+        setMessageTone('success');
       }
     } catch (cause) {
       if (cause instanceof DOMException && cause.name === 'AbortError') return;
       setMessage(
         cause instanceof Error ? cause.message : 'Could not share the link.',
       );
+      setMessageTone('error');
     }
   }
 
@@ -47,12 +62,19 @@ export function ShareEvent({
     try {
       await navigator.clipboard.writeText(url);
       setMessage('Link copied.');
+      setMessageTone('success');
     } catch {
       setMessage('Could not copy the link.');
+      setMessageTone('error');
     }
   }
 
   async function create() {
+    const count = Number(maxUses);
+    if (maxUses && (!/^\d+$/.test(maxUses) || count < 1 || count > 1000)) {
+      setMaxUsesAttempted(true);
+      return;
+    }
     setBusy(true);
     setMessage('');
     try {
@@ -66,16 +88,23 @@ export function ShareEvent({
       );
       const url = `${window.location.origin}/invite/${link.token}`;
       setCreatedUrl(url);
-      setLinks(await invitationClient.links(event.id));
+      try {
+        setLinks(await invitationClient.links(event.id));
+        setLinksError('');
+      } catch {
+        setLinksError('Could not refresh the invitation link list.');
+      }
       setMessage(
         'Private invitation link created. Copy it now; the token is shown once.',
       );
+      setMessageTone('success');
     } catch (cause) {
       setMessage(
         cause instanceof Error
           ? cause.message
           : 'Could not create invitation link.',
       );
+      setMessageTone('error');
     } finally {
       setBusy(false);
     }
@@ -87,10 +116,12 @@ export function ShareEvent({
       setLinks(await invitationClient.links(event.id));
       setCreatedUrl('');
       setMessage('Invitation link revoked.');
+      setMessageTone('success');
     } catch (cause) {
       setMessage(
         cause instanceof Error ? cause.message : 'Could not revoke the link.',
       );
+      setMessageTone('error');
     }
   }
 
@@ -114,12 +145,20 @@ export function ShareEvent({
             revoked.
           </p>
           <label htmlFor="max-link-uses">Maximum uses (optional)</label>
-          <input
+          <Input
             id="max-link-uses"
-            className="w-28 rounded-md border border-neutral-300 p-2"
-            type="number"
-            min={1}
-            max={1000}
+            className="w-28"
+            type="text"
+            inputMode="numeric"
+            forceValidation={maxUsesAttempted}
+            validate={(value) =>
+              value &&
+              (!/^\d+$/.test(value) ||
+                Number(value) < 1 ||
+                Number(value) > 1000)
+                ? 'Enter a whole number from 1 to 1000.'
+                : ''
+            }
             value={maxUses}
             onChange={(event) => setMaxUses(event.target.value)}
           />
@@ -170,6 +209,7 @@ export function ShareEvent({
               </li>
             ))}
           </ul>
+          {linksError && <InlineFeedback message={linksError} tone="warning" />}
         </>
       ) : (
         <div className="flex flex-wrap gap-2">
@@ -179,12 +219,7 @@ export function ShareEvent({
           </Button>
         </div>
       )}
-      {message && (
-        <Notice
-          message={message}
-          tone={message.includes('Could not') ? 'error' : 'success'}
-        />
-      )}
+      {message && <InlineFeedback message={message} tone={messageTone} />}
     </section>
   );
 }

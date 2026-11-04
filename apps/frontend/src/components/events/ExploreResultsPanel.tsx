@@ -1,6 +1,7 @@
 import type { SearchEvent } from '@event-sharing/contracts';
 import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/feedback/Loading';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { ExploreEventItem } from './ExploreEventItem';
 
 export function ExploreResultsPanel({
@@ -13,6 +14,7 @@ export function ExploreResultsPanel({
   onSelect,
   onRoute,
   onLoadMore,
+  onRetry,
   needsLocation,
   grid = false,
 }: {
@@ -25,6 +27,7 @@ export function ExploreResultsPanel({
   onSelect: (item: SearchEvent) => void;
   onRoute: (id: string) => void;
   onLoadMore: (cursor: string) => void;
+  onRetry: () => void;
   needsLocation: boolean;
   grid?: boolean;
 }) {
@@ -40,6 +43,14 @@ export function ExploreResultsPanel({
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        {error && !loading && (
+          <div className="mb-3 space-y-2">
+            <InlineFeedback message={error} tone="error" />
+            <Button type="button" size="sm" variant="outline" onClick={onRetry}>
+              Retry search
+            </Button>
+          </div>
+        )}
         {loading && !items.length ? (
           <Loading label="Searching events…" />
         ) : items.length ? (
@@ -66,11 +77,11 @@ export function ExploreResultsPanel({
             {needsLocation
               ? 'Choose a location or clear it to search everywhere.'
               : error
-                ? 'Search is temporarily unavailable.'
+                ? 'Results are unavailable right now.'
                 : 'No events match these filters. Try a wider area or another date.'}
           </p>
         )}
-        {cursor && (
+        {cursor && !error && (
           <Button
             type="button"
             variant="outline"
