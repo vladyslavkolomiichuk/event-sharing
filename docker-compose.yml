@@ -138,23 +138,29 @@ services:
       - storage-data:/data/files
       - storage-backups:/data/backups:ro
 
-  valhalla:
-    image: ghcr.io/valhalla/valhalla-scripted:3.9.1
-    profiles: [routing]
+  project-backup:
+    image: postgis/postgis:18-3.6
+    profiles: [backup]
     restart: unless-stopped
+    entrypoint: ['bash', '/app/backup.sh']
     environment:
-      tile_urls: ${VALHALLA_PBF_URL:-}
-      server_threads: '2'
-    ports:
-      - '127.0.0.1:${VALHALLA_PORT:-8007}:8002'
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-event_sharing}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE:-}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
     volumes:
-      - valhalla-data:/custom_files
+      - ./infra/backup/backup.sh:/app/backup.sh:ro
+      - storage-data:/data/files:ro
+      - ${PROJECT_BACKUP_PATH:-/storage/event-sharing-backups}:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres-data:
   pgadmin-data:
   kafka-data:
-  valhalla-data:
   storage-data:
   storage-backups:
   clamav-data:
