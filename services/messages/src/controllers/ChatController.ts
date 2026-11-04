@@ -17,7 +17,12 @@ export class ChatController {
     return request.authenticatedUser;
   }
   overview: RequestHandler = async (request, response) => {
-    response.json(await this.service.overview(this.user(request).id));
+    response.json(
+      await this.service.overview(
+        this.user(request).id,
+        request.get('authorization') ?? '',
+      ),
+    );
   };
   listRooms: RequestHandler = async (request, response) => {
     const user = this.user(request);

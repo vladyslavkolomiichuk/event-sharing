@@ -5,11 +5,14 @@ export const ChatRoomAccessSchema = z.enum([
   'SELECTED_MEMBERS',
 ]);
 
+export const ChatRoomStatusSchema = z.enum(['ACTIVE', 'READ_ONLY', 'ARCHIVED']);
+
 export const ChatRoomSchema = z.strictObject({
   id: z.uuid(),
   eventId: z.uuid(),
   name: z.string(),
   access: ChatRoomAccessSchema,
+  status: ChatRoomStatusSchema,
   memberCount: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
   archivedAt: z.iso.datetime().nullable(),
@@ -72,5 +75,6 @@ export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 export type ChatOverview = z.infer<typeof ChatOverviewSchema>;
 export type ChatRoomMember = z.infer<typeof ChatRoomMemberSchema>;
 export type ChatRoomAccess = z.infer<typeof ChatRoomAccessSchema>;
+export type ChatRoomStatus = z.infer<typeof ChatRoomStatusSchema>;
 export type CreateChatRoom = z.infer<typeof CreateChatRoomSchema>;
 export type UpdateChatRoom = z.infer<typeof UpdateChatRoomSchema>;

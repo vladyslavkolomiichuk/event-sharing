@@ -15,11 +15,13 @@ export function EventChats({
   eventId,
   eventTitle,
   canManage,
+  canArchive,
   readOnly,
 }: {
   eventId: string;
   eventTitle: string;
   canManage: boolean;
+  canArchive: boolean;
   readOnly: boolean;
 }) {
   const { user } = useAuth();
@@ -126,10 +128,18 @@ export function EventChats({
     setBusy(true);
     setError('');
     try {
-      await messagesClient.archiveRoom(eventId, roomId);
-      setRooms((current) => current.filter((room) => room.id !== roomId));
-      setSelectedId('');
-      setMobileOpen(false);
+      const archived = await messagesClient.archiveRoom(eventId, roomId);
+      setRooms((current) =>
+        current.map((room) =>
+          room.id === roomId
+            ? {
+                ...room,
+                status: archived.status,
+                archivedAt: archived.archivedAt,
+              }
+            : room,
+        ),
+      );
       setNotice('Chat room archived.');
       changed();
     } catch (cause) {
@@ -179,7 +189,8 @@ export function EventChats({
             room={selectedRoom}
             userId={user.id}
             canManage={canManage}
-            readOnly={readOnly}
+            canArchive={canArchive}
+            readOnly={readOnly || selectedRoom.status !== 'ACTIVE'}
             onActivity={changed}
             onArchive={archiveRoom}
             onBack={() => setMobileOpen(false)}

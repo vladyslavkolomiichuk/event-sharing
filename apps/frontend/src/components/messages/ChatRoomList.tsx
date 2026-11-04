@@ -135,6 +135,11 @@ export function ChatRoomList({
               <span className="flex items-center justify-between gap-2">
                 <span className="truncate text-sm font-semibold">
                   {room.name}
+                  {room.status === 'ARCHIVED'
+                    ? ' (Archived)'
+                    : room.status === 'READ_ONLY'
+                      ? ' (Read-only)'
+                      : ''}
                 </span>
                 <span className="shrink-0 text-[11px] text-neutral-500">
                   {room.lastMessage

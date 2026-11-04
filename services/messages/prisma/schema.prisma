@@ -71,6 +71,7 @@ model ChatRoom {
   eventId    String          @db.Uuid
   name       String
   access     String          @default("ALL_PARTICIPANTS")
+  status     String          @default("ACTIVE")
   createdBy  String          @db.Uuid
   createdAt  DateTime        @default(now()) @db.Timestamptz(3)
   archivedAt DateTime?       @db.Timestamptz(3)

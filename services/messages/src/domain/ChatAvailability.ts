@@ -9,6 +9,7 @@ export const CHAT_READABLE_STATUSES = [
   ...CHAT_ACTIVE_STATUSES,
   'COMPLETED',
   'CANCELLED',
+  'ARCHIVED',
 ] as const satisfies readonly EventStatus[];
 
 const active = new Set<string>(CHAT_ACTIVE_STATUSES);

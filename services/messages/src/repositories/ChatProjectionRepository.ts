@@ -145,8 +145,19 @@ export class ChatProjectionRepository {
               eventId: data.id,
               name: 'General',
               createdBy: data.organizerId,
+              status: ['COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(
+                data.status,
+              )
+                ? 'READ_ONLY'
+                : 'ACTIVE',
             },
             skipDuplicates: true,
+          });
+        }
+        if (['COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(data.status)) {
+          await transaction.chatRoom.updateMany({
+            where: { eventId: data.id, status: 'ACTIVE' },
+            data: { status: 'READ_ONLY' },
           });
         }
         return 'processed';

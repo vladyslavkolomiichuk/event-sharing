@@ -6,6 +6,7 @@ import { MessageRateLimitError } from '../domain/errors/MessageRateLimitError.js
 import { MessageConflictError } from '../domain/errors/MessageConflictError.js';
 import { ResourceNotFoundError } from '../domain/errors/ResourceNotFoundError.js';
 import { RoomAccessLockedError } from '../domain/errors/RoomAccessLockedError.js';
+import { ChatUnavailableError } from '../domain/errors/ChatUnavailableError.js';
 import {
   EVENT_TYPES,
   ChatMembershipChangedPayloadSchema,
@@ -41,9 +42,10 @@ export class ChatRepository {
   }
 
   async participants(eventId: string, roomId?: string): Promise<string[]> {
+    const room = roomId ? await this.room(roomId) : null;
     const [event, members] = await Promise.all([
       this.event(eventId),
-      roomId
+      roomId && room?.access === 'SELECTED_MEMBERS'
         ? prisma.chatRoomMember.findMany({
             where: { roomId, status: 'ACTIVE' },
             select: { userId: true },
@@ -84,6 +86,11 @@ export class ChatRepository {
             eventId: event.id,
             name: 'General',
             createdBy: event.organizerId,
+            status: ['COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(
+              event.status,
+            )
+              ? 'READ_ONLY'
+              : 'ACTIVE',
           },
           skipDuplicates: true,
         });
@@ -113,7 +120,6 @@ export class ChatRepository {
     return prisma.chatRoom.findMany({
       where: {
         eventId,
-        archivedAt: null,
         ...(!owner
           ? {
               OR: [
@@ -165,6 +171,7 @@ export class ChatRepository {
     return prisma.$queryRaw<
       {
         eventId: string;
+        organizerId: string;
         title: string;
         unreadCount: number;
         lastMessageAt: Date | null;
@@ -172,6 +179,7 @@ export class ChatRepository {
     >`
       SELECT
         event.id AS "eventId",
+        event."organizerId",
         event.title,
         COUNT(message.id) FILTER (
           WHERE message."senderId" <> ${userId}::uuid
@@ -187,7 +195,7 @@ export class ChatRepository {
       FROM "event_projection" event
       LEFT JOIN "membership_projection" membership
         ON membership."eventId" = event.id AND membership."userId" = ${userId}::uuid
-      JOIN "chat_room" room ON room."eventId" = event.id AND room."archivedAt" IS NULL
+      JOIN "chat_room" room ON room."eventId" = event.id
       LEFT JOIN "chat_room_member" group_member
         ON group_member."roomId" = room.id AND group_member."userId" = ${userId}::uuid
       LEFT JOIN "chat_message" message ON message."roomId" = room.id
@@ -421,9 +429,15 @@ export class ChatRepository {
     }
   }
   archiveRoom(id: string) {
-    return prisma.chatRoom.update({
-      where: { id },
-      data: { archivedAt: new Date() },
+    return prisma.$transaction(async (transaction) => {
+      const updated = await transaction.chatRoom.updateMany({
+        where: { id, status: { not: 'ARCHIVED' } },
+        data: { status: 'ARCHIVED', archivedAt: new Date() },
+      });
+      const room = await transaction.chatRoom.findUniqueOrThrow({
+        where: { id },
+      });
+      return { room, changed: updated.count > 0 };
     });
   }
   async messages(roomId: string, before?: string, visibleSince?: Date) {
@@ -462,18 +476,23 @@ export class ChatRepository {
       const rooms = await transaction.$queryRaw<
         {
           eventId: string;
-          archivedAt: Date | null;
+          status: string;
           access: string;
           name: string;
         }[]
-      >`SELECT "eventId", "archivedAt", "access", "name" FROM "chat_room" WHERE "id" = ${roomId}::uuid FOR UPDATE`;
+      >`SELECT "eventId", "status", "access", "name" FROM "chat_room" WHERE "id" = ${roomId}::uuid FOR UPDATE`;
       const room = rooms[0];
-      if (!room || room.eventId !== eventId || room.archivedAt)
-        throw new ResourceNotFoundError();
+      if (!room || room.eventId !== eventId) throw new ResourceNotFoundError();
+      if (room.status !== 'ACTIVE') throw new ChatUnavailableError();
       const event = await transaction.eventProjection.findUnique({
         where: { id: eventId },
       });
       if (!event) throw new ResourceNotFoundError();
+      if (
+        !event.chatEnabled ||
+        !['PUBLISHED', 'ONGOING'].includes(event.status)
+      )
+        throw new ChatUnavailableError();
       if (
         room.access === 'SELECTED_MEMBERS' &&
         event.organizerId !== senderId

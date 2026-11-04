@@ -49,7 +49,7 @@ export class ChatService {
   ) {
     const event = await this.repository.event(eventId);
     if (!event) throw new ResourceNotFoundError();
-    const owner = event.organizerId === userId || role === 'ADMIN';
+    const owner = event.organizerId === userId;
     if (!event.chatEnabled) throw new ChatUnavailableError();
     const allowed =
       action === 'manage'
@@ -70,11 +70,17 @@ export class ChatService {
             ? true
             : isChatReadable(event.status);
     if (!allowed) throw new ChatUnavailableError();
-    if (action === 'manage' && !owner) throw new ForbiddenError();
+    if (action === 'manage' && !owner && role !== 'ADMIN')
+      throw new ForbiddenError();
     const joinedAt = owner
       ? null
       : await this.participation.isJoined(eventId, userId, authorization);
     if (!owner && !joinedAt) throw new ForbiddenError();
+    if (action === 'write') {
+      const current = await this.events.get(eventId, authorization);
+      if (!current.chatEnabled || !isChatAvailable(current.status))
+        throw new ChatUnavailableError();
+    }
     return { event, owner, joinedAt };
   }
 
@@ -86,8 +92,7 @@ export class ChatService {
     eventJoinedAt: Date | null,
   ) {
     const room = await this.repository.room(roomId);
-    if (!room || room.eventId !== eventId || room.archivedAt)
-      throw new ResourceNotFoundError();
+    if (!room || room.eventId !== eventId) throw new ResourceNotFoundError();
     if (room.access === 'ALL_PARTICIPANTS' || owner)
       return { room, visibleSince: eventJoinedAt ?? undefined };
     const member = await this.repository.roomMember(roomId, userId);
@@ -156,11 +161,30 @@ export class ChatService {
     };
   }
 
-  async overview(userId: string) {
-    const events = (await this.repository.overview(userId)).map((event) => ({
-      ...event,
-      lastMessageAt: event.lastMessageAt?.toISOString() ?? null,
-    }));
+  async overview(userId: string, authorization: string) {
+    const candidates = await this.repository.overview(userId);
+    const checked = await Promise.all(
+      candidates.map(async (event) => ({
+        event,
+        allowed:
+          event.organizerId === userId ||
+          Boolean(
+            await this.participation.isJoined(
+              event.eventId,
+              userId,
+              authorization,
+            ),
+          ),
+      })),
+    );
+    const events = checked
+      .filter((item) => item.allowed)
+      .map(({ event }) => ({
+        eventId: event.eventId,
+        title: event.title,
+        unreadCount: event.unreadCount,
+        lastMessageAt: event.lastMessageAt?.toISOString() ?? null,
+      }));
     return ChatOverviewSchema.parse({
       totalUnread: events.reduce((sum, event) => sum + event.unreadCount, 0),
       events,
@@ -338,15 +362,13 @@ export class ChatService {
     role: UserRole,
     authorization: string,
   ) {
-    await this.access(eventId, userId, role, authorization, 'manage');
+    const access = await this.access(eventId, userId, role, authorization);
+    if (!access.owner) throw new ForbiddenError();
     const room = await this.repository.room(roomId);
     if (!room || room.eventId !== eventId) throw new ResourceNotFoundError();
-    if (room.name === 'General') throw new ForbiddenError();
-    const archived = room.archivedAt
-      ? room
-      : await this.repository.archiveRoom(roomId);
-    if (!room.archivedAt) await this.changed(eventId, roomId);
-    return this.roomResponse(archived);
+    const archived = await this.repository.archiveRoom(roomId);
+    if (archived.changed) await this.changed(eventId, roomId);
+    return this.roomResponse(archived.room);
   }
 
   async listMessages(
@@ -401,13 +423,14 @@ export class ChatService {
       authorization,
       'write',
     );
-    await this.roomAccess(
+    const { room } = await this.roomAccess(
       eventId,
       roomId,
       userId,
       access.owner,
       access.joinedAt,
     );
+    if (room.status !== 'ACTIVE') throw new ChatUnavailableError();
     const { message, created } = await this.repository.send(
       roomId,
       eventId,
@@ -444,6 +467,7 @@ export class ChatService {
       eventId: string;
       name: string;
       access: string;
+      status: string;
       createdAt: Date;
       archivedAt: Date | null;
       _count?: { members: number };
@@ -460,6 +484,7 @@ export class ChatService {
       eventId: room.eventId,
       name: room.name,
       access: room.access,
+      status: room.status,
       memberCount: room._count?.members ?? 0,
       createdAt: room.createdAt.toISOString(),
       archivedAt: room.archivedAt?.toISOString() ?? null,

@@ -112,7 +112,7 @@ export function EventDetailView({
   const chatAvailable =
     event.chatEnabled &&
     (groupManagementAvailable ||
-      ['PUBLISHED', 'ONGOING', 'COMPLETED', 'CANCELLED'].includes(
+      ['PUBLISHED', 'ONGOING', 'COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(
         event.status,
       ));
   const routeAvailable =
@@ -316,6 +316,7 @@ export function EventDetailView({
                   eventId={id}
                   eventTitle={event.title}
                   canManage={groupManagementAvailable}
+                  canArchive={isOwner}
                   readOnly={!['PUBLISHED', 'ONGOING'].includes(event.status)}
                 />
               ) : (

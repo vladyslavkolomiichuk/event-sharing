@@ -15,6 +15,7 @@ export function ChatConversation({
   room,
   userId,
   canManage,
+  canArchive,
   readOnly,
   onActivity,
   onArchive,
@@ -25,6 +26,7 @@ export function ChatConversation({
   room: ChatRoom;
   userId: string;
   canManage: boolean;
+  canArchive: boolean;
   readOnly: boolean;
   onActivity: () => void;
   onArchive: (roomId: string) => Promise<void>;
@@ -246,7 +248,7 @@ export function ChatConversation({
             <p className="truncate text-xs text-neutral-500">{eventTitle}</p>
           </div>
         </div>
-        {canManage && room.name !== 'General' && (
+        {canArchive && room.status !== 'ARCHIVED' && (
           <Button
             type="button"
             size="sm"
@@ -258,7 +260,7 @@ export function ChatConversation({
           </Button>
         )}
       </div>
-      {canManage && room.name !== 'General' && (
+      {canManage && room.status === 'ACTIVE' && room.name !== 'General' && (
         <ChatGroupSettings
           eventId={eventId}
           room={room}
@@ -312,7 +314,10 @@ export function ChatConversation({
       </div>
       {readOnly ? (
         <p className="border-t border-neutral-200 bg-white p-4 text-center text-sm text-neutral-600">
-          This event is closed. Chat history is available to existing members.
+          {room.status === 'ARCHIVED'
+            ? 'This chat is archived.'
+            : 'This chat is read-only.'}{' '}
+          Chat history is available to current members.
         </p>
       ) : (
         <form
