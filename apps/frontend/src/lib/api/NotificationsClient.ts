@@ -2,14 +2,37 @@ import type {
   InAppMessage,
   InAppNotification,
   InAppNotificationList,
+  NotificationFilter,
+  CreateSystemMessage,
+  SystemMessage,
+  SystemMessageList,
 } from '@event-sharing/contracts';
 import { gateway } from './GatewayClient';
 
 export class NotificationsClient {
-  list(cursor?: string): Promise<InAppNotificationList> {
+  systemMessages(cursor?: string): Promise<SystemMessageList> {
     return gateway.get(
-      `/api/notifications${cursor ? `?cursor=${cursor}` : ''}`,
+      `/api/notifications/system${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
     );
+  }
+
+  createSystemMessage(input: CreateSystemMessage): Promise<SystemMessage> {
+    return gateway.post('/api/notifications/system', input);
+  }
+
+  removeSystemMessage(id: string): Promise<{ deleted: boolean }> {
+    return gateway.delete(`/api/notifications/system/${id}`);
+  }
+
+  list(
+    cursor?: string,
+    filter: NotificationFilter = 'ALL',
+  ): Promise<InAppNotificationList> {
+    const query = new URLSearchParams();
+    if (cursor) query.set('cursor', cursor);
+    if (filter !== 'ALL') query.set('filter', filter);
+    const search = query.toString();
+    return gateway.get(`/api/notifications${search ? `?${search}` : ''}`);
   }
 
   unreadCount(): Promise<{ unreadCount: number }> {
@@ -37,7 +60,6 @@ export class NotificationsClient {
   getMessage(id: string): Promise<InAppMessage> {
     return gateway.get(`/api/notifications/messages/${id}`);
   }
-
 }
 
 export const notificationsClient = new NotificationsClient();

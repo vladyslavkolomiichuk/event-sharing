@@ -19,6 +19,7 @@ import { UserProfileLink } from '@/components/profile/UserProfileLink';
 import { OrganizerRequestsPanel } from './OrganizerRequestsPanel';
 import { ModerationQueue } from './ModerationQueue';
 import { PrivacyRequests } from './PrivacyRequests';
+import { SystemMessagesPanel } from './SystemMessagesPanel';
 
 export function AdminWorkspace() {
   const { show } = useToast();
@@ -154,6 +155,12 @@ export function AdminWorkspace() {
         >
           Privacy requests
         </a>
+        <a
+          href="#system-messages"
+          className="rounded-lg px-3 py-2 hover:bg-neutral-100"
+        >
+          System messages
+        </a>
         <Link
           href="/admin/danger-zone"
           className="rounded-lg px-3 py-2 text-red-700 hover:bg-red-50"
@@ -164,6 +171,7 @@ export function AdminWorkspace() {
       <div className="grid min-w-0 gap-7 lg:grid-cols-2">
         <OrganizerRequestsPanel onCountChange={setRoleRequestCount} />
         <ModerationQueue onCountChange={setModerationCount} />
+        <SystemMessagesPanel />
         <section
           id="admin-overview"
           className="space-y-5 rounded-xl border border-neutral-200 bg-white p-7"

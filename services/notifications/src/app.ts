@@ -5,12 +5,14 @@ import {
 } from '@event-sharing/contracts';
 import type { ReadinessCheck } from '@event-sharing/common';
 import { NotificationController } from './controllers/NotificationController.js';
+import { SystemMessageController } from './controllers/SystemMessageController.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFound } from './middleware/not-found.js';
 import { requireInternalJwt } from './middleware/require-internal-jwt.js';
 import { notificationRoutes } from './routes/notification.routes.js';
 import { MessageService } from './services/MessageService.js';
 import { NotificationService } from './services/NotificationService.js';
+import { SystemMessageService } from './services/SystemMessageService.js';
 import type { NotificationRealtimeServer } from './realtime/NotificationRealtimeServer.js';
 
 export function createApp(
@@ -31,6 +33,13 @@ export function createApp(
       new NotificationController(
         new NotificationService(undefined, changed),
         new MessageService(undefined, undefined, changed),
+      ),
+      new SystemMessageController(
+        new SystemMessageService(undefined, () =>
+          realtime?.broadcast({
+            type: REALTIME_SIGNAL_TYPES.notificationsChanged,
+          }),
+        ),
       ),
     ),
   );

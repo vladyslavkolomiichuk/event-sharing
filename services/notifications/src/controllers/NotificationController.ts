@@ -1,4 +1,5 @@
 import {
+  NotificationFilterSchema,
   SendEventMessageSchema,
 } from '@event-sharing/contracts';
 import type { RequestHandler } from 'express';
@@ -7,7 +8,10 @@ import { UnauthorizedError } from '../domain/errors/UnauthorizedError.js';
 import type { MessageService } from '../services/MessageService.js';
 import type { NotificationService } from '../services/NotificationService.js';
 
-const ListQuerySchema = z.strictObject({ cursor: z.uuid().optional() });
+const ListQuerySchema = z.strictObject({
+  cursor: z.uuid().optional(),
+  filter: NotificationFilterSchema.default('ALL'),
+});
 
 export class NotificationController {
   constructor(
@@ -17,8 +21,10 @@ export class NotificationController {
 
   list: RequestHandler = async (request, response) => {
     const user = this.requireUser(request.authenticatedUser);
-    const { cursor } = ListQuerySchema.parse(request.query);
-    response.status(200).json(await this.notifications.list(user.id, cursor));
+    const { cursor, filter } = ListQuerySchema.parse(request.query);
+    response
+      .status(200)
+      .json(await this.notifications.list(user.id, cursor, filter));
   };
 
   unreadCount: RequestHandler = async (request, response) => {

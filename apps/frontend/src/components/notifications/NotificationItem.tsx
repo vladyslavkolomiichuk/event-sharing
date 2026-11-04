@@ -1,5 +1,7 @@
 import type { InAppNotification } from '@event-sharing/contracts';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { notificationPresentation } from './notificationPresentation';
 
 export function NotificationItem({
   item,
@@ -24,7 +26,15 @@ export function NotificationItem({
           onOpen(item);
         }}
       >
-        <h3 className="font-semibold">{item.title}</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge className={notificationPresentation[item.type].badge}>
+            {notificationPresentation[item.type].label}
+          </Badge>
+          {!item.readAt && (
+            <span className="text-xs font-semibold">Unread</span>
+          )}
+        </div>
+        <h3 className="mt-2 font-semibold">{item.title}</h3>
         <p className="mt-2 text-sm text-neutral-700">{item.body}</p>
         <p className="mt-2 text-xs text-neutral-500">
           {new Date(item.createdAt).toLocaleString('en-US')}

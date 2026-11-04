@@ -17,34 +17,36 @@ export function ExploreEventItem({
   return (
     <article
       id={`event-result-${event.id}`}
-      className={`rounded-xl border bg-white p-4 ${selected ? 'border-black' : 'border-neutral-200'}`}
+      className={`overflow-hidden rounded-xl border bg-white transition-colors hover:border-neutral-500 focus-within:border-black ${selected ? 'border-black' : 'border-neutral-200'}`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-          {new Date(event.startTime).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            timeZone: event.timeZone,
-          })}
-        </span>
-        <div className="flex items-center gap-2">
-          <EventUnreadBadge eventId={event.id} />
-          <EventStatusBadge status={event.status} />
+      <Link
+        href={`/events/${event.id}`}
+        aria-label={`Open ${event.title}`}
+        className="block rounded-t-xl p-4 focus-visible:outline-2 focus-visible:outline-black"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            {new Date(event.startTime).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              timeZone: event.timeZone,
+            })}
+          </span>
+          <div className="flex items-center gap-2">
+            <EventUnreadBadge eventId={event.id} />
+            <EventStatusBadge status={event.status} />
+          </div>
         </div>
-      </div>
-      <h3 className="mt-4">
-        <Link href={`/events/${event.id}`} className="hover:underline">
-          {event.title}
-        </Link>
-      </h3>
-      <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-        {event.categoryName || 'Uncategorized'}
-      </p>
-      <p className="mt-2 line-clamp-2 text-sm leading-6 text-neutral-600">
-        {event.description}
-      </p>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-200 pt-4 text-xs text-neutral-500">
+        <h3 className="mt-4">{event.title}</h3>
+        <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          {event.categoryName || 'Uncategorized'}
+        </p>
+        <p className="mt-2 line-clamp-2 text-sm leading-6 text-neutral-600">
+          {event.description}
+        </p>
+      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-200 px-4 py-3 text-xs text-neutral-500">
         <span>
           {event.location.region || 'Location not listed'}
           {event.distanceMeters !== null &&

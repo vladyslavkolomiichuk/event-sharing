@@ -2,6 +2,7 @@ import {
   InAppNotificationListSchema,
   InAppNotificationSchema,
   type InAppNotification,
+  type NotificationFilter,
 } from '@event-sharing/contracts';
 import { ResourceNotFoundError } from '../domain/errors/ResourceNotFoundError.js';
 import { NotificationRepository } from '../repositories/NotificationRepository.js';
@@ -12,12 +13,16 @@ export class NotificationService {
     private readonly onChanged: (userIds: string[]) => void = () => {},
   ) {}
 
-  async list(recipientId: string, cursor?: string) {
+  async list(
+    recipientId: string,
+    cursor?: string,
+    filter: NotificationFilter = 'ALL',
+  ) {
     if (cursor && !(await this.repository.find(cursor, recipientId))) {
       throw new ResourceNotFoundError();
     }
     const [records, unreadCount] = await Promise.all([
-      this.repository.list(recipientId, cursor),
+      this.repository.list(recipientId, cursor, filter),
       this.repository.unreadCount(recipientId),
     ]);
     const page = records.slice(0, 20).map((record) => this.toResponse(record));

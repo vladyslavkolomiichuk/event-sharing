@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { notificationsClient } from '@/lib/api/NotificationsClient';
+import { notificationPresentation } from './notificationPresentation';
 
 export function NotificationStatus() {
   const { user, refresh: refreshAuth } = useAuth();
@@ -27,7 +28,11 @@ export function NotificationStatus() {
           .reverse()
           .slice(-4);
         for (const item of incoming) {
-          show(`${item.title}: ${item.body}`, 'info', item.href);
+          show(
+            `${item.title}: ${item.body}`,
+            notificationPresentation[item.type].tone,
+            item.href,
+          );
           if (item.type === 'ORGANIZER_REQUEST_DECISION') void refreshAuth();
         }
       }

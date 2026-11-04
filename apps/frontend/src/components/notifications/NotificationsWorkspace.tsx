@@ -2,13 +2,26 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import type { InAppMessage, InAppNotification } from '@event-sharing/contracts';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type {
+  InAppMessage,
+  InAppNotification,
+  NotificationFilter,
+} from '@event-sharing/contracts';
 import { notificationsClient } from '@/lib/api/NotificationsClient';
 import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/feedback/Loading';
 import { useToast } from '@/contexts/ToastContext';
 import { NotificationItem } from './NotificationItem';
+import { SystemMessages } from './SystemMessages';
+
+const filters: { value: NotificationFilter; label: string }[] = [
+  { value: 'ALL', label: 'All' },
+  { value: 'UNREAD', label: 'Unread' },
+  { value: 'EVENTS', label: 'Events' },
+  { value: 'SOCIAL', label: 'Social' },
+  { value: 'ACCOUNT', label: 'Account' },
+];
 
 export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
   const router = useRouter();
@@ -16,62 +29,48 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
   const [items, setItems] = useState<InAppNotification[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
+  const [filter, setFilter] = useState<NotificationFilter>('ALL');
   const [message, setMessage] = useState<InAppMessage | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const firstPageRequest = useRef(0);
 
-  useEffect(() => {
+  const loadFirst = useCallback(async () => {
     const currentRequest = ++firstPageRequest.current;
-    notificationsClient
-      .list()
-      .then((page) => {
-        if (firstPageRequest.current !== currentRequest) return;
-        setItems(page.items);
-        setCursor(page.nextCursor);
-        setUnread(page.unreadCount);
-      })
-      .catch((cause) => {
-        if (firstPageRequest.current !== currentRequest) return;
-        show(
-          cause instanceof Error
-            ? cause.message
-            : 'Could not load notifications.',
-          'error',
-        );
-      })
-      .finally(() => {
-        if (firstPageRequest.current === currentRequest) setLoading(false);
-      });
-    return () => {
-      firstPageRequest.current++;
-    };
-  }, [show]);
+    setLoading(true);
+    setFailed(false);
+    setItems([]);
+    setCursor(null);
+    try {
+      const page = await notificationsClient.list(undefined, filter);
+      if (firstPageRequest.current !== currentRequest) return;
+      setItems(page.items);
+      setCursor(page.nextCursor);
+      setUnread(page.unreadCount);
+    } catch (cause) {
+      if (firstPageRequest.current !== currentRequest) return;
+      setFailed(true);
+      show(
+        cause instanceof Error
+          ? cause.message
+          : 'Could not load notifications.',
+        'error',
+      );
+    } finally {
+      if (firstPageRequest.current === currentRequest) setLoading(false);
+    }
+  }, [filter, show]);
+
   useEffect(() => {
-    const refresh = () => {
-      const currentRequest = ++firstPageRequest.current;
-      void notificationsClient
-        .list()
-        .then((page) => {
-          if (firstPageRequest.current !== currentRequest) return;
-          setItems(page.items);
-          setUnread(page.unreadCount);
-          setCursor(page.nextCursor);
-        })
-        .catch(() => {
-          if (firstPageRequest.current === currentRequest)
-            show('Could not refresh notifications.', 'error');
-        })
-        .finally(() => {
-          if (firstPageRequest.current === currentRequest) setLoading(false);
-        });
-    };
+    void loadFirst();
+    const refresh = () => void loadFirst();
     window.addEventListener('notifications:remote', refresh);
     return () => {
       firstPageRequest.current++;
       window.removeEventListener('notifications:remote', refresh);
     };
-  }, [show]);
+  }, [loadFirst]);
   useEffect(() => {
     if (messageId)
       notificationsClient
@@ -85,7 +84,9 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
       if (!item.readAt) {
         const updated = await notificationsClient.markRead(item.id);
         setItems((current) =>
-          current.map((entry) => (entry.id === item.id ? updated : entry)),
+          filter === 'UNREAD'
+            ? current.filter((entry) => entry.id !== item.id)
+            : current.map((entry) => (entry.id === item.id ? updated : entry)),
         );
         setUnread((count) => Math.max(0, count - 1));
         window.dispatchEvent(new Event('notifications:changed'));
@@ -107,11 +108,14 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
     try {
       await notificationsClient.markAllRead();
       setItems((current) =>
-        current.map((item) => ({
-          ...item,
-          readAt: item.readAt ?? new Date().toISOString(),
-        })),
+        filter === 'UNREAD'
+          ? []
+          : current.map((item) => ({
+              ...item,
+              readAt: item.readAt ?? new Date().toISOString(),
+            })),
       );
+      if (filter === 'UNREAD') setCursor(null);
       setUnread(0);
       show('All notifications marked as read.', 'success');
       window.dispatchEvent(new Event('notifications:changed'));
@@ -129,9 +133,11 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
 
   async function loadMore() {
     if (!cursor) return;
+    const currentRequest = firstPageRequest.current;
     setBusy(true);
     try {
-      const page = await notificationsClient.list(cursor);
+      const page = await notificationsClient.list(cursor, filter);
+      if (currentRequest !== firstPageRequest.current) return;
       setItems((current) => {
         const seen = new Set(current.map((item) => item.id));
         return [...current, ...page.items.filter((item) => !seen.has(item.id))];
@@ -139,6 +145,7 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
       setCursor(page.nextCursor);
       setUnread(page.unreadCount);
     } catch (cause) {
+      if (currentRequest !== firstPageRequest.current) return;
       show(
         cause instanceof Error
           ? cause.message
@@ -160,7 +167,9 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
       show('Notification deleted.', 'success');
     } catch (cause) {
       show(
-        cause instanceof Error ? cause.message : 'Could not delete notification.',
+        cause instanceof Error
+          ? cause.message
+          : 'Could not delete notification.',
         'error',
       );
     } finally {
@@ -183,6 +192,25 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
           Mark all as read
         </Button>
       </div>
+      <SystemMessages />
+      <div
+        role="group"
+        aria-label="Filter notifications"
+        className="flex flex-wrap gap-2"
+      >
+        {filters.map((option) => (
+          <Button
+            key={option.value}
+            type="button"
+            size="sm"
+            variant={filter === option.value ? 'default' : 'outline'}
+            aria-pressed={filter === option.value}
+            onClick={() => setFilter(option.value)}
+          >
+            {option.label}
+          </Button>
+        ))}
+      </div>
       {message && (
         <section className="space-y-3 rounded-xl border border-neutral-200 bg-white p-6">
           <h2>Organizer announcement</h2>
@@ -201,7 +229,11 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
         <Loading label="Loading notifications…" />
       ) : items.length === 0 ? (
         <p className="rounded-xl border border-neutral-200 bg-white p-6 text-neutral-600">
-          No notifications yet.
+          {failed
+            ? 'Notifications are unavailable. Try again.'
+            : filter === 'ALL'
+              ? 'No notifications yet.'
+              : 'No notifications in this view.'}
         </p>
       ) : (
         <div className="space-y-3">
@@ -224,6 +256,15 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
             </Button>
           )}
         </div>
+      )}
+      {failed && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void loadFirst()}
+        >
+          Retry
+        </Button>
       )}
     </div>
   );

@@ -117,6 +117,17 @@ model InAppNotification {
   @@map("in_app_notification")
 }
 
+model SystemMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  title     String
+  body      String
+  audience  String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([createdAt, id])
+  @@map("system_message")
+}
+
 model InAppMessage {
   id             String   @id @default(uuid()) @db.Uuid
   senderId       String   @db.Uuid

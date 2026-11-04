@@ -16,6 +16,7 @@ export * from './users/friend.event.js';
 export * from './notifications/mail-request.schema.js';
 export * from './notifications/notification-requested.event.js';
 export * from './notifications/in-app-notification.schema.js';
+export * from './notifications/system-message.schema.js';
 export * from './notifications/message.schema.js';
 export * from './notifications/notification-delivery.event.js';
 export * from './messages/chat.schema.js';

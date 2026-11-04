@@ -13,8 +13,7 @@ import { needsUsernameSelection } from '@event-sharing/contracts';
 
 const mainLinks = [
   { href: '/', label: 'Explore' },
-  { href: '/my-events', label: 'My events' },
-  { href: '/participation', label: 'Joined events' },
+  { href: '/activities', label: 'Activities' },
   { href: '/friends', label: 'Friends' },
   { href: '/invitations', label: 'Invitations' },
 ];

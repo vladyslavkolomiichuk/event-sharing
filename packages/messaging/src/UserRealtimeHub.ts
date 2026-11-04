@@ -37,6 +37,10 @@ export class UserRealtimeHub {
     }
   }
 
+  broadcast(signal: RealtimeSignal): void {
+    this.publish(this.connections.keys(), signal);
+  }
+
   close(): void {
     for (const sockets of this.connections.values()) {
       for (const socket of sockets) socket.close(1001, 'Service stopping');

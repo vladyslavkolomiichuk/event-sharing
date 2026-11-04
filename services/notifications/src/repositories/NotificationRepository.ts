@@ -1,3 +1,7 @@
+import {
+  NOTIFICATION_GROUP_TYPES,
+  type NotificationFilter,
+} from '@event-sharing/contracts';
 import type { Prisma } from '../generated/prisma/client.js';
 import { prisma } from '../database/client.js';
 
@@ -62,9 +66,18 @@ export class NotificationRepository {
     });
   }
 
-  list(recipientId: string, cursor?: string) {
+  list(
+    recipientId: string,
+    cursor?: string,
+    filter: NotificationFilter = 'ALL',
+  ) {
+    const where: Prisma.InAppNotificationWhereInput = { recipientId };
+    if (filter === 'UNREAD') where.readAt = null;
+    if (filter === 'EVENTS' || filter === 'SOCIAL' || filter === 'ACCOUNT') {
+      where.type = { in: [...NOTIFICATION_GROUP_TYPES[filter]] };
+    }
     return prisma.inAppNotification.findMany({
-      where: { recipientId },
+      where,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: 21,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),

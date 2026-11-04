@@ -1,9 +1,16 @@
 import { Router } from 'express';
 import type { NotificationController } from '../controllers/NotificationController.js';
+import type { SystemMessageController } from '../controllers/SystemMessageController.js';
 import { PrivacyExportController } from '../controllers/PrivacyExportController.js';
 
-export function notificationRoutes(controller: NotificationController): Router {
+export function notificationRoutes(
+  controller: NotificationController,
+  system: SystemMessageController,
+): Router {
   const router = Router();
+  router.get('/system', system.list);
+  router.post('/system', system.create);
+  router.delete('/system/:messageId', system.remove);
   router.get('/me/export', new PrivacyExportController().export);
   router.get('/unread-count', controller.unreadCount);
   router.patch('/read-all', controller.markAllRead);
