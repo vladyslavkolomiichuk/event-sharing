@@ -27,8 +27,8 @@ export function EventSearchToolbar({
   onUseLocation: () => void;
 }) {
   return (
-    <div className="grid gap-3 rounded-xl border border-neutral-200 bg-white p-4 md:grid-cols-[minmax(240px,2fr)_minmax(160px,1fr)_minmax(150px,1fr)_auto] md:items-end">
-      <div>
+    <div className="grid grid-cols-2 gap-3">
+      <div className="col-span-2">
         <label htmlFor="event-search-text">Search events</label>
         <Input
           id="event-search-text"
@@ -70,7 +70,12 @@ export function EventSearchToolbar({
           {canSortByRelevance && <option value="relevance">Relevance</option>}
         </select>
       </div>
-      <Button type="button" variant="outline" onClick={onUseLocation}>
+      <Button
+        type="button"
+        variant="outline"
+        className="col-span-2"
+        onClick={onUseLocation}
+      >
         Use my location
       </Button>
     </div>

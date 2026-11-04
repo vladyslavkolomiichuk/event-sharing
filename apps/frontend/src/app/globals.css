@@ -64,6 +64,22 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+main:has(.events-explore-fullscreen) {
+  max-width: none;
+  padding: 0;
+}
+main:has(.events-explore-fullscreen) + footer {
+  display: none;
+}
+.events-explore-fullscreen h1 {
+  font-size: 1.5rem;
+  line-height: 1.15;
+}
+.events-explore-fullscreen h2 {
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
 .event-map .maplibregl-canvas {
   filter: grayscale(1);
 }

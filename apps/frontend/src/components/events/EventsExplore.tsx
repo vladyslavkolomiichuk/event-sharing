@@ -19,10 +19,9 @@ import {
   type MapMarker,
   type MapPoint,
 } from '@/components/map/MapView';
-import { ExploreEventItem } from './ExploreEventItem';
+import { ExploreResultsPanel } from './ExploreResultsPanel';
 import { EventSearchToolbar } from './EventSearchToolbar';
 import { EventLocationFilters } from './EventLocationFilters';
-import { EventViewSwitch } from './EventViewSwitch';
 import { ExploreRouteControls } from './ExploreRouteControls';
 import { useExploreRoute } from './useExploreRoute';
 import { Button } from '@/components/ui/button';
@@ -61,10 +60,9 @@ export function EventsExplore() {
   const [cityCenters, setCityCenters] = useState<Record<string, MapPoint>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-  const [mobileView, setMobileView] = useState<'list' | 'map'>('list');
+  const [resultsOpen, setResultsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [panelMode, setPanelMode] = useState<'search' | 'route'>('search');
   const [mapPickMode, setMapPickMode] = useState<'search' | 'route-origin'>(
     'search',
   );
@@ -277,7 +275,7 @@ export function EventsExplore() {
         (item) =>
           item.location.latitude !== null &&
           item.location.longitude !== null &&
-          !(panelMode === 'route' && item.id === routePlanner.destination?.id),
+          item.id !== routePlanner.destination?.id,
       )
       .map((item) => ({
         id: item.id,
@@ -325,7 +323,7 @@ export function EventsExplore() {
             },
           ]
         : []),
-      ...(panelMode === 'search' && anchor && anchorSource !== 'DEVICE'
+      ...(anchor && anchorSource !== 'DEVICE'
         ? [
             {
               id: 'search-anchor',
@@ -335,7 +333,10 @@ export function EventsExplore() {
             },
           ]
         : []),
-      ...(panelMode === 'route' && routePlanner.origin
+      ...(routePlanner.origin &&
+      (!anchor ||
+        routePlanner.origin.latitude !== anchor.latitude ||
+        routePlanner.origin.longitude !== anchor.longitude)
         ? [
             {
               id: 'route-origin',
@@ -345,10 +346,10 @@ export function EventsExplore() {
             },
           ]
         : []),
-      ...(panelMode === 'route' && routePlanner.destination
+      ...(routePlanner.destination
         ? [
             {
-              id: 'route-destination',
+              id: routePlanner.destination.id,
               label: `Destination: ${routePlanner.destination.title}`,
               ...routePlanner.destination.point,
               selected: true,
@@ -364,20 +365,29 @@ export function EventsExplore() {
     userLocation,
     anchor,
     anchorSource,
-    panelMode,
     routePlanner.origin,
     routePlanner.destination,
   ]);
 
   async function chooseRouteEvent(id: string) {
-    setPanelMode('route');
-    setMapPickMode('route-origin');
     const destination = await routePlanner.chooseEvent(id);
     if (!destination) return;
     setSelectedId(id);
-    setCenter(destination.point);
-    setZoom(11);
-    setMobileView('map');
+    setSelectedRegion(null);
+    if (!routePlanner.origin && anchor) {
+      routePlanner.chooseOrigin(
+        anchor,
+        anchorSource === 'DEVICE' ? 'Current location' : 'Search center',
+      );
+    }
+    if (routePlanner.origin || anchor) {
+      routePlanner.build();
+      setMapPickMode('search');
+      setResultsOpen(false);
+    } else {
+      setMapPickMode('route-origin');
+      show('Choose a route start on the map or enter an address.', 'info');
+    }
   }
 
   function clearRoute() {
@@ -510,6 +520,8 @@ export function EventsExplore() {
   }
 
   function selectEvent(item: SearchEvent) {
+    if (routePlanner.destination && routePlanner.destination.id !== item.id)
+      clearRoute();
     setSelectedId(item.id);
     setSelectedRegion(null);
     const point =
@@ -524,21 +536,24 @@ export function EventsExplore() {
     if (point) {
       setCenter(point);
       setZoom(item.location.visibility === 'PUBLIC' ? 12 : 9);
-      setMobileView('map');
+      setResultsOpen(false);
     } else show('This event has no map position yet.', 'info');
   }
 
   function selectMarker(id: string) {
-    if (id === 'route-destination') return;
-    if (panelMode === 'route' && !id.startsWith('city:')) {
-      void chooseRouteEvent(id);
+    if (
+      id === 'search-anchor' ||
+      id === 'route-origin' ||
+      id === 'your-position'
+    )
       return;
-    }
     if (id.startsWith('city:')) {
       const region = id.slice(5);
       setSelectedRegion(region);
       setSelectedId(null);
     } else {
+      if (routePlanner.destination && routePlanner.destination.id !== id)
+        clearRoute();
       setSelectedId(id);
       setSelectedRegion(null);
       requestAnimationFrame(() =>
@@ -547,63 +562,92 @@ export function EventsExplore() {
           ?.scrollIntoView({ block: 'nearest' }),
       );
     }
-    setMobileView('list');
+    setResultsOpen(true);
   }
+
+  const routePoints = useMemo(
+    () =>
+      routePlanner.route?.coordinates.map(([longitude, latitude]) => ({
+        latitude,
+        longitude,
+      })),
+    [routePlanner.route],
+  );
+  const selectedEvent = items.find((item) => item.id === selectedId);
+  const locationLabel = anchor
+    ? anchorSource === 'DEVICE'
+      ? 'GPS'
+      : anchorSource === 'MAP'
+        ? 'Map point'
+        : placeQuery || 'Selected place'
+    : 'Anywhere';
 
   if (authLoading) return <Loading />;
   if (!user)
     return (
-      <div className="grid gap-4 lg:grid-cols-[minmax(240px,340px)_minmax(0,1fr)]">
-        <div className="h-fit space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
-          <h2>Find your next event</h2>
-          <p className="text-sm text-neutral-600">
-            Sign in to search events, use your location, and plan a route.
-          </p>
-          <Button asChild>
-            <Link href="/sign-in">Sign in</Link>
-          </Button>
-        </div>
+      <div className="events-explore-fullscreen relative h-[calc(100dvh-61px)] overflow-hidden lg:h-dvh">
         <MapView
           center={worldCenter}
           zoom={2}
           markers={[]}
-          className="h-[min(72dvh,760px)] min-h-[440px]"
+          className="absolute inset-0 h-full w-full rounded-none border-0"
         />
+        <div className="absolute left-3 top-3 z-20 w-[min(390px,calc(100%-24px))] rounded-xl border border-neutral-200 bg-white/95 p-5 shadow-lg backdrop-blur-sm">
+          <h1>Explore events</h1>
+          <p className="mt-2 text-sm text-neutral-600">
+            Sign in to search events, use your location, and plan a route.
+          </p>
+          <Button asChild className="mt-4">
+            <Link href="/sign-in">Sign in</Link>
+          </Button>
+        </div>
       </div>
     );
 
   return (
-    <div className="space-y-4">
-      <div
-        role="group"
-        aria-label="Map tools"
-        className="inline-flex rounded-lg border border-neutral-200 bg-white p-1"
-      >
-        <button
-          type="button"
-          aria-pressed={panelMode === 'search'}
-          className={`rounded-md px-4 py-2 text-sm ${panelMode === 'search' ? 'bg-black text-white' : 'text-neutral-600'}`}
-          onClick={() => {
-            setPanelMode('search');
+    <div className="events-explore-fullscreen relative h-[calc(100dvh-61px)] overflow-hidden lg:h-dvh">
+      <MapView
+        center={center}
+        zoom={zoom}
+        markers={markers}
+        radius={
+          anchor ? { center: anchor, radiusMeters: radiusKm * 1000 } : undefined
+        }
+        route={routePoints}
+        onPick={(point) => {
+          if (mapPickMode === 'route-origin') {
+            routePlanner.chooseOrigin(point, 'Map point');
+            routePlanner.build();
             setMapPickMode('search');
-          }}
+          } else {
+            void chooseMapPoint(point);
+          }
+        }}
+        onMarkerDrag={(id, point) => {
+          if (id === 'search-anchor') void chooseMapPoint(point);
+          if (id === 'route-origin')
+            routePlanner.chooseOrigin(point, 'Map point');
+        }}
+        onMarkerClick={selectMarker}
+        className="absolute inset-0 h-full w-full rounded-none border-0"
+      />
+
+      <div className="pointer-events-none absolute inset-y-3 left-3 z-20 flex w-[min(390px,calc(100%-24px))] flex-col gap-3">
+        <section
+          aria-label="Search events"
+          className="pointer-events-auto max-h-[min(42dvh,420px)] shrink-0 space-y-3 overflow-y-auto rounded-xl border border-neutral-200 bg-white/95 p-4 shadow-lg backdrop-blur-sm lg:max-h-[min(58dvh,620px)]"
         >
-          Search
-        </button>
-        <button
-          type="button"
-          aria-pressed={panelMode === 'route'}
-          className={`rounded-md px-4 py-2 text-sm ${panelMode === 'route' ? 'bg-black text-white' : 'text-neutral-600'}`}
-          onClick={() => {
-            setPanelMode('route');
-            setMapPickMode('route-origin');
-          }}
-        >
-          Route
-        </button>
-      </div>
-      {panelMode === 'search' ? (
-        <>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-500">
+                Discover
+              </p>
+              <h1>Explore events</h1>
+            </div>
+            <Button asChild size="sm" className="shrink-0">
+              <Link href="/events/new">Create event</Link>
+            </Button>
+          </div>
           <EventSearchToolbar
             text={text}
             onTextChange={setText}
@@ -617,11 +661,24 @@ export function EventsExplore() {
             onUseLocation={() => void useMyLocation()}
           />
           {mode === 'DEVICE' && permission !== 'granted' && !userLocation && (
-            <p className="rounded-xl border border-neutral-200 bg-white p-4 text-sm text-neutral-700">
-              Current location is paused. Choose “Use my location” to try again,
-              or search around a city. Browser permission: {permission}.
+            <p className="text-xs text-neutral-600">
+              Location is paused. Choose “Use my location” to try again, or
+              enter a place.
             </p>
           )}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-200 pt-3 text-xs">
+            <span className="font-semibold text-neutral-700">
+              {locationLabel}
+              {anchor ? ` · ${radiusKm} km` : ''}
+            </span>
+            <button
+              type="button"
+              className="font-semibold underline"
+              onClick={() => setMapPickMode('search')}
+            >
+              Pick search point
+            </button>
+          </div>
           <EventLocationFilters
             placeQuery={placeQuery}
             onPlaceQueryChange={changePlace}
@@ -639,148 +696,153 @@ export function EventsExplore() {
             onStatusChange={setStatus}
             onClearLocation={() => void clearLocation()}
           />
-          <p className="text-xs text-neutral-600">
-            {anchor && anchorSource
-              ? `Search center: ${anchorSource === 'DEVICE' ? 'GPS' : anchorSource === 'MAP' ? 'Map point' : placeQuery || anchorSource.toLowerCase()}; radius: ${radiusKm} km.`
-              : 'Searching everywhere. Click the map to search around a point.'}
-            {categoryId &&
-              ` Category: ${categories.find((category) => category.id === categoryId)?.name ?? 'Uncategorized'}.`}
-            {anchor &&
-              ' Approximate event locations may appear just outside the circle.'}
-          </p>
-        </>
-      ) : (
-        <ExploreRouteControls
-          eventTitle={routePlanner.destination?.title ?? null}
-          origin={routePlanner.origin}
-          originLabel={routePlanner.originLabel}
-          onOriginLabelChange={routePlanner.changeOriginLabel}
-          onOriginChange={routePlanner.chooseOrigin}
-          mode={routePlanner.mode}
-          onModeChange={routePlanner.setMode}
-          onUseLocation={() => void routePlanner.useCurrentLocation()}
-          onPickOnMap={() => {
-            setMapPickMode('route-origin');
-            setMobileView('map');
-          }}
-          onBuild={routePlanner.build}
-          onClear={clearRoute}
-          route={routePlanner.route}
-          loading={routePlanner.loading}
-        />
-      )}
-      <EventViewSwitch view={mobileView} onChange={setMobileView} />
-      <div className="grid gap-4 lg:grid-cols-[minmax(340px,440px)_minmax(0,1fr)]">
-        <section
-          aria-label="Search results"
-          className={`flex h-[min(70dvh,760px)] min-h-[440px] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white ${mobileView === 'map' ? 'hidden lg:flex' : 'flex'}`}
-        >
-          <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
-            <h2 className="text-lg font-semibold">Events</h2>
-            <span className="text-sm text-neutral-500">
-              {items.length} shown
-            </span>
-          </div>
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
-            {loading && !items.length ? (
-              <Loading label="Searching events…" />
-            ) : items.length ? (
-              items.map((item) => (
-                <ExploreEventItem
-                  key={item.id}
-                  event={item}
-                  selected={
-                    selectedId === item.id ||
-                    Boolean(
-                      selectedRegion && selectedRegion === item.location.region,
-                    )
-                  }
-                  onSelect={() => selectEvent(item)}
-                  onRoute={() => void chooseRouteEvent(item.id)}
-                />
-              ))
-            ) : (
-              <p className="p-4 text-sm text-neutral-600">
-                {error
-                  ? 'Search is temporarily unavailable.'
-                  : 'No events match these filters. Try a wider area or another date.'}
-              </p>
-            )}
-            {cursor && (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                disabled={loading}
-                onClick={() => void load(cursor)}
-              >
-                {loading ? 'Loading…' : 'Load more'}
-              </Button>
-            )}
-          </div>
-        </section>
-        <section
-          aria-label="Event map"
-          className={`relative ${mobileView === 'list' ? 'hidden lg:block' : 'block'}`}
-        >
-          <p className="pointer-events-none absolute left-3 top-3 z-10 max-w-[15rem] rounded bg-white/95 px-3 py-2 text-xs text-neutral-800 shadow-sm">
-            {panelMode === 'route'
-              ? mapPickMode === 'route-origin'
-                ? 'Click the map to choose the route start.'
-                : 'Choose an event to plan a route.'
-              : anchorSource === 'DEVICE'
-                ? 'Click the map to search from another point.'
-                : anchor
-                  ? 'Drag the search marker or click another point.'
-                  : 'Click the map to search for nearby events.'}
-          </p>
-          <MapView
-            center={center}
-            zoom={zoom}
-            markers={markers}
-            radius={
-              anchor && panelMode === 'search'
-                ? { center: anchor, radiusMeters: radiusKm * 1000 }
-                : undefined
-            }
-            route={
-              panelMode === 'route'
-                ? routePlanner.route?.coordinates.map(
-                    ([longitude, latitude]) => ({
-                      latitude,
-                      longitude,
-                    }),
-                  )
-                : undefined
-            }
-            onPick={(point) => {
-              if (panelMode === 'route') {
-                routePlanner.chooseOrigin(point, 'Map point');
-              } else void chooseMapPoint(point);
-            }}
-            onMarkerDrag={(id, point) => {
-              if (id === 'search-anchor') void chooseMapPoint(point);
-              if (id === 'route-origin') {
-                routePlanner.chooseOrigin(point, 'Map point');
+          {routePlanner.destination && (
+            <ExploreRouteControls
+              eventTitle={routePlanner.destination.title}
+              origin={routePlanner.origin}
+              originLabel={routePlanner.originLabel}
+              onOriginLabelChange={routePlanner.changeOriginLabel}
+              onOriginChange={(point, label) => {
+                routePlanner.chooseOrigin(point, label);
+                setMapPickMode('search');
+              }}
+              mode={routePlanner.mode}
+              onModeChange={routePlanner.setMode}
+              onUseLocation={() => {
+                setMapPickMode('search');
+                void routePlanner.useCurrentLocation();
+              }}
+              onUseSearchCenter={
+                anchor
+                  ? () => {
+                      routePlanner.chooseOrigin(anchor, locationLabel);
+                      setMapPickMode('search');
+                    }
+                  : undefined
               }
-            }}
-            onMarkerClick={selectMarker}
-            visible={mobileView === 'map'}
-            className="h-[min(70dvh,760px)] min-h-[440px]"
-          />
+              onPickOnMap={() => setMapPickMode('route-origin')}
+              onBuild={routePlanner.build}
+              onClear={clearRoute}
+              route={routePlanner.route}
+              loading={routePlanner.loading}
+            />
+          )}
+          {mapPickMode === 'route-origin' && (
+            <p
+              role="status"
+              className="rounded-md bg-neutral-900 px-3 py-2 text-xs text-white"
+            >
+              Click the map to set the route start.
+            </p>
+          )}
+          <details className="border-t border-neutral-200 pt-3 text-xs text-neutral-600">
+            <summary className="cursor-pointer font-semibold text-neutral-700">
+              Location privacy
+            </summary>
+            <p className="mt-2 leading-5">
+              GPS is requested only when you choose it. Your position is used
+              for the current search and is not saved to your profile or search
+              history. Map tiles come from OpenFreeMap and OpenStreetMap; place
+              suggestions come from Photon. Building a route sends its endpoints
+              to Transitland Valhalla.
+            </p>
+          </details>
         </section>
+        <div
+          className={`pointer-events-auto absolute inset-x-0 bottom-0 h-[min(34dvh,300px)] min-h-[120px] ${resultsOpen ? 'flex' : 'hidden'} lg:static lg:flex lg:h-auto lg:min-h-0 lg:flex-1`}
+        >
+          <ExploreResultsPanel
+            items={items}
+            selectedId={selectedId}
+            selectedRegion={selectedRegion}
+            loading={loading}
+            error={error}
+            cursor={cursor}
+            onSelect={selectEvent}
+            onRoute={(id) => void chooseRouteEvent(id)}
+            onLoadMore={(next) => void load(next)}
+            onClose={() => setResultsOpen(false)}
+          />
+        </div>
       </div>
-      <p className="text-xs leading-5 text-neutral-600">
-        Select a place above, click the map, or drag the search marker to find
-        nearby events. Your position is requested only when you choose “Use my
-        location”. It is not saved to your profile or search history; the search
-        service receives it for the current request. The map provider receives
-        tile requests for the area you view. Private venues appear at
-        approximate city positions. Map tiles: OpenFreeMap and OpenStreetMap.
-        Place searches are sent to Photon for suggestions.
+
+      {selectedEvent && !routePlanner.destination && (
+        <aside
+          aria-label="Selected event"
+          className={`pointer-events-auto absolute bottom-16 left-3 z-20 w-[min(320px,calc(100%-24px))] rounded-xl border border-neutral-200 bg-white/95 p-4 shadow-lg backdrop-blur-sm lg:bottom-4 lg:left-auto lg:right-4 lg:w-72 ${resultsOpen ? 'hidden lg:block' : 'block'}`}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            Selected event
+          </p>
+          <h2 className="mt-1 text-lg font-semibold">{selectedEvent.title}</h2>
+          <p className="mt-1 text-xs text-neutral-600">
+            {selectedEvent.location.region || 'Location not listed'}
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void chooseRouteEvent(selectedEvent.id)}
+            >
+              Build route
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/events/${selectedEvent.id}`}>View event</Link>
+            </Button>
+          </div>
+        </aside>
+      )}
+      {routePlanner.destination &&
+        (routePlanner.loading || routePlanner.route) && (
+          <aside
+            aria-label="Route summary"
+            className={`pointer-events-auto absolute bottom-16 left-3 z-20 w-[min(320px,calc(100%-24px))] rounded-xl border border-neutral-200 bg-white/95 p-4 shadow-lg backdrop-blur-sm lg:bottom-4 lg:left-auto lg:right-4 lg:w-72 ${resultsOpen ? 'hidden lg:block' : 'block'}`}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              Route to {routePlanner.destination.title}
+            </p>
+            {routePlanner.loading ? (
+              <p role="status" className="mt-2 text-sm">
+                Building route…
+              </p>
+            ) : routePlanner.route ? (
+              <p className="mt-2 text-lg font-semibold">
+                {(routePlanner.route.distanceMeters / 1000).toFixed(1)} km ·
+                About{' '}
+                {Math.max(
+                  1,
+                  Math.round(routePlanner.route.durationSeconds / 60),
+                )}{' '}
+                min
+              </p>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={clearRoute}
+            >
+              Clear route
+            </Button>
+          </aside>
+        )}
+      {!resultsOpen && (
+        <button
+          type="button"
+          className="absolute bottom-3 left-3 z-30 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold shadow-lg lg:hidden"
+          onClick={() => setResultsOpen(true)}
+        >
+          Events ({items.length})
+        </button>
+      )}
+      <p className="sr-only">
+        Your position is requested only when you choose Use my location. It is
+        not saved to your profile or search history. Map tiles come from
+        OpenFreeMap and OpenStreetMap. Place suggestions come from Photon.
         {accuracy !== null &&
           userLocation &&
-          ` Position accuracy: about ${accuracy} m.`}
+          ` Position accuracy: about ${accuracy} meters.`}
       </p>
     </div>
   );

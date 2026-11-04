@@ -192,7 +192,26 @@ export function MapView({
     if (coordinates.length >= 2) {
       const bounds = new LngLatBounds();
       for (const point of coordinates) bounds.extend(point as [number, number]);
-      map.fitBounds(bounds, { padding: 50, maxZoom: 14 });
+      const width = map.getContainer().clientWidth;
+      const height = map.getContainer().clientHeight;
+      const desktop = width >= 800;
+      map.fitBounds(bounds, {
+        padding: desktop
+          ? {
+              left: Math.min(430, width * 0.4),
+              right: 60,
+              top: 80,
+              bottom: 100,
+            }
+          : {
+              left: 24,
+              right: 24,
+              top: Math.min(270, height * 0.36),
+              bottom: Math.min(190, height * 0.26),
+            },
+        maxZoom: 14,
+        duration: 700,
+      });
     }
   }, [route, ready]);
 

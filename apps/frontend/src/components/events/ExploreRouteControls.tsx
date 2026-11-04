@@ -14,6 +14,7 @@ export function ExploreRouteControls({
   mode,
   onModeChange,
   onUseLocation,
+  onUseSearchCenter,
   onPickOnMap,
   onBuild,
   onClear,
@@ -28,6 +29,7 @@ export function ExploreRouteControls({
   mode: TravelMode;
   onModeChange: (mode: TravelMode) => void;
   onUseLocation: () => void;
+  onUseSearchCenter?: () => void;
   onPickOnMap: () => void;
   onBuild: () => void;
   onClear: () => void;
@@ -35,7 +37,7 @@ export function ExploreRouteControls({
   loading: boolean;
 }) {
   return (
-    <div className="space-y-3 rounded-xl border border-neutral-200 bg-white p-4">
+    <div className="space-y-3 border-t border-neutral-200 pt-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-semibold">
           Destination: {eventTitle ?? 'Choose an event from the list or map'}
@@ -44,32 +46,41 @@ export function ExploreRouteControls({
           Clear route
         </Button>
       </div>
-      <div className="grid gap-3 md:grid-cols-[minmax(160px,1fr)_auto_auto_140px_auto] md:items-end">
-        <PlaceAutocomplete
-          id="explore-route-origin"
-          label="Starting address or city"
-          kind="address"
-          value={
-            originLabel === 'Map point' || originLabel === 'Current location'
-              ? ''
-              : originLabel
-          }
-          onChange={onOriginLabelChange}
-          onSelect={(place) =>
-            onOriginChange(
-              { latitude: place.latitude, longitude: place.longitude },
-              place.label,
-            )
-          }
-          placeholder="Enter a starting place"
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 min-w-0">
+          <PlaceAutocomplete
+            id="explore-route-origin"
+            label="Starting address or city"
+            kind="address"
+            value={
+              originLabel === 'Map point' ||
+              originLabel === 'Current location' ||
+              originLabel === 'Search center'
+                ? ''
+                : originLabel
+            }
+            onChange={onOriginLabelChange}
+            onSelect={(place) =>
+              onOriginChange(
+                { latitude: place.latitude, longitude: place.longitude },
+                place.label,
+              )
+            }
+            placeholder="Enter a starting place"
+          />
+        </div>
+        {onUseSearchCenter && (
+          <Button type="button" variant="outline" onClick={onUseSearchCenter}>
+            Use search center
+          </Button>
+        )}
         <Button type="button" variant="outline" onClick={onUseLocation}>
           Use my location
         </Button>
         <Button type="button" variant="outline" onClick={onPickOnMap}>
           Pick on map
         </Button>
-        <div>
+        <div className="col-span-2">
           <label htmlFor="explore-route-mode">Travel mode</label>
           <select
             id="explore-route-mode"
@@ -84,6 +95,7 @@ export function ExploreRouteControls({
         </div>
         <Button
           type="button"
+          className="col-span-2"
           disabled={!eventTitle || !origin || loading}
           onClick={onBuild}
         >

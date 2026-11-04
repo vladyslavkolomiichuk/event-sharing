@@ -37,7 +37,7 @@ export function EventLocationFilters({
   onClearLocation: () => void;
 }) {
   return (
-    <div className="grid gap-3 rounded-xl border border-neutral-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-[110px_minmax(180px,1fr)_110px_140px_140px_120px_auto] lg:items-end">
+    <div className="grid grid-cols-2 gap-3">
       <div>
         <label htmlFor="event-place-kind">Find by</label>
         <select
@@ -52,26 +52,28 @@ export function EventLocationFilters({
           <option value="address">Address</option>
         </select>
       </div>
-      <PlaceAutocomplete
-        id="event-map-place"
-        label={
-          placeKind === 'city'
-            ? 'Search around a city'
-            : 'Search around an address'
-        }
-        kind={placeKind}
-        value={placeQuery}
-        onChange={onPlaceQueryChange}
-        onSelect={(place) =>
-          onPlaceSelect(
-            { latitude: place.latitude, longitude: place.longitude },
-            place.label,
-          )
-        }
-        placeholder={
-          placeKind === 'city' ? 'Choose a city' : 'Choose an address'
-        }
-      />
+      <div className="min-w-0">
+        <PlaceAutocomplete
+          id="event-map-place"
+          label={
+            placeKind === 'city'
+              ? 'Search around a city'
+              : 'Search around an address'
+          }
+          kind={placeKind}
+          value={placeQuery}
+          onChange={onPlaceQueryChange}
+          onSelect={(place) =>
+            onPlaceSelect(
+              { latitude: place.latitude, longitude: place.longitude },
+              place.label,
+            )
+          }
+          placeholder={
+            placeKind === 'city' ? 'Choose a city' : 'Choose an address'
+          }
+        />
+      </div>
       <div>
         <label htmlFor="event-search-radius">Radius</label>
         <select
@@ -88,49 +90,57 @@ export function EventLocationFilters({
           ))}
         </select>
       </div>
-      <div>
-        <label htmlFor="event-search-from">From</label>
-        <Input
-          id="event-search-from"
-          type="date"
-          value={startFrom}
-          max={startTo || undefined}
-          onChange={(event) => onStartFromChange(event.target.value)}
-        />
-      </div>
-      <div>
-        <label htmlFor="event-search-to">Until</label>
-        <Input
-          id="event-search-to"
-          type="date"
-          value={startTo}
-          min={startFrom || undefined}
-          onChange={(event) => onStartToChange(event.target.value)}
-        />
-      </div>
-      <div>
-        <label htmlFor="event-search-status">Status</label>
-        <select
-          id="event-search-status"
-          className="w-full"
-          value={status}
-          onChange={(event) => onStatusChange(event.target.value)}
-        >
-          <option value="">All active</option>
-          <option value="PUBLISHED">Published</option>
-          <option value="ONGOING">Ongoing</option>
-          <option value="COMPLETED">Completed</option>
-          <option value="CANCELLED">Cancelled</option>
-        </select>
-      </div>
       <Button
         type="button"
         variant="ghost"
         disabled={!locationActive}
         onClick={onClearLocation}
+        className="self-end"
       >
         Clear location
       </Button>
+      <details className="col-span-2 border-t border-neutral-200 pt-3">
+        <summary className="cursor-pointer text-sm font-semibold">
+          More filters{startFrom || startTo || status ? ' · Active' : ''}
+        </summary>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="event-search-from">From</label>
+            <Input
+              id="event-search-from"
+              type="date"
+              value={startFrom}
+              max={startTo || undefined}
+              onChange={(event) => onStartFromChange(event.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="event-search-to">Until</label>
+            <Input
+              id="event-search-to"
+              type="date"
+              value={startTo}
+              min={startFrom || undefined}
+              onChange={(event) => onStartToChange(event.target.value)}
+            />
+          </div>
+          <div className="col-span-2">
+            <label htmlFor="event-search-status">Status</label>
+            <select
+              id="event-search-status"
+              className="w-full"
+              value={status}
+              onChange={(event) => onStatusChange(event.target.value)}
+            >
+              <option value="">All active</option>
+              <option value="PUBLISHED">Published</option>
+              <option value="ONGOING">Ongoing</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
