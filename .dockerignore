@@ -1,0 +1,10 @@
+.git
+.env*
+**/.env*
+.codex-remote-attachments
+**/node_modules
+**/dist
+**/.next
+**/src/generated
+**/storage-data
+**/storage-backups

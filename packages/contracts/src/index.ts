@@ -54,3 +54,4 @@ export * from './participation/availability.schema.js';
 export * from './participation/membership.schema.js';
 export * from './participation/invitation.event.js';
 export * from './participation/participation-history.schema.js';
+export * from './storage/stored-file.schema.js';

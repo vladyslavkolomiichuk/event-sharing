@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model StoredFile {
+  id        String   @id @db.Uuid
+  ownerId   String   @db.Uuid
+  eventId   String?  @db.Uuid
+  eventSlot String?
+  mimeType  String
+  size      Int
+  sha256    String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([ownerId, createdAt])
+  @@unique([eventId, eventSlot])
+  @@map("stored_file")
+}

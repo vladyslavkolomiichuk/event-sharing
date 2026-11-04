@@ -8,3 +8,5 @@ dist/
 coverage/
 ~syncthing~*.tmp
 **/src/generated/
+services/storage/storage-data/
+services/storage/storage-backups/

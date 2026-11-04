@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { SearchEvent } from '@event-sharing/contracts';
 import { EventStatusBadge } from './EventStatusBadge';
 import { EventUnreadBadge } from '@/components/messages/EventUnreadBadge';
+import { EventImage } from './EventImage';
 
 export function ExploreEventItem({
   event,
@@ -38,7 +39,14 @@ export function ExploreEventItem({
             <EventStatusBadge status={event.status} />
           </div>
         </div>
-        <h3 className="mt-2 line-clamp-2">{event.title}</h3>
+        <div className="mt-2 flex items-center gap-3">
+          <EventImage
+            eventId={event.id}
+            slot="avatar"
+            className="h-12 w-12 shrink-0 rounded-lg object-cover"
+          />
+          <h3 className="line-clamp-2">{event.title}</h3>
+        </div>
         <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
           {event.categoryName || 'Uncategorized'}
         </p>

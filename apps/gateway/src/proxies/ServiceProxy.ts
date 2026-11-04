@@ -7,13 +7,14 @@ export class ServiceProxy {
     private readonly baseUrl: string,
     private readonly path: string,
     private readonly serviceName: string,
+    private readonly timeout = 5000,
   ) {}
 
   create(): RequestHandler {
     return createProxyMiddleware<Request, Response>({
       target: `${this.baseUrl.replace(/\/+$/, '')}${this.path}`,
       changeOrigin: true,
-      proxyTimeout: 5000,
+      proxyTimeout: this.timeout,
       on: {
         proxyReq: (proxyRequest, request) => {
           proxyRequest.removeHeader('cookie');

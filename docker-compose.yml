@@ -73,6 +73,71 @@ services:
       retries: 10
       start_period: 30s
 
+  clamav:
+    image: clamav/clamav:stable
+    profiles: [storage]
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${CLAMAV_PORT:-3310}:3310'
+    volumes:
+      - clamav-data:/var/lib/clamav
+
+  storage:
+    build:
+      context: .
+      dockerfile: services/storage/Dockerfile
+    profiles: [storage]
+    restart: unless-stopped
+    network_mode: host
+    env_file: ./services/storage/.env
+    environment:
+      HOST: 127.0.0.1
+      STORAGE_PATH: /data/files
+      STORAGE_BACKUP_PATH: /data/backups
+      CLAMAV_HOST: 127.0.0.1
+      CLAMAV_PORT: ${CLAMAV_PORT:-3310}
+    volumes:
+      - storage-data:/data/files
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clamav:
+        condition: service_started
+
+  storage-backup:
+    build:
+      context: .
+      dockerfile: services/storage/Dockerfile
+    profiles: [storage]
+    restart: unless-stopped
+    network_mode: host
+    env_file: ./services/storage/.env
+    environment:
+      STORAGE_PATH: /data/files
+      STORAGE_BACKUP_PATH: /data/backups
+    command: ['node', 'dist/backup.js']
+    volumes:
+      - storage-data:/data/files:ro
+      - storage-backups:/data/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  storage-restore:
+    build:
+      context: .
+      dockerfile: services/storage/Dockerfile
+    profiles: [storage-restore]
+    network_mode: host
+    env_file: ./services/storage/.env
+    environment:
+      STORAGE_PATH: /data/files
+      STORAGE_BACKUP_PATH: /data/backups
+    entrypoint: ['node', 'dist/restore.js']
+    volumes:
+      - storage-data:/data/files
+      - storage-backups:/data/backups:ro
+
   valhalla:
     image: ghcr.io/valhalla/valhalla-scripted:3.9.1
     profiles: [routing]
@@ -90,3 +155,6 @@ volumes:
   pgadmin-data:
   kafka-data:
   valhalla-data:
+  storage-data:
+  storage-backups:
+  clamav-data:

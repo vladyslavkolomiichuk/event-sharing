@@ -3,6 +3,7 @@ import type { EventDetail } from '@event-sharing/contracts';
 import { EventStatusBadge } from './EventStatusBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import { EventUnreadBadge } from '@/components/messages/EventUnreadBadge';
+import { EventImage } from './EventImage';
 
 export function EventCard({
   event,
@@ -19,6 +20,11 @@ export function EventCard({
         aria-label={`Open ${event.title}`}
       >
         <CardContent className="flex h-full flex-col gap-5">
+          <EventImage
+            eventId={event.id}
+            slot="avatar"
+            className="h-20 w-20 rounded-xl object-cover"
+          />
           <div className="flex items-start justify-between gap-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
               {new Date(event.startTime).toLocaleDateString('en-US', {

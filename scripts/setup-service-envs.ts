@@ -54,6 +54,7 @@ const services = [
   ['notifications', 8006, 'notifications_db'],
   ['messages', 8008, 'messages_db'],
   ['event-log', 8007, 'event_log_db'],
+  ['storage', 8009, 'storage_db'],
 ] as const;
 
 function createEnvFile(path: string, content: string): void {
@@ -160,6 +161,18 @@ for (const [service, servicePort, database] of services) {
   if (service === 'geo-search') settings = geoSearchSettings;
   if (service === 'event-log') settings = eventLogSettings;
   if (service === 'notifications') settings = notificationsSettings;
+  if (service === 'storage')
+    settings = {
+      HOST: '127.0.0.1',
+      AUTH_JWKS_URL: 'http://127.0.0.1:8002/backend/auth/jwks',
+      AUTH_JWT_ISSUER: 'http://127.0.0.1:8000',
+      AUTH_JWT_AUDIENCE: 'event-sharing-services',
+      EVENTS_SERVICE_URL: 'http://127.0.0.1:8001',
+      STORAGE_PATH: './storage-data',
+      STORAGE_BACKUP_PATH: './storage-backups',
+      CLAMAV_HOST: '127.0.0.1',
+      CLAMAV_PORT: '3310',
+    };
   if (service === 'messages')
     settings = {
       HOST: '127.0.0.1',
@@ -212,6 +225,7 @@ createEnvFile(
     'NOTIFICATIONS_SERVICE_URL=http://127.0.0.1:8006',
     'MESSAGES_SERVICE_URL=http://127.0.0.1:8008',
     'EVENT_LOG_SERVICE_URL=http://127.0.0.1:8007',
+    'STORAGE_SERVICE_URL=http://127.0.0.1:8009',
     '',
   ].join('\n'),
 );
@@ -219,4 +233,5 @@ createEnvFile(
 ensureEnvKeys(gatewayEnvPath, {
   FRONTEND_ORIGIN: 'http://127.0.0.1:3001',
   MESSAGES_SERVICE_URL: 'http://127.0.0.1:8008',
+  STORAGE_SERVICE_URL: 'http://127.0.0.1:8009',
 });

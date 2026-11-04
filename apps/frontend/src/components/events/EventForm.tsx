@@ -31,6 +31,8 @@ import {
 } from '@/components/messages/ChatGroupDraftForm';
 import { messagesClient } from '@/lib/api/MessagesClient';
 import { EVENT_FORM_STEPS, EventStepNavigation } from './EventStepNavigation';
+import { storageClient, type EventImageSlot } from '@/lib/api/StorageClient';
+import { EventImage } from './EventImage';
 
 const timeZones = [
   'UTC',
@@ -59,6 +61,13 @@ export function EventForm({
   const stepContent = useRef<HTMLDivElement>(null);
   const stepVisited = useRef(false);
   const [title, setTitle] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [eventImages, setEventImages] = useState<
+    Record<EventImageSlot, boolean>
+  >({ avatar: false, cover: false });
+  const [removeAvatar, setRemoveAvatar] = useState(false);
+  const [removeCover, setRemoveCover] = useState(false);
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -90,6 +99,36 @@ export function EventForm({
   const [lookupMessage, setLookupMessage] = useState('');
 
   useEffect(() => () => reverseRequest.current?.abort(), []);
+
+  useEffect(() => {
+    if (eventId)
+      void storageClient
+        .images(eventId)
+        .then(setEventImages)
+        .catch(() => {});
+  }, [eventId]);
+
+  async function saveImages(id: string) {
+    const changes = [
+      { slot: 'avatar' as const, file: avatarFile, remove: removeAvatar },
+      { slot: 'cover' as const, file: coverFile, remove: removeCover },
+    ];
+    for (const change of changes) {
+      try {
+        if (change.file)
+          await storageClient.uploadEventImage(id, change.slot, change.file);
+        else if (change.remove)
+          await storageClient.removeEventImage(id, change.slot);
+      } catch (cause) {
+        const reason =
+          cause instanceof Error ? cause.message : 'Please try again.';
+        show(
+          `Event saved, but the ${change.slot} image could not be updated. ${reason}`,
+          'warning',
+        );
+      }
+    }
+  }
 
   useEffect(() => {
     if (stepVisited.current)
@@ -218,6 +257,13 @@ export function EventForm({
 
   function validateStep(index: number): string | null {
     if (index === 0) {
+      for (const image of [avatarFile, coverFile]) {
+        if (!image) continue;
+        if (!['image/png', 'image/jpeg', 'image/webp'].includes(image.type))
+          return 'Use a PNG, JPEG, or WebP image.';
+        if (!image.size || image.size > 5 * 1024 * 1024)
+          return 'Images must be between 1 byte and 5 MB.';
+      }
       if (!title.trim()) return 'Enter an event title.';
       if (!description.trim()) return 'Enter an event description.';
       if (!startTime || !endTime)
@@ -331,11 +377,13 @@ export function EventForm({
               : Number(participantLimit),
         });
         await eventsClient.update(eventId, patch);
+        await saveImages(eventId);
         router.push(`/events/${eventId}`);
       } else {
         const created = await eventsClient.create(
           CreateEventSchema.parse(input),
         );
+        await saveImages(created.id);
         const allInvitees = [
           ...new Set([
             ...invitees,
@@ -474,6 +522,82 @@ export function EventForm({
           <div hidden={step !== 0}>
             <div className="space-y-6 rounded-xl border border-neutral-200 bg-white p-6 sm:p-8">
               <h2>Event details</h2>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="event-avatar">Event avatar (optional)</label>
+                  {eventId &&
+                    eventImages.avatar &&
+                    !removeAvatar &&
+                    !avatarFile && (
+                      <EventImage
+                        eventId={eventId}
+                        slot="avatar"
+                        className="mb-3 h-20 w-20 rounded-lg object-cover"
+                      />
+                    )}
+                  <Input
+                    id="event-avatar"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(event) => {
+                      setAvatarFile(event.target.files?.[0] ?? null);
+                      setRemoveAvatar(false);
+                    }}
+                  />
+                  {eventImages.avatar && !avatarFile && (
+                    <label className="mt-2 flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={removeAvatar}
+                        onChange={(event) =>
+                          setRemoveAvatar(event.target.checked)
+                        }
+                      />{' '}
+                      Remove current avatar
+                    </label>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="event-cover">
+                    Event background (optional)
+                  </label>
+                  {eventId &&
+                    eventImages.cover &&
+                    !removeCover &&
+                    !coverFile && (
+                      <EventImage
+                        eventId={eventId}
+                        slot="cover"
+                        className="mb-3 h-20 w-full rounded-lg object-cover"
+                      />
+                    )}
+                  <Input
+                    id="event-cover"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(event) => {
+                      setCoverFile(event.target.files?.[0] ?? null);
+                      setRemoveCover(false);
+                    }}
+                  />
+                  {eventImages.cover && !coverFile && (
+                    <label className="mt-2 flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={removeCover}
+                        onChange={(event) =>
+                          setRemoveCover(event.target.checked)
+                        }
+                      />{' '}
+                      Remove current background
+                    </label>
+                  )}
+                </div>
+                <p className="text-xs text-neutral-500 sm:col-span-2">
+                  PNG, JPEG, or WebP; up to 5 MB each. Images are checked and
+                  stored without embedded metadata.
+                </p>
+              </div>
               <div>
                 <label htmlFor="title">Title</label>
                 <Input

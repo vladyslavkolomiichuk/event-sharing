@@ -1,5 +1,5 @@
 import { ApiErrorSchema } from '@event-sharing/contracts';
-import type { RequestHandler, Response } from 'express';
+import type { Request, RequestHandler, Response } from 'express';
 
 type RateLimitEntry = { count: number; resetAt: number };
 
@@ -10,12 +10,17 @@ export class GatewayRateLimiter {
     private readonly limit: number,
     private readonly windowMs: number,
     private readonly maximumKeys = 10_000,
+    private readonly keyFor?: (request: Request) => string | undefined,
   ) {}
 
   middleware(): RequestHandler {
     return (request, response, next) => {
       const now = Date.now();
-      const key = request.ip ?? request.socket.remoteAddress ?? 'unknown';
+      const key =
+        this.keyFor?.(request) ??
+        request.ip ??
+        request.socket.remoteAddress ??
+        'unknown';
       let entry = this.entries.get(key);
 
       if (!entry || entry.resetAt <= now) {

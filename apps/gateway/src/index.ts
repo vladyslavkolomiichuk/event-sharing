@@ -16,6 +16,7 @@ const services = [
   ['Notifications', env.NOTIFICATIONS_SERVICE_URL],
   ['Messages', env.MESSAGES_SERVICE_URL],
   ['Event Log', env.EVENT_LOG_SERVICE_URL],
+  ['Storage', env.STORAGE_SERVICE_URL],
 ] as const;
 
 const clients = services.map(
@@ -63,6 +64,12 @@ const app = createApp({
       env.EVENT_LOG_SERVICE_URL,
       '/api/event-log',
       'Event Log',
+    ).create(),
+    storage: new ServiceProxy(
+      env.STORAGE_SERVICE_URL,
+      '/api/storage',
+      'Storage',
+      45000,
     ).create(),
   },
 });

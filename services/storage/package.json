@@ -1,0 +1,36 @@
+{
+  "name": "@event-sharing/storage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "pnpm run clean && pnpm prisma:generate && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:init": "tsx src/create-database.ts",
+    "backup": "node dist/backup.js --once",
+    "restore": "node dist/restore.js"
+  },
+  "dependencies": {
+    "@event-sharing/common": "workspace:*",
+    "@event-sharing/contracts": "workspace:*",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "express": "^5.2.1",
+    "jose": "^6.0.0",
+    "pg": "8.23.0",
+    "sharp": "^0.34.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.23.0",
+    "prisma": "7.10.0",
+    "tsx": "4.23.13"
+  }
+}

@@ -16,6 +16,7 @@ const EnvSchema = BaseHttpEnvSchema.extend({
   NOTIFICATIONS_SERVICE_URL: z.url(),
   MESSAGES_SERVICE_URL: z.url(),
   EVENT_LOG_SERVICE_URL: z.url(),
+  STORAGE_SERVICE_URL: z.url().default('http://127.0.0.1:8009'),
 });
 
 export const env = EnvSchema.parse({

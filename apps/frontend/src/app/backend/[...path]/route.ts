@@ -1,6 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const allowedPrefixes = ['auth', 'api'];
+const maxStorageUploadBytes = 5 * 1024 * 1024;
+
+async function readStorageUpload(
+  request: NextRequest,
+): Promise<ArrayBuffer | null> {
+  const declared = Number(request.headers.get('content-length'));
+  if (declared > maxStorageUploadBytes) return null;
+  if (!request.body) return new ArrayBuffer(0);
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > maxStorageUploadBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return body.buffer;
+}
 
 async function proxy(
   request: NextRequest,
@@ -46,13 +75,29 @@ async function proxy(
   headers.set('origin', trustedOrigin);
 
   try {
+    const storageUpload =
+      path[0] === 'api' &&
+      path[1] === 'storage' &&
+      ['POST', 'PUT'].includes(request.method);
+    const body = storageUpload ? await readStorageUpload(request) : undefined;
+    if (storageUpload && !body)
+      return NextResponse.json(
+        {
+          code: 'FILE_TOO_LARGE',
+          message: 'The file is too large.',
+          details: [],
+        },
+        { status: 413 },
+      );
     const upstream = await fetch(target, {
       method: request.method,
       headers,
       body:
         request.method === 'GET' || request.method === 'HEAD'
           ? undefined
-          : await request.arrayBuffer(),
+          : storageUpload
+            ? body
+            : await request.arrayBuffer(),
       redirect: 'manual',
       cache: 'no-store',
     });
@@ -63,6 +108,9 @@ async function proxy(
       'x-request-id',
       'cache-control',
       'content-disposition',
+      'x-content-type-options',
+      'content-security-policy',
+      'cross-origin-resource-policy',
     ]) {
       const value = upstream.headers.get(name);
       if (value) responseHeaders.set(name, value);

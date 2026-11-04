@@ -17,6 +17,7 @@
     "dev:frontend": "pnpm --filter @event-sharing/contracts build && pnpm --filter @event-sharing/frontend dev",
     "start:frontend": "pnpm --filter @event-sharing/contracts build && pnpm --filter @event-sharing/frontend start",
     "env:services": "tsx scripts/setup-service-envs.ts",
+    "storage:db:init": "pnpm --filter @event-sharing/storage db:init",
     "kafka:topics": "tsx scripts/create-kafka-topics.ts",
     "server:status": "docker compose ps",
     "infra:up": "docker compose up -d postgres kafka",

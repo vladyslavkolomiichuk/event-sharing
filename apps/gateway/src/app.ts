@@ -26,6 +26,7 @@ export type GatewayAppDependencies = {
     notifications: RequestHandler;
     messages: RequestHandler;
     eventLog: RequestHandler;
+    storage: RequestHandler;
   };
 };
 
@@ -48,6 +49,12 @@ export function createApp(dependencies: GatewayAppDependencies): Express {
   const userSearchRateLimiter = new GatewayRateLimiter(60, 60_000);
   const routeRateLimiter = new GatewayRateLimiter(30, 60_000);
   const dataExportRateLimiter = new GatewayRateLimiter(3, 60_000);
+  const storageUploadRateLimiter = new GatewayRateLimiter(
+    20,
+    60_000,
+    10_000,
+    (request) => request.authenticatedUser?.id,
+  );
   app.use('/auth', authRateLimiter.middleware());
   app.use(
     ['/auth/sign-in/email', '/auth/sign-up/email'],
@@ -71,6 +78,15 @@ export function createApp(dependencies: GatewayAppDependencies): Express {
   app.use('/api/participation', dependencies.serviceProxies.participation);
   app.use('/api/notifications', dependencies.serviceProxies.notifications);
   app.use('/api/messages', dependencies.serviceProxies.messages);
+  app.use(
+    '/api/storage',
+    (request, response, next) => {
+      if (request.method === 'POST' || request.method === 'PUT')
+        return storageUploadRateLimiter.middleware()(request, response, next);
+      next();
+    },
+    dependencies.serviceProxies.storage,
+  );
   app.use(
     '/api/event-log',
     requireRole('ADMIN'),

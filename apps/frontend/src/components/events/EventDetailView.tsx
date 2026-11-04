@@ -22,6 +22,7 @@ import { useChatUnread } from '@/contexts/ChatUnreadContext';
 import { ShareEvent } from './ShareEvent';
 import { InviteParticipants } from './InviteParticipants';
 import { EventRoutePlanner } from './EventRoutePlanner';
+import { EventImage } from './EventImage';
 
 const editable = ['DRAFT', 'REJECTED', 'APPROVED', 'PUBLISHED'];
 
@@ -137,6 +138,12 @@ export function EventDetailView({
   return (
     <div className="space-y-9">
       <div className="space-y-5 border-b border-neutral-200 pb-8">
+        <EventImage
+          key={`${id}-cover`}
+          eventId={id}
+          slot="cover"
+          className="h-40 w-full rounded-xl object-cover sm:h-64"
+        />
         <div className="flex flex-wrap items-center gap-3">
           <EventStatusBadge status={event.status} />
           {['PUBLISHED', 'ONGOING'].includes(event.status) && (
@@ -145,7 +152,15 @@ export function EventDetailView({
             </span>
           )}
         </div>
-        <h1>{event.title}</h1>
+        <div className="flex items-center gap-4">
+          <EventImage
+            key={`${id}-avatar`}
+            eventId={id}
+            slot="avatar"
+            className="h-16 w-16 shrink-0 rounded-xl object-cover"
+          />
+          <h1>{event.title}</h1>
+        </div>
         <p className="text-sm font-semibold text-neutral-600">
           Category: {event.categoryName || 'Uncategorized'}
         </p>

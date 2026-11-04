@@ -19,6 +19,8 @@ export default function PrivacyPolicyPage() {
           credentials, and device coordinates are not public profile fields.
           Event and chat services retain the content you submit and the internal
           user IDs needed to keep conversations and participation consistent.
+          Storage keeps images you upload and the metadata needed to protect and
+          manage them. Event images follow the event&apos;s access rules.
         </p>
       </section>
       <section>

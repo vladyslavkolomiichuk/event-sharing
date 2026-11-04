@@ -24,6 +24,7 @@ export class DataExportController {
         false,
       ],
       ['messages', `${env.MESSAGES_SERVICE_URL}/api/messages/me/export`, false],
+      ['storage', `${env.STORAGE_SERVICE_URL}/api/storage/me/export`, false],
       [
         'notifications',
         `${env.NOTIFICATIONS_SERVICE_URL}/api/notifications/me/export`,
