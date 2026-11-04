@@ -18,12 +18,18 @@ const fileSchema = z
     ownerId: z.uuid(),
     eventId: z.uuid().nullable(),
     eventSlot: z.enum(['avatar', 'cover']).nullable(),
+    profileOwnerId: z.uuid().nullable().optional(),
     mimeType: z.enum(['image/png', 'image/jpeg', 'image/webp']),
     size: z.number().int().positive().max(5242880),
     sha256: z.string().regex(/^[0-9a-f]{64}$/),
     createdAt: z.iso.datetime(),
   })
-  .refine((file) => Boolean(file.eventId) === Boolean(file.eventSlot));
+  .refine((file) => Boolean(file.eventId) === Boolean(file.eventSlot))
+  .refine(
+    (file) =>
+      !file.profileOwnerId ||
+      (file.profileOwnerId === file.ownerId && !file.eventId),
+  );
 const metadata = z
   .object({ version: z.literal(1), files: z.array(fileSchema) })
   .parse(JSON.parse(await readFile(join(backup, 'metadata.json'), 'utf8')));
@@ -86,7 +92,7 @@ try {
     if (hash !== file.sha256)
       throw new Error('A backup file failed its integrity check.');
     await client.query(
-      'INSERT INTO "stored_file" ("id", "ownerId", "eventId", "eventSlot", "mimeType", "size", "sha256", "createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+      'INSERT INTO "stored_file" ("id", "ownerId", "eventId", "eventSlot", "mimeType", "size", "sha256", "createdAt", "profileOwnerId") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
       [
         file.id,
         file.ownerId,
@@ -96,6 +102,7 @@ try {
         file.size,
         file.sha256,
         file.createdAt,
+        file.profileOwnerId ?? null,
       ],
     );
   }

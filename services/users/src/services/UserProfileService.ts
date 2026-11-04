@@ -2,11 +2,13 @@ import {
   UserProfilePrivateSchema,
   UserProfilePublicSchema,
   ProfileVisibilitySchema,
+  profileAvatarPath,
   type UpdateUserProfile,
   type UserProfilePrivate,
   type UserProfilePublic,
 } from '@event-sharing/contracts';
 import { ProfileNotFoundError } from '../domain/errors/ProfileNotFoundError.js';
+import { InvalidAvatarError } from '../domain/errors/InvalidAvatarError.js';
 import { FriendService } from './FriendService.js';
 import {
   UserProfileRepository,
@@ -148,6 +150,11 @@ export class UserProfileService {
     userId: string,
     patch: UpdateUserProfile,
   ): Promise<UserProfilePrivate> {
+    if (
+      patch.avatarUrl?.startsWith('/backend/') &&
+      patch.avatarUrl !== profileAvatarPath(userId)
+    )
+      throw new InvalidAvatarError();
     const snapshot = await this.repository.update(userId, patch);
     if (!snapshot) throw new ProfileNotFoundError();
     return this.toPrivate(snapshot);

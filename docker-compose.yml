@@ -83,6 +83,7 @@ services:
       - clamav-data:/var/lib/clamav
 
   storage:
+    image: event-sharing-storage
     build:
       context: .
       dockerfile: services/storage/Dockerfile
@@ -105,6 +106,7 @@ services:
         condition: service_started
 
   storage-backup:
+    image: event-sharing-storage
     build:
       context: .
       dockerfile: services/storage/Dockerfile
@@ -124,6 +126,7 @@ services:
         condition: service_healthy
 
   storage-restore:
+    image: event-sharing-storage
     build:
       context: .
       dockerfile: services/storage/Dockerfile

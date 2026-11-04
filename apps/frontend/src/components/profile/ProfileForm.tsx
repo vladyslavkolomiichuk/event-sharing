@@ -3,9 +3,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import {
   UpdateUserProfileSchema,
+  profileAvatarPath,
   type UserProfilePrivate,
 } from '@event-sharing/contracts';
 import { usersClient } from '@/lib/api/UsersClient';
+import { storageClient } from '@/lib/api/StorageClient';
 import { Loading } from '@/components/feedback/Loading';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +23,8 @@ export function ProfileForm() {
   const { show } = useToast();
   const [profile, setProfile] = useState<UserProfilePrivate | null>(null);
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
   const [bio, setBio] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
@@ -35,7 +39,9 @@ export function ProfileForm() {
     try {
       const value = await usersClient.me();
       setProfile(value);
-      setAvatarUrl(value.avatarUrl ?? '');
+      setAvatarUrl(
+        value.avatarUrl?.startsWith('/backend/') ? '' : (value.avatarUrl ?? ''),
+      );
       setBio(value.bio ?? '');
       setPhone(value.phone ?? '');
       setCity(value.city ?? '');
@@ -59,7 +65,11 @@ export function ProfileForm() {
     setSaveError('');
     try {
       const input = UpdateUserProfileSchema.parse({
-        avatarUrl: avatarUrl.trim() || null,
+        avatarUrl:
+          avatarUrl.trim() ||
+          (profile?.avatarUrl?.startsWith('/backend/')
+            ? profile.avatarUrl
+            : null),
         bio,
         phone: phone.trim() || null,
         city: city.trim() || null,
@@ -72,6 +82,47 @@ export function ProfileForm() {
       );
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function uploadAvatar() {
+    if (!profile || !avatarFile) return;
+    setAvatarBusy(true);
+    setSaveError('');
+    try {
+      await storageClient.uploadProfileAvatar(avatarFile);
+      setProfile(
+        await usersClient.update({
+          avatarUrl: profileAvatarPath(profile.userId),
+        }),
+      );
+      setAvatarUrl('');
+      setAvatarFile(null);
+      show('Avatar saved.', 'success');
+    } catch (cause) {
+      setSaveError(
+        cause instanceof Error ? cause.message : 'Could not upload avatar.',
+      );
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
+  async function removeAvatar() {
+    if (!profile) return;
+    setAvatarBusy(true);
+    setSaveError('');
+    try {
+      await storageClient.removeProfileAvatar();
+      setProfile(await usersClient.update({ avatarUrl: null }));
+      setAvatarUrl('');
+      show('Avatar removed.', 'success');
+    } catch (cause) {
+      setSaveError(
+        cause instanceof Error ? cause.message : 'Could not remove avatar.',
+      );
+    } finally {
+      setAvatarBusy(false);
     }
   }
 
@@ -96,12 +147,13 @@ export function ProfileForm() {
         <div>
           <div className="flex items-center gap-4">
             <ProfileAvatar
+              key={profile.version}
               name={user?.name ?? profile.name}
               avatarUrl={profile.avatarUrl}
               size="lg"
             />
             <div className="min-w-0 flex-1">
-              <label htmlFor="avatar">Avatar URL</label>
+              <label htmlFor="avatar">Optional image URL</label>
               <Input
                 id="avatar"
                 type="url"
@@ -115,11 +167,42 @@ export function ProfileForm() {
               />
             </div>
           </div>
+          <div className="mt-4 flex flex-wrap items-end gap-2">
+            <div className="min-w-0 flex-1">
+              <label htmlFor="avatar-file">Upload avatar</label>
+              <Input
+                key={profile.version}
+                id="avatar-file"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(event) =>
+                  setAvatarFile(event.target.files?.[0] ?? null)
+                }
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!avatarFile || avatarBusy}
+              onClick={() => void uploadAvatar()}
+            >
+              {avatarBusy ? 'Saving…' : 'Upload'}
+            </Button>
+            {profile.avatarUrl && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={avatarBusy}
+                onClick={() => void removeAvatar()}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
           <p className="mt-2 text-xs text-neutral-500">
-            This preview shows the saved avatar. Use a direct image link and
-            save to update it. The image host may receive requests from people
-            who can view your profile. Profile file uploads are not available
-            yet.
+            Upload a PNG, JPEG, or WebP image up to 5 MB. Access follows your
+            profile visibility. External image hosts may receive requests from
+            viewers.
           </p>
         </div>
         <div>

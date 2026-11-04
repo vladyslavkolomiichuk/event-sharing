@@ -73,6 +73,40 @@ export class FileController {
       }),
     );
   };
+  uploadProfileAvatar: RequestHandler = async (request, response) => {
+    const user = this.user(request);
+    const file = await this.service.upload(
+      user.id,
+      request.get('content-type')?.split(';')[0]?.trim().toLowerCase() ?? '',
+      request.body,
+      undefined,
+      undefined,
+      user.id,
+    );
+    response.status(201).json(
+      StoredFileSchema.parse({
+        ...file,
+        createdAt: file.createdAt.toISOString(),
+      }),
+    );
+  };
+  getProfileAvatar: RequestHandler = async (request, response) => {
+    this.user(request);
+    const file = await this.service.profileAvatar(
+      z.uuid().parse(request.params.userId),
+      request.get('authorization') ?? '',
+    );
+    this.send(response, file);
+  };
+  removeProfileAvatar: RequestHandler = async (request, response) => {
+    const user = this.user(request);
+    await this.service.removeProfileAvatar(
+      user.id,
+      user.role,
+      request.get('authorization') ?? '',
+    );
+    response.status(204).end();
+  };
   get: RequestHandler = async (request, response) => {
     const user = this.user(request);
     const file = await this.service.get(

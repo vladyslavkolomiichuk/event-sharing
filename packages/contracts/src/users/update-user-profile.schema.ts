@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ProfileVisibilitySchema } from './profile-visibility.schema.js';
+import { AvatarUrlSchema } from './avatar-url.schema.js';
 
 const UserPreferencesPatchSchema = z.strictObject({
   showPhone: z.boolean().optional(),
@@ -14,7 +15,7 @@ const UserPreferencesPatchSchema = z.strictObject({
 
 export const UpdateUserProfileSchema = z
   .strictObject({
-    avatarUrl: z.url().max(2048).nullable().optional(),
+    avatarUrl: AvatarUrlSchema.nullable().optional(),
     bio: z.string().trim().max(1000).nullable().optional(),
     phone: z
       .string()

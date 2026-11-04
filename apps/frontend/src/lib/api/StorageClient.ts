@@ -19,19 +19,36 @@ export class StorageClient {
     slot: EventImageSlot,
     file: File,
   ): Promise<void> {
+    return this.uploadImage(
+      `/backend/api/storage/events/${eventId}/${slot}`,
+      file,
+    );
+  }
+
+  async uploadProfileAvatar(file: File): Promise<void> {
+    return this.uploadImage('/backend/api/storage/profiles/me/avatar', file);
+  }
+
+  async removeProfileAvatar(): Promise<void> {
+    const response = await fetch('/backend/api/storage/profiles/me/avatar', {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (!response.ok && response.status !== 404)
+      throw new Error('Could not remove avatar.');
+  }
+
+  private async uploadImage(path: string, file: File): Promise<void> {
     if (file.size > 5 * 1024 * 1024)
       throw new Error('Images must be 5 MB or smaller.');
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type))
       throw new Error('Use a PNG, JPEG, or WebP image.');
-    const response = await fetch(
-      `/backend/api/storage/events/${eventId}/${slot}`,
-      {
-        method: 'PUT',
-        headers: { 'content-type': file.type },
-        body: file,
-        credentials: 'include',
-      },
-    );
+    const response = await fetch(path, {
+      method: 'PUT',
+      headers: { 'content-type': file.type },
+      body: file,
+      credentials: 'include',
+    });
     if (!response.ok) {
       const error = (await response.json().catch(() => null)) as {
         code?: string;

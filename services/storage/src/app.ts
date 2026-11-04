@@ -31,6 +31,13 @@ export function createApp(
   app.post('/api/storage/files', raw, controller.upload);
   app.get('/api/storage/files/:id', controller.get);
   app.delete('/api/storage/files/:id', controller.remove);
+  app.get('/api/storage/profiles/:userId/avatar', controller.getProfileAvatar);
+  app.put(
+    '/api/storage/profiles/me/avatar',
+    raw,
+    controller.uploadProfileAvatar,
+  );
+  app.delete('/api/storage/profiles/me/avatar', controller.removeProfileAvatar);
   app.get('/api/storage/events/:eventId', controller.eventImages);
   app.get('/api/storage/events/:eventId/:slot', controller.getEventImage);
   app.put(

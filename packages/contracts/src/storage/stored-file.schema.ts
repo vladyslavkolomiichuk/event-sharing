@@ -6,6 +6,7 @@ export const StoredFileSchema = z.strictObject({
   ownerId: z.uuid(),
   eventId: z.uuid().nullable(),
   eventSlot: EventImageSlotSchema.nullable(),
+  profileOwnerId: z.uuid().nullable(),
   mimeType: z.enum(['image/png', 'image/jpeg', 'image/webp']),
   size: z.number().int().positive(),
   sha256: z.string().regex(/^[0-9a-f]{64}$/),

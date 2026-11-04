@@ -9,6 +9,9 @@ export class FileRepository {
       where: { eventId_eventSlot: { eventId, eventSlot } },
     });
   }
+  profileAvatar(userId: string) {
+    return prisma.storedFile.findUnique({ where: { profileOwnerId: userId } });
+  }
   async list(ownerId: string, cursor?: string) {
     const rows = await prisma.storedFile.findMany({
       where: { ownerId, ...(cursor ? { id: { gt: cursor } } : {}) },

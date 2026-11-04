@@ -12,6 +12,7 @@ const schema = DatabaseServiceEnvSchema.extend({
   AUTH_JWT_ISSUER: z.url(),
   AUTH_JWT_AUDIENCE: z.string().min(1),
   EVENTS_SERVICE_URL: z.url().default('http://127.0.0.1:8001'),
+  USERS_SERVICE_URL: z.url().default('http://127.0.0.1:8003'),
   STORAGE_PATH: z.string().min(1),
   STORAGE_BACKUP_PATH: z.string().min(1),
   STORAGE_MAX_FILE_BYTES: z.coerce

@@ -7,6 +7,7 @@ import { prisma } from '../database/client.js';
 import { StorageError } from '../domain/StorageError.js';
 import { FileRepository } from '../repositories/FileRepository.js';
 import { EventAccessClient } from '../clients/EventAccessClient.js';
+import { ProfileAccessClient } from '../clients/ProfileAccessClient.js';
 import { MalwareScanner } from '../clients/MalwareScanner.js';
 import { ImageValidator } from './ImageValidator.js';
 
@@ -19,6 +20,7 @@ export class FileStorageService {
     private readonly events = new EventAccessClient(),
     private readonly scanner = new MalwareScanner(),
     private readonly validator = new ImageValidator(),
+    private readonly profiles = new ProfileAccessClient(),
   ) {}
 
   async initialize() {
@@ -53,7 +55,14 @@ export class FileStorageService {
     input: Buffer,
     eventId?: string,
     eventSlot?: EventImageSlot,
+    profileOwnerId?: string,
   ) {
+    if (profileOwnerId && (profileOwnerId !== ownerId || eventId || eventSlot))
+      throw new StorageError(
+        'Invalid profile avatar.',
+        'INVALID_FILE_OWNER',
+        400,
+      );
     if (!Buffer.isBuffer(input) || input.length === 0)
       throw new StorageError('Choose a file to upload.', 'FILE_REQUIRED', 400);
     if (input.length > env.STORAGE_MAX_FILE_BYTES)
@@ -77,7 +86,9 @@ export class FileStorageService {
           ? await tx.storedFile.findUnique({
               where: { eventId_eventSlot: { eventId, eventSlot } },
             })
-          : null;
+          : profileOwnerId
+            ? await tx.storedFile.findUnique({ where: { profileOwnerId } })
+            : null;
       const usage = await tx.storedFile.aggregate({
         where: { ownerId },
         _sum: { size: true },
@@ -112,6 +123,7 @@ export class FileStorageService {
           sha256,
           eventId: eventId ?? null,
           eventSlot: eventSlot ?? null,
+          profileOwnerId: profileOwnerId ?? null,
         },
       });
     });
@@ -125,9 +137,30 @@ export class FileStorageService {
       throw new StorageError('The file was not found.', 'NOT_FOUND', 404);
     if (file.eventId)
       await this.eventAccess(file.eventId, userId, role, authorization);
-    else if (file.ownerId !== userId)
+    else if (file.ownerId !== userId) {
+      if (!file.profileOwnerId)
+        throw new StorageError('The file was not found.', 'NOT_FOUND', 404);
+      await this.profiles.assertAvatarVisible(
+        file.profileOwnerId,
+        authorization,
+      );
+    }
+    return file;
+  }
+  async profileAvatar(ownerId: string, authorization: string) {
+    await this.profiles.assertAvatarVisible(ownerId, authorization);
+    const file = await this.files.profileAvatar(ownerId);
+    if (!file)
       throw new StorageError('The file was not found.', 'NOT_FOUND', 404);
     return file;
+  }
+  async removeProfileAvatar(
+    userId: string,
+    role: UserRole,
+    authorization: string,
+  ) {
+    const file = await this.files.profileAvatar(userId);
+    if (file) await this.remove(file.id, userId, role, authorization);
   }
   async eventImage(
     eventId: string,

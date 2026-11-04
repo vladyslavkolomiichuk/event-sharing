@@ -34,7 +34,7 @@ async function backup(): Promise<void> {
     await client.connect();
     await client.query('SELECT pg_advisory_lock($1)', [194727201]);
     const result = await client.query(
-      'SELECT "id", "ownerId", "eventId", "eventSlot", "mimeType", "size", "sha256", "createdAt" FROM "stored_file" ORDER BY "id"',
+      'SELECT "id", "ownerId", "eventId", "eventSlot", "profileOwnerId", "mimeType", "size", "sha256", "createdAt" FROM "stored_file" ORDER BY "id"',
     );
     await writeFile(
       join(temporary, 'metadata.json'),

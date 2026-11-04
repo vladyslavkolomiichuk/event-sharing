@@ -8,6 +8,7 @@ export * from './auth/organizer-request.schema.js';
 export * from './auth/user-role-changed.event.js';
 export * from './auth/internal-user-jwt-claims.schema.js';
 export * from './users/user-profile-updated.event.js';
+export * from './users/avatar-url.schema.js';
 export * from './users/update-user-profile.schema.js';
 export * from './users/user-profile-public.schema.js';
 export * from './users/profile-visibility.schema.js';

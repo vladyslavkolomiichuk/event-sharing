@@ -12,6 +12,7 @@ model StoredFile {
   ownerId   String   @db.Uuid
   eventId   String?  @db.Uuid
   eventSlot String?
+  profileOwnerId String? @unique @db.Uuid
   mimeType  String
   size      Int
   sha256    String
