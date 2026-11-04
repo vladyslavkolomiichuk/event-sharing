@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { UserProfilePrivate } from '@event-sharing/contracts';
+import {
+  DataExportResponseSchema,
+  type DataExportSource,
+  type UserProfilePrivate,
+} from '@event-sharing/contracts';
 import { usersClient } from '@/lib/api/UsersClient';
 import { authClient } from '@/lib/api/AuthClient';
 import { useToast } from '@/contexts/ToastContext';
@@ -21,6 +25,7 @@ export function PrivacySettings() {
   );
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
+  const [exportNotice, setExportNotice] = useState('');
   const [requestingDeletion, setRequestingDeletion] = useState(false);
 
   useEffect(() => {
@@ -48,26 +53,77 @@ export function PrivacySettings() {
   async function downloadData() {
     setExporting(true);
     setExportError('');
+    setExportNotice('');
     try {
-      const response = await fetch('/backend/api/privacy/export', {
-        credentials: 'include',
-        cache: 'no-store',
-      });
-      if (!response.ok)
-        throw new Error(
-          response.status === 503
-            ? 'Your export is unavailable while a service is offline. Please try again later.'
-            : 'Could not prepare your data export. Please try again.',
-        );
-      const url = URL.createObjectURL(await response.blob());
+      async function fetchExport(sources?: DataExportSource[]) {
+        const query = sources
+          ? `?sources=${encodeURIComponent(sources.join(','))}`
+          : '';
+        const response = await fetch(`/backend/api/privacy/export${query}`, {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (response.status === 401 || response.status === 403)
+          throw new Error('Your session has expired. Sign in and try again.');
+        if (!response.ok)
+          throw new Error(
+            'Could not prepare your data export. Please try again.',
+          );
+        return DataExportResponseSchema.parse(await response.json());
+      }
+      const first = await fetchExport();
+      const data = { ...first.data };
+      let failed = first.failedSources;
+      for (let attempt = 0; attempt < 2 && failed.length; attempt++) {
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+        let retry: Awaited<ReturnType<typeof fetchExport>>;
+        try {
+          retry = await fetchExport(failed);
+        } catch (cause) {
+          if (
+            cause instanceof Error &&
+            cause.message.startsWith('Your session')
+          )
+            throw cause;
+          break;
+        }
+        if (retry.userId !== first.userId)
+          throw new Error(
+            'Your account changed. Please start the export again.',
+          );
+        Object.assign(data, retry.data);
+        failed = retry.failedSources;
+      }
+      const complete = failed.length === 0;
+      const payload = {
+        exportedAt: first.exportedAt,
+        completedAt: new Date().toISOString(),
+        userId: first.userId,
+        complete,
+        unavailableSources: failed,
+        data,
+      };
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(payload, null, 2)], {
+          type: 'application/json',
+        }),
+      );
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'event-sharing-data.json';
+      link.download = complete
+        ? 'event-sharing-data.json'
+        : 'event-sharing-data-partial.json';
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      show('Your data export is ready.', 'success');
+      if (complete) show('Your data export is ready.', 'success');
+      else {
+        setExportNotice(
+          `This export is incomplete. Unavailable sources: ${failed.join(', ')}. Please try again later.`,
+        );
+        show('A partial data export was downloaded.', 'warning');
+      }
     } catch (cause) {
       setExportError(
         cause instanceof Error ? cause.message : 'Data export failed.',
@@ -214,6 +270,14 @@ export function PrivacySettings() {
             className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900"
           >
             {exportError}
+          </p>
+        )}
+        {exportNotice && (
+          <p
+            role="status"
+            className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+          >
+            {exportNotice}
           </p>
         )}
         <div className="space-y-3 border-t border-neutral-200 pt-5">

@@ -20,7 +20,8 @@ export default function PrivacyPolicyPage() {
           Event and chat services retain the content you submit and the internal
           user IDs needed to keep conversations and participation consistent.
           Storage keeps images you upload and the metadata needed to protect and
-          manage them. Event images follow the event&apos;s access rules.
+          manage them. Event images follow the event&apos;s access rules, and
+          uploaded profile avatars follow profile visibility.
         </p>
       </section>
       <section>
@@ -74,14 +75,17 @@ export default function PrivacyPolicyPage() {
           Event Log removes entries after the configured retention period, which
           is currently 365 days. Kafka event topics retain records for 30 days.
           Account, event, participation, notification, and chat data are kept
-          while the account and related activities need them. The project does
-          not currently maintain separate database backups outside its Docker
-          volumes. Host application log retention is managed separately and is
-          not yet fixed by this project. You can download your data and submit
-          an account deletion request in Privacy settings. Requests are reviewed
-          manually. Submitting a request does not itself delete or anonymize
-          data. For access, correction, or other requests, contact the address
-          above.
+          while the account and related activities need them. Encrypted database
+          and file backups are stored separately on the same server. The backup
+          process removes copies older than 30 days after a successful backup;
+          copies can remain longer while that process is stopped. Older
+          storage-only copies in the Docker backup volume do not yet have
+          automatic retention. Host application log retention is managed
+          separately and is not yet fixed by this project. You can download your
+          data and submit an account deletion request in Privacy settings.
+          Requests are reviewed manually. Submitting a request does not itself
+          delete or anonymize data. For access, correction, or other requests,
+          contact the address above.
         </p>
       </section>
       <section>
