@@ -1,6 +1,7 @@
 import {
   CategorySchema,
   EventListSchema,
+  ModerationEventListSchema,
   type CreateEvent,
   type EventDetail,
   type UpdateEvent,
@@ -118,6 +119,22 @@ export class EventService {
       scope,
       limit,
     );
+  }
+
+  async listModeration(role: UserRole, cursor?: string, limit = 20) {
+    if (role !== 'ADMIN') throw new ForbiddenError();
+    const scope: EventListScope = { list: 'moderation' };
+    const [rows, total] = await Promise.all([
+      this.events.listModeration(
+        cursor ? decodeEventListCursor(cursor, scope) : null,
+        limit,
+      ),
+      this.events.countModeration(),
+    ]);
+    return ModerationEventListSchema.parse({
+      ...this.toList(rows, true, scope, limit),
+      total,
+    });
   }
 
   async exportMine(userId: string): Promise<EventDetail[]> {

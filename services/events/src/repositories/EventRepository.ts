@@ -124,6 +124,21 @@ export class EventRepository {
     });
   }
 
+  listModeration(cursor: EventListCursor | null, limit: number) {
+    const where: Prisma.EventWhereInput = { status: 'MODERATION' };
+    if (cursor) where.OR = this.afterCursor(cursor);
+    return prisma.event.findMany({
+      where,
+      include: { category: true },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+    });
+  }
+
+  countModeration() {
+    return prisma.event.count({ where: { status: 'MODERATION' } });
+  }
+
   findAllByOrganizer(organizerId: string): Promise<EventWithCategory[]> {
     return prisma.event.findMany({
       where: { organizerId },

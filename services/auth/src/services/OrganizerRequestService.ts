@@ -15,13 +15,19 @@ export class OrganizerRequestService {
   }
 
   async pending() {
-    const requests = await this.repository.pending();
-    return requests.map((request) =>
-      AdminOrganizerRequestSchema.parse({
-        ...this.toResponse(request),
-        requester: request.user,
-      }),
-    );
+    const [requests, total] = await Promise.all([
+      this.repository.pending(),
+      this.repository.countPending(),
+    ]);
+    return {
+      requests: requests.map((request) =>
+        AdminOrganizerRequestSchema.parse({
+          ...this.toResponse(request),
+          requester: request.user,
+        }),
+      ),
+      total,
+    };
   }
 
   async create(userId: string, reason: string) {

@@ -24,7 +24,7 @@ export class OrganizerRequestController {
   };
 
   readonly pending: RequestHandler = async (_request, response) => {
-    response.status(200).json({ requests: await this.service.pending() });
+    response.status(200).json(await this.service.pending());
   };
 
   readonly approve: RequestHandler = async (request, response) => {

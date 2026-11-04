@@ -7,6 +7,7 @@ export function eventRoutes(controller: EventController): Router {
   router.post('/categories', controller.createCategory);
   router.get('/mine', controller.listMine);
   router.get('/mine/export', controller.exportMine);
+  router.get('/moderation', controller.listModeration);
   router.get('/organizer/:organizerId', controller.listPublicByOrganizer);
   router.get('/', controller.listPublic);
   router.post('/', controller.create);

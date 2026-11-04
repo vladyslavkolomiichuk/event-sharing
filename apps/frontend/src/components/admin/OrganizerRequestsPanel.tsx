@@ -8,7 +8,11 @@ import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
-export function OrganizerRequestsPanel() {
+export function OrganizerRequestsPanel({
+  onCountChange,
+}: {
+  onCountChange?: (count: number) => void;
+}) {
   const { show } = useToast();
   const [requests, setRequests] = useState<AdminOrganizerRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +22,9 @@ export function OrganizerRequestsPanel() {
 
   const refresh = useCallback(async () => {
     try {
-      setRequests((await authClient.pendingOrganizerRequests()).requests);
+      const page = await authClient.pendingOrganizerRequests();
+      setRequests(page.requests);
+      onCountChange?.(page.total);
     } catch (cause) {
       show(
         cause instanceof Error
@@ -29,7 +35,7 @@ export function OrganizerRequestsPanel() {
     } finally {
       setLoading(false);
     }
-  }, [show]);
+  }, [show, onCountChange]);
 
   useEffect(() => {
     void refresh();
@@ -53,13 +59,13 @@ export function OrganizerRequestsPanel() {
         decision,
         decision === 'reject' ? decisionReason.trim() : undefined,
       );
-      setRequests((current) => current.filter((request) => request.id !== id));
       setRejectId(null);
       setDecisionReason('');
       show(
         `Organizer request ${decision === 'approve' ? 'approved' : 'declined'}.`,
         'success',
       );
+      await refresh();
     } catch (cause) {
       show(
         cause instanceof Error ? cause.message : 'Could not decide request.',
@@ -71,7 +77,10 @@ export function OrganizerRequestsPanel() {
   }
 
   return (
-    <section className="space-y-5 rounded-xl border border-neutral-200 bg-white p-7 lg:col-span-2">
+    <section
+      id="organizer-requests"
+      className="space-y-5 rounded-xl border border-neutral-200 bg-white p-7 lg:col-span-2"
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2>Organizer requests</h2>

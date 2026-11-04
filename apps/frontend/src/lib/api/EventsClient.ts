@@ -7,6 +7,7 @@ import { gateway } from './GatewayClient';
 
 export type Category = { id: string; name: string };
 export type EventPage = { items: EventDetail[]; nextCursor: string | null };
+export type ModerationEventPage = EventPage & { total: number };
 export type EventAction =
   | 'submit'
   | 'approve'
@@ -39,6 +40,12 @@ export class EventsClient {
   mine(cursor?: string): Promise<EventPage> {
     return gateway.get(
       `/api/events/mine${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
+    );
+  }
+
+  moderation(cursor?: string): Promise<ModerationEventPage> {
+    return gateway.get(
+      `/api/events/moderation${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
     );
   }
 

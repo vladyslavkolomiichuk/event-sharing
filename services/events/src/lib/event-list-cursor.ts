@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { InvalidEventCursorError } from '../domain/errors/InvalidEventCursorError.js';
 
 export type EventListScope = {
-  list: 'public' | 'mine' | 'organizer';
+  list: 'public' | 'mine' | 'organizer' | 'moderation';
   ownerId?: string;
   categoryId?: string;
 };

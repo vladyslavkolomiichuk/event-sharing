@@ -42,4 +42,8 @@ export const EventListSchema = z.strictObject({
   nextCursor: z.string().nullable(),
 });
 
+export const ModerationEventListSchema = EventListSchema.extend({
+  total: z.number().int().min(0),
+});
+
 export type EventDetail = z.infer<typeof EventDetailSchema>;

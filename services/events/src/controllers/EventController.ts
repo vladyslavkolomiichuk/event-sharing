@@ -72,6 +72,15 @@ export class EventController {
       .json(await this.service.listMine(user.id, cursor, limit));
   };
 
+  listModeration: RequestHandler = async (request, response) => {
+    const user = this.requireUser(request.authenticatedUser);
+    const { cursor, limit } = ListOwnedEventsQuerySchema.parse(request.query);
+    response
+      .set('cache-control', 'no-store')
+      .status(200)
+      .json(await this.service.listModeration(user.role, cursor, limit));
+  };
+
   exportMine: RequestHandler = async (request, response) => {
     const user = this.requireUser(request.authenticatedUser);
     response

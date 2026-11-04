@@ -33,7 +33,10 @@ export function PrivacyRequests() {
   }, []);
 
   return (
-    <section className="space-y-4 rounded-xl border border-neutral-200 bg-white p-7">
+    <section
+      id="privacy-requests"
+      className="space-y-4 rounded-xl border border-neutral-200 bg-white p-7"
+    >
       <div className="flex items-center justify-between gap-3">
         <h2>Account deletion requests</h2>
         <Button

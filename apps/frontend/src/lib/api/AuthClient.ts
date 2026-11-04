@@ -146,7 +146,10 @@ export class AuthClient {
     return gateway.post('/auth/organizer-requests', { reason });
   }
 
-  pendingOrganizerRequests(): Promise<{ requests: AdminOrganizerRequest[] }> {
+  pendingOrganizerRequests(): Promise<{
+    requests: AdminOrganizerRequest[];
+    total: number;
+  }> {
     return gateway.get('/auth/admin/organizer-requests');
   }
 

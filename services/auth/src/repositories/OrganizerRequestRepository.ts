@@ -25,6 +25,10 @@ export class OrganizerRequestRepository {
     });
   }
 
+  countPending() {
+    return prisma.organizerRequest.count({ where: { status: 'PENDING' } });
+  }
+
   async create(userId: string, reason: string) {
     try {
       return await prisma.$transaction(async (transaction) => {

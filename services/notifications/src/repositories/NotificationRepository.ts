@@ -35,6 +35,15 @@ export class NotificationRepository {
     });
   }
 
+  deleteModerationForEvent(
+    transaction: Prisma.TransactionClient,
+    eventId: string,
+  ) {
+    return transaction.inAppNotification.deleteMany({
+      where: { eventId, type: 'EVENT_MODERATION' },
+    });
+  }
+
   deleteRoleRequestsForUser(
     transaction: Prisma.TransactionClient,
     userId: string,

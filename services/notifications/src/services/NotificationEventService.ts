@@ -385,6 +385,14 @@ export class NotificationEventService {
           version: data.version,
           lastSourceEventId: event.eventId,
         });
+        if (previous?.status === 'MODERATION' && data.status !== 'MODERATION') {
+          await this.notifications.deleteModerationForEvent(
+            transaction,
+            data.id,
+          );
+          const admins = await this.projections.getAdmins(transaction);
+          admins.forEach((admin) => recipients.add(admin.id));
+        }
         if (previous?.status === data.status && data.status !== 'COMPLETED') {
           return 'processed';
         }
