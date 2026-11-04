@@ -75,6 +75,7 @@ model Membership {
   status   MembershipStatus @default(JOINED)
   joinedAt DateTime         @default(now()) @db.Timestamptz(3)
   leftAt   DateTime?        @db.Timestamptz(3)
+  lastMembershipEventId String? @db.Uuid
 
   policy RegistrationPolicy @relation(fields: [eventId], references: [eventId])
 

@@ -136,11 +136,20 @@ export class ProjectionRepository {
     eventId: string,
     userId: string,
     active: boolean,
+    lastMembershipEventId?: string,
   ) {
     return transaction.membershipProjection.upsert({
       where: { eventId_userId: { eventId, userId } },
-      create: { eventId, userId, active },
-      update: { active },
+      create: {
+        eventId,
+        userId,
+        active,
+        lastMembershipEventId: lastMembershipEventId ?? null,
+      },
+      update: {
+        active,
+        ...(lastMembershipEventId ? { lastMembershipEventId } : {}),
+      },
     });
   }
 

@@ -52,7 +52,16 @@ export class NotificationEventService {
       const processed = await prisma.inboxEvent.findUnique({
         where: { id: event.eventId },
       });
-      if (processed) return 'duplicate';
+      if (processed) {
+        await prisma.pendingMembershipEvent.deleteMany({
+          where: { id: event.eventId },
+        });
+        return 'duplicate';
+      }
+      const previousId = membership.previousMembershipEventId;
+      const previous = previousId
+        ? await prisma.inboxEvent.findUnique({ where: { id: previousId } })
+        : null;
       const projectedEvent = await prisma.eventProjection.findUnique({
         where: { id: membership.eventId },
       });
@@ -65,6 +74,7 @@ export class NotificationEventService {
           : Promise.resolve(null),
       ]);
       if (
+        (previousId && !previous) ||
         !projectedEvent ||
         !membershipReadyStatuses.has(projectedEvent.status) ||
         !user ||
@@ -75,6 +85,7 @@ export class NotificationEventService {
             id: event.eventId,
             eventId: membership.eventId,
             userId: membership.userId,
+            previousEventId: previousId ?? null,
             envelope: JSON.stringify(event),
           },
           skipDuplicates: true,
@@ -107,11 +118,13 @@ export class NotificationEventService {
     const result = await this.applyOne(event);
     if (
       event.producer === 'participation' &&
-      isMembershipEventType(event.eventType)
+      isMembershipEventType(event.eventType) &&
+      result !== 'pending'
     ) {
       await prisma.pendingMembershipEvent.deleteMany({
         where: { id: event.eventId },
       });
+      await this.drainMembershipSuccessors(event.eventId);
     }
     if (event.producer === 'events' && isEventSnapshotType(event.eventType)) {
       await prisma.pendingSnapshotEvent.deleteMany({
@@ -137,12 +150,17 @@ export class NotificationEventService {
         await this.apply(EventEnvelopeSchema.parse(JSON.parse(item.envelope)));
       }
     }
-    const memberships = await prisma.pendingMembershipEvent.findMany({
-      orderBy: { receivedAt: 'asc' },
-      take: 100,
-    });
-    for (const item of memberships) {
-      await this.apply(EventEnvelopeSchema.parse(JSON.parse(item.envelope)));
+    let after: string | undefined;
+    while (true) {
+      const memberships = await prisma.pendingMembershipEvent.findMany({
+        where: after ? { id: { gt: after } } : {},
+        orderBy: { id: 'asc' },
+        take: 100,
+      });
+      if (!memberships.length) break;
+      for (const item of memberships)
+        await this.apply(EventEnvelopeSchema.parse(JSON.parse(item.envelope)));
+      after = memberships[memberships.length - 1]!.id;
     }
   }
 
@@ -154,6 +172,16 @@ export class NotificationEventService {
     for (const item of pending) {
       await this.apply(EventEnvelopeSchema.parse(JSON.parse(item.envelope)));
     }
+  }
+
+  private async drainMembershipSuccessors(
+    previousEventId: string,
+  ): Promise<void> {
+    const pending = await prisma.pendingMembershipEvent.findMany({
+      where: { previousEventId },
+    });
+    for (const item of pending)
+      await this.apply(EventEnvelopeSchema.parse(JSON.parse(item.envelope)));
   }
 
   private async drain(previousId: string): Promise<void> {
@@ -168,9 +196,41 @@ export class NotificationEventService {
 
   private async applyOne(
     event: EventEnvelope,
-  ): Promise<'processed' | 'duplicate' | 'ignored'> {
+  ): Promise<'processed' | 'duplicate' | 'ignored' | 'pending'> {
     const recipients = new Set<string>();
     const result = await prisma.$transaction(async (transaction) => {
+      if (
+        event.producer === 'participation' &&
+        isMembershipEventType(event.eventType)
+      ) {
+        const data = MembershipEventPayloadSchema.parse(event.payload);
+        await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${`${data.eventId}:${data.userId}`}, 0))`;
+        if (
+          await transaction.inboxEvent.findUnique({
+            where: { id: event.eventId },
+          })
+        )
+          return 'duplicate';
+        const previousId = data.previousMembershipEventId;
+        if (
+          previousId &&
+          !(await transaction.inboxEvent.findUnique({
+            where: { id: previousId },
+          }))
+        ) {
+          await transaction.pendingMembershipEvent.createMany({
+            data: {
+              id: event.eventId,
+              eventId: data.eventId,
+              userId: data.userId,
+              previousEventId: previousId,
+              envelope: JSON.stringify(event),
+            },
+            skipDuplicates: true,
+          });
+          return 'pending';
+        }
+      }
       if (
         !(await this.projections.accept(
           transaction,
@@ -471,11 +531,25 @@ export class NotificationEventService {
       ) {
         const data = MembershipEventPayloadSchema.parse(event.payload);
         const joined = event.eventType === EVENT_TYPES.userJoined;
+        const previousId = data.previousMembershipEventId;
+        const current = await transaction.membershipProjection.findUnique({
+          where: {
+            eventId_userId: { eventId: data.eventId, userId: data.userId },
+          },
+        });
+        if (previousId === undefined && current?.lastMembershipEventId)
+          return 'ignored';
+        if (
+          previousId !== undefined &&
+          previousId !== (current?.lastMembershipEventId ?? null)
+        )
+          return 'ignored';
         await this.projections.updateMembership(
           transaction,
           data.eventId,
           data.userId,
           joined,
+          previousId === undefined ? undefined : event.eventId,
         );
         if (joined) {
           const projectedEvent = await this.projections.getEvent(

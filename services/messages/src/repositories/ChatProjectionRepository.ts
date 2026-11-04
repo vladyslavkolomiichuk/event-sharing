@@ -49,6 +49,20 @@ export class ChatProjectionRepository {
       }
     }
     const result = await this.applyOne(event);
+    if (
+      event.producer === 'participation' &&
+      isMembershipEventType(event.eventType) &&
+      result !== 'pending'
+    ) {
+      await prisma.pendingMembershipEvent.deleteMany({
+        where: { id: event.eventId },
+      });
+      const waiting = await prisma.pendingMembershipEvent.findMany({
+        where: { previousEventId: event.eventId },
+      });
+      for (const item of waiting)
+        await this.apply(EventEnvelopeSchema.parse(JSON.parse(item.envelope)));
+    }
     if (event.producer === 'events' && isEventSnapshotType(event.eventType)) {
       await prisma.pendingSnapshotEvent.deleteMany({
         where: { id: event.eventId },
@@ -70,6 +84,18 @@ export class ChatProjectionRepository {
       if (previous)
         await this.apply(EventEnvelopeSchema.parse(JSON.parse(item.envelope)));
     }
+    let after: string | undefined;
+    while (true) {
+      const memberships = await prisma.pendingMembershipEvent.findMany({
+        where: after ? { id: { gt: after } } : {},
+        orderBy: { id: 'asc' },
+        take: 100,
+      });
+      if (!memberships.length) break;
+      for (const item of memberships)
+        await this.apply(EventEnvelopeSchema.parse(JSON.parse(item.envelope)));
+      after = memberships[memberships.length - 1]!.id;
+    }
   }
 
   private async drain(previousId: string): Promise<void> {
@@ -84,8 +110,38 @@ export class ChatProjectionRepository {
 
   private async applyOne(
     event: EventEnvelope,
-  ): Promise<'processed' | 'duplicate' | 'ignored'> {
+  ): Promise<'processed' | 'duplicate' | 'ignored' | 'pending'> {
     const result = await prisma.$transaction(async (transaction) => {
+      if (
+        event.producer === 'participation' &&
+        isMembershipEventType(event.eventType)
+      ) {
+        const data = MembershipEventPayloadSchema.parse(event.payload);
+        await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${`${data.eventId}:${data.userId}`}, 0))`;
+        if (
+          await transaction.inboxEvent.findUnique({
+            where: { id: event.eventId },
+          })
+        )
+          return 'duplicate';
+        const previousId = data.previousMembershipEventId;
+        if (
+          previousId &&
+          !(await transaction.inboxEvent.findUnique({
+            where: { id: previousId },
+          }))
+        ) {
+          await transaction.pendingMembershipEvent.createMany({
+            data: {
+              id: event.eventId,
+              previousEventId: previousId,
+              envelope: JSON.stringify(event),
+            },
+            skipDuplicates: true,
+          });
+          return 'pending';
+        }
+      }
       const inbox = await transaction.inboxEvent.createMany({
         data: { id: event.eventId, eventType: event.eventType },
         skipDuplicates: true,
@@ -167,6 +223,19 @@ export class ChatProjectionRepository {
         isMembershipEventType(event.eventType)
       ) {
         const data = MembershipEventPayloadSchema.parse(event.payload);
+        const previousId = data.previousMembershipEventId;
+        const current = await transaction.membershipProjection.findUnique({
+          where: {
+            eventId_userId: { eventId: data.eventId, userId: data.userId },
+          },
+        });
+        if (previousId === undefined && current?.lastMembershipEventId)
+          return 'ignored';
+        if (
+          previousId !== undefined &&
+          previousId !== (current?.lastMembershipEventId ?? null)
+        )
+          return 'ignored';
         await transaction.membershipProjection.upsert({
           where: {
             eventId_userId: { eventId: data.eventId, userId: data.userId },
@@ -176,9 +245,14 @@ export class ChatProjectionRepository {
             userId: data.userId,
             active: event.eventType === EVENT_TYPES.userJoined,
             joinedAt: new Date(event.occurredAt),
+            lastMembershipEventId:
+              previousId === undefined ? null : event.eventId,
           },
           update: {
             active: event.eventType === EVENT_TYPES.userJoined,
+            ...(previousId === undefined
+              ? {}
+              : { lastMembershipEventId: event.eventId }),
             ...(event.eventType === EVENT_TYPES.userJoined
               ? { joinedAt: new Date(event.occurredAt) }
               : {}),

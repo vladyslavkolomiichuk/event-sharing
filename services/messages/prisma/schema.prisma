@@ -53,10 +53,21 @@ model MembershipProjection {
   eventId  String   @db.Uuid
   userId   String   @db.Uuid
   active   Boolean
+  lastMembershipEventId String? @db.Uuid
   joinedAt DateTime @default(now()) @db.Timestamptz(3)
 
   @@id([eventId, userId])
   @@map("membership_projection")
+}
+
+model PendingMembershipEvent {
+  id         String   @id @db.Uuid
+  previousEventId String @db.Uuid
+  envelope   String
+  receivedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([previousEventId])
+  @@map("pending_membership_event")
 }
 
 model UserProjection {

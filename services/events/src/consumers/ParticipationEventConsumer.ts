@@ -17,7 +17,9 @@ import type { ParticipantAccessRepository } from '../repositories/ParticipantAcc
 export class ParticipationEventConsumer {
   private readonly consumer: Consumer;
   private interval?: NodeJS.Timeout;
+  private recoveryInterval?: NodeJS.Timeout;
   private pending: Promise<void> | undefined;
+  private recovering: Promise<void> | undefined;
   private running = false;
 
   constructor(
@@ -40,7 +42,9 @@ export class ParticipationEventConsumer {
 
   async stop(): Promise<void> {
     if (this.interval) clearInterval(this.interval);
+    if (this.recoveryInterval) clearInterval(this.recoveryInterval);
     await this.pending;
+    await this.recovering;
     if (this.running) await this.consumer.disconnect();
   }
 
@@ -91,16 +95,26 @@ export class ParticipationEventConsumer {
           return;
         }
         if (isMembershipEventType(event.eventType)) {
-          const result = await this.access.apply(
-            event.eventId,
-            event.eventType,
-            event.payload,
-          );
+          const result = await this.access.apply(event);
           EventTrace.received('Events', this.topic, event, result);
           return;
         }
         EventTrace.received('Events', this.topic, event, 'ignored');
       },
     });
+    this.recoveryInterval = setInterval(() => void this.recover(), 5000);
+    void this.recover();
+  }
+
+  private async recover(): Promise<void> {
+    if (this.recovering) return;
+    this.recovering = this.access.recoverPending();
+    try {
+      await this.recovering;
+    } catch (error) {
+      console.error('Pending participation event recovery failed.', error);
+    } finally {
+      this.recovering = undefined;
+    }
   }
 }

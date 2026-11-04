@@ -2,6 +2,7 @@ import {
   EVENT_TYPES,
   MembershipEventPayloadSchema,
 } from '@event-sharing/contracts';
+import { randomUUID } from 'node:crypto';
 import { prisma } from '../database/client.js';
 import { CapacityPolicy } from '../domain/CapacityPolicy.js';
 import { MembershipNotFoundError } from '../domain/errors/MembershipNotFoundError.js';
@@ -90,14 +91,13 @@ export class ParticipationRepository {
       }
       this.capacityPolicy.assertCanJoin(policy);
 
-      let membership: Membership;
       if (existing) {
-        membership = await transaction.membership.update({
+        await transaction.membership.update({
           where: { eventId_userId: { eventId, userId } },
           data: { status: 'JOINED', joinedAt: new Date(), leftAt: null },
         });
       } else {
-        membership = await transaction.membership.create({
+        await transaction.membership.create({
           data: { eventId, userId },
         });
       }
@@ -116,14 +116,23 @@ export class ParticipationRepository {
           where: { id: link.id },
           data: { uses: { increment: 1 } },
         });
+      const membershipEventId = randomUUID();
       await transaction.outboxEvent.create({
         data: {
+          id: membershipEventId,
           aggregateId: eventId,
           eventType: EVENT_TYPES.userJoined,
-          payload: MembershipEventPayloadSchema.parse({ eventId, userId }),
+          payload: MembershipEventPayloadSchema.parse({
+            eventId,
+            userId,
+            previousMembershipEventId: existing?.lastMembershipEventId ?? null,
+          }),
         },
       });
-      return membership;
+      return transaction.membership.update({
+        where: { eventId_userId: { eventId, userId } },
+        data: { lastMembershipEventId: membershipEventId },
+      });
     });
   }
 
@@ -137,7 +146,7 @@ export class ParticipationRepository {
       if (!existing) throw new MembershipNotFoundError();
       if (existing.status !== 'JOINED') return existing;
 
-      const membership = await transaction.membership.update({
+      await transaction.membership.update({
         where: { eventId_userId: { eventId, userId } },
         data: { status: 'LEFT', leftAt: new Date() },
       });
@@ -145,14 +154,23 @@ export class ParticipationRepository {
         where: { eventId },
         data: { occupied: { decrement: 1 } },
       });
+      const membershipEventId = randomUUID();
       await transaction.outboxEvent.create({
         data: {
+          id: membershipEventId,
           aggregateId: eventId,
           eventType: EVENT_TYPES.userLeft,
-          payload: MembershipEventPayloadSchema.parse({ eventId, userId }),
+          payload: MembershipEventPayloadSchema.parse({
+            eventId,
+            userId,
+            previousMembershipEventId: existing.lastMembershipEventId,
+          }),
         },
       });
-      return membership;
+      return transaction.membership.update({
+        where: { eventId_userId: { eventId, userId } },
+        data: { lastMembershipEventId: membershipEventId },
+      });
     });
   }
 
