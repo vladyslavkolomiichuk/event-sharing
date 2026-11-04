@@ -7,17 +7,16 @@ import {
 } from '@event-sharing/contracts';
 import { authClient } from '@/lib/api/AuthClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Notice } from '@/components/feedback/Notice';
 
 export function IdentityForm() {
   const { user, refresh } = useAuth();
+  const { show } = useToast();
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
   const [availability, setAvailability] = useState('');
 
   useEffect(() => {
@@ -27,23 +26,25 @@ export function IdentityForm() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setError('');
-    setSaved(false);
     setBusy(true);
     try {
       const input = UpdateIdentitySchema.safeParse({ name, username });
       if (!input.success) {
-        setError(input.error.issues[0]?.message ?? 'Invalid identity details.');
+        show(
+          input.error.issues[0]?.message ?? 'Invalid identity details.',
+          'error',
+        );
         return;
       }
       const updated = await authClient.updateIdentity(input.data);
       setName(updated.name);
       setUsername(updated.username);
       await refresh();
-      setSaved(true);
+      show('Name and username updated.', 'success');
     } catch (cause) {
-      setError(
+      show(
         cause instanceof Error ? cause.message : 'Could not update identity.',
+        'error',
       );
     } finally {
       setBusy(false);
@@ -120,8 +121,6 @@ export function IdentityForm() {
         </Button>
         {availability && <p className="mt-2 text-sm">{availability}</p>}
       </div>
-      {saved && <Notice message="Name and username updated." tone="success" />}
-      {error && <Notice message={error} tone="error" />}
       <Button disabled={busy}>{busy ? 'Saving…' : 'Save identity'}</Button>
     </form>
   );

@@ -4,31 +4,29 @@ import { useState } from 'react';
 import type { SearchMode } from '@event-sharing/contracts';
 import { useSearchPreference } from '@/contexts/SearchPreferenceContext';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/feedback/Notice';
+import { useToast } from '@/contexts/ToastContext';
 
 export function SearchPreferenceSettings() {
+  const { show } = useToast();
   const { mode, ready, permission, chooseMode, requestPosition } =
     useSearchPreference();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
 
   async function save(next: SearchMode) {
     setBusy(true);
-    setError('');
-    setSaved(false);
     try {
       if (next === 'DEVICE' && permission === 'unsupported') {
         throw new Error('Location requires HTTPS or localhost.');
       }
       await chooseMode(next);
       if (next === 'DEVICE') await requestPosition();
-      setSaved(true);
+      show('Search method updated.', 'success');
     } catch (cause) {
-      setError(
+      show(
         cause instanceof Error
           ? cause.message
           : 'Could not update search method.',
+        'error',
       );
     } finally {
       setBusy(false);
@@ -76,8 +74,6 @@ export function SearchPreferenceSettings() {
           Try current location
         </Button>
       )}
-      {saved && <Notice message="Search method updated." tone="success" />}
-      {error && <Notice message={error} tone="error" />}
     </section>
   );
 }

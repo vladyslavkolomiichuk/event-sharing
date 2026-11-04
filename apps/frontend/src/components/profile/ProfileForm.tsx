@@ -6,16 +6,17 @@ import {
   type UserProfilePrivate,
 } from '@event-sharing/contracts';
 import { usersClient } from '@/lib/api/UsersClient';
-import { Notice } from '@/components/feedback/Notice';
 import { Loading } from '@/components/feedback/Loading';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { PlaceAutocomplete } from '@/components/map/PlaceAutocomplete';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 
 export function ProfileForm() {
   const { user } = useAuth();
+  const { show } = useToast();
   const [profile, setProfile] = useState<UserProfilePrivate | null>(null);
   const [avatarUrl, setAvatarUrl] = useState('');
   const [bio, setBio] = useState('');
@@ -24,7 +25,6 @@ export function ProfileForm() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -37,9 +37,10 @@ export function ProfileForm() {
       setPhone(value.phone ?? '');
       setCity(value.city ?? '');
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : 'Could not load profile.',
-      );
+      const message =
+        cause instanceof Error ? cause.message : 'Could not load profile.';
+      setError(message);
+      show(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -52,8 +53,6 @@ export function ProfileForm() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
-    setError('');
-    setSaved(false);
     try {
       const input = UpdateUserProfileSchema.parse({
         avatarUrl: avatarUrl.trim() || null,
@@ -62,10 +61,11 @@ export function ProfileForm() {
         city: city.trim() || null,
       });
       setProfile(await usersClient.update(input));
-      setSaved(true);
+      show('Profile saved.', 'success');
     } catch (cause) {
-      setError(
+      show(
         cause instanceof Error ? cause.message : 'Could not save profile.',
+        'error',
       );
     } finally {
       setBusy(false);
@@ -76,7 +76,7 @@ export function ProfileForm() {
   if (!profile)
     return (
       <div className="space-y-4">
-        <Notice message={error || 'Profile is not ready yet.'} tone="error" />
+        <p>{error || 'Profile is not ready yet.'}</p>
         <Button onClick={() => void load()}>Retry</Button>
       </div>
     );
@@ -141,8 +141,6 @@ export function ProfileForm() {
         </div>
       </div>
       <div className="space-y-3">
-        {saved && <Notice message="Profile saved." tone="success" />}
-        {error && <Notice message={error} tone="error" />}
         <Button disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</Button>
       </div>
     </form>

@@ -3,18 +3,18 @@
 import { useEffect, useState } from 'react';
 import { authClient, type SocialProvider } from '@/lib/api/AuthClient';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/feedback/Notice';
+import { useToast } from '@/contexts/ToastContext';
 
 const providers: SocialProvider[] = ['google', 'github'];
 
 export function SocialAccounts() {
+  const { show } = useToast();
   const [available, setAvailable] = useState<Record<SocialProvider, boolean>>({
     google: false,
     github: false,
   });
   const [connected, setConnected] = useState<SocialProvider[]>([]);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     void Promise.all([
@@ -25,17 +25,17 @@ export function SocialAccounts() {
         setAvailable(capabilities.socialProviders);
         setConnected(accounts.providers);
       })
-      .catch(() => setError('Could not load connected accounts.'));
+      .catch(() => show('Could not load connected accounts.', 'error'));
     if (new URLSearchParams(window.location.search).has('error')) {
-      setError(
+      show(
         'The provider could not be connected. Check that its email matches this account and it is not linked elsewhere.',
+        'error',
       );
     }
   }, []);
 
   async function connect(provider: SocialProvider) {
     setBusy(true);
-    setError('');
     try {
       const callback = `${window.location.origin}/profile`;
       const errorCallback = `${callback}?error=oauth_link_failed`;
@@ -43,10 +43,11 @@ export function SocialAccounts() {
         await authClient.startSocial(provider, callback, errorCallback, true),
       );
     } catch (cause) {
-      setError(
+      show(
         cause instanceof Error
           ? cause.message
           : 'Could not connect this provider.',
+        'error',
       );
       setBusy(false);
     }
@@ -79,7 +80,6 @@ export function SocialAccounts() {
           )}
         </div>
       ))}
-      {error && <Notice message={error} tone="error" />}
     </section>
   );
 }

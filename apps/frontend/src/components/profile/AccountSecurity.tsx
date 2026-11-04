@@ -4,12 +4,13 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { z } from 'zod';
 import { authClient } from '@/lib/api/AuthClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { Notice } from '@/components/feedback/Notice';
+import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export function AccountSecurity() {
   const { user } = useAuth();
+  const { show } = useToast();
   const [emailAvailable, setEmailAvailable] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -17,10 +18,6 @@ export function AccountSecurity() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [emailBusy, setEmailBusy] = useState(false);
   const [passwordBusy, setPasswordBusy] = useState(false);
-  const [emailNotice, setEmailNotice] = useState('');
-  const [passwordNotice, setPasswordNotice] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     authClient
@@ -31,11 +28,9 @@ export function AccountSecurity() {
 
   async function submitEmail(event: FormEvent) {
     event.preventDefault();
-    setEmailError('');
-    setEmailNotice('');
     const parsed = z.email().safeParse(newEmail.trim());
     if (!parsed.success) {
-      setEmailError('Enter a valid email address.');
+      show('Enter a valid email address.', 'error');
       return;
     }
     setEmailBusy(true);
@@ -44,11 +39,12 @@ export function AccountSecurity() {
         parsed.data,
         `${window.location.origin}/profile`,
       );
-      setEmailNotice('Check your email to confirm the change.');
+      show('Check your email to confirm the change.', 'success');
       setNewEmail('');
     } catch (cause) {
-      setEmailError(
+      show(
         cause instanceof Error ? cause.message : 'Could not change email.',
+        'error',
       );
     } finally {
       setEmailBusy(false);
@@ -57,26 +53,25 @@ export function AccountSecurity() {
 
   async function submitPassword(event: FormEvent) {
     event.preventDefault();
-    setPasswordError('');
-    setPasswordNotice('');
     if (newPassword.length < 8) {
-      setPasswordError('The new password must have at least 8 characters.');
+      show('The new password must have at least 8 characters.', 'error');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('The new passwords do not match.');
+      show('The new passwords do not match.', 'error');
       return;
     }
     setPasswordBusy(true);
     try {
       await authClient.changePassword(currentPassword, newPassword);
-      setPasswordNotice('Password changed. Other sessions were signed out.');
+      show('Password changed. Other sessions were signed out.', 'success');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (cause) {
-      setPasswordError(
+      show(
         cause instanceof Error ? cause.message : 'Could not change password.',
+        'error',
       );
     } finally {
       setPasswordBusy(false);
@@ -113,13 +108,10 @@ export function AccountSecurity() {
             />
           </div>
           {!emailAvailable && (
-            <Notice
-              message="Email changes will be available after mail delivery is configured."
-              tone="warning"
-            />
+            <p className="text-sm text-amber-800">
+              Email changes will be available after mail delivery is configured.
+            </p>
           )}
-          {emailNotice && <Notice message={emailNotice} tone="success" />}
-          {emailError && <Notice message={emailError} tone="error" />}
           <Button disabled={!emailAvailable || emailBusy}>
             {emailBusy ? 'Sending…' : 'Send confirmation email'}
           </Button>
@@ -164,8 +156,6 @@ export function AccountSecurity() {
               onChange={(event) => setConfirmPassword(event.target.value)}
             />
           </div>
-          {passwordNotice && <Notice message={passwordNotice} tone="success" />}
-          {passwordError && <Notice message={passwordError} tone="error" />}
           <Button disabled={passwordBusy}>
             {passwordBusy ? 'Saving…' : 'Change password'}
           </Button>
