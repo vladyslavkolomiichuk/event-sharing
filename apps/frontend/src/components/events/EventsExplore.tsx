@@ -667,7 +667,6 @@ export function EventsExplore() {
           onClear={clearRoute}
           route={routePlanner.route}
           loading={routePlanner.loading}
-          error={routePlanner.error}
         />
       )}
       <EventViewSwitch view={mobileView} onChange={setMobileView} />

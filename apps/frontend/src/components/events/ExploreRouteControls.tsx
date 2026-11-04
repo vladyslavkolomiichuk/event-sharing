@@ -19,7 +19,6 @@ export function ExploreRouteControls({
   onClear,
   route,
   loading,
-  error,
 }: {
   eventTitle: string | null;
   origin: MapPoint | null;
@@ -34,7 +33,6 @@ export function ExploreRouteControls({
   onClear: () => void;
   route: EventRouteResponse | null;
   loading: boolean;
-  error: string;
 }) {
   return (
     <div className="space-y-3 rounded-xl border border-neutral-200 bg-white p-4">
@@ -98,18 +96,13 @@ export function ExploreRouteControls({
         </p>
       )}
       <p className="text-xs text-neutral-600">
-        When you build a route, Interline&apos;s Transitland Valhalla API receives
-        its start and destination coordinates.
+        When you build a route, Interline&apos;s Transitland Valhalla API
+        receives its start and destination coordinates.
       </p>
       {route && (
         <p className="text-sm font-semibold">
           {(route.distanceMeters / 1000).toFixed(1)} km · About{' '}
           {Math.max(1, Math.round(route.durationSeconds / 60))} min
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="text-sm text-red-700">
-          {error}
         </p>
       )}
     </div>

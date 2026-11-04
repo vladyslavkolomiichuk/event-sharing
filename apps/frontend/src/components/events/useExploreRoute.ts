@@ -6,6 +6,7 @@ import { eventsClient } from '@/lib/api/EventsClient';
 import { eventRouteClient } from '@/lib/api/EventRouteClient';
 import type { DevicePosition } from '@/contexts/SearchPreferenceContext';
 import type { MapPoint } from '@/components/map/MapView';
+import { useToast } from '@/contexts/ToastContext';
 
 type Destination = { id: string; title: string; point: MapPoint };
 
@@ -13,6 +14,7 @@ export function useExploreRoute(
   userId: string | undefined,
   requestPosition: () => Promise<DevicePosition>,
 ) {
+  const { show } = useToast();
   const [destination, setDestination] = useState<Destination | null>(null);
   const [origin, setOrigin] = useState<MapPoint | null>(null);
   const [originLabel, setOriginLabel] = useState('');
@@ -20,7 +22,6 @@ export function useExploreRoute(
   const [route, setRoute] = useState<EventRouteResponse | null>(null);
   const [request, setRequest] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const eventRequestId = useRef(0);
 
   function clear() {
@@ -31,7 +32,6 @@ export function useExploreRoute(
     setRoute(null);
     setRequest(0);
     setLoading(false);
-    setError('');
   }
 
   useEffect(() => clear(), [userId]);
@@ -40,7 +40,6 @@ export function useExploreRoute(
     if (!request || !destination || !origin) return;
     const controller = new AbortController();
     setLoading(true);
-    setError('');
     setRoute(null);
     void eventRouteClient
       .route({ eventId: destination.id, origin, mode }, controller.signal)
@@ -49,19 +48,26 @@ export function useExploreRoute(
       })
       .catch((cause) => {
         if (!controller.signal.aborted)
-          setError(
+          show(
             cause instanceof Error ? cause.message : 'Could not build a route.',
+            'error',
           );
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [request, destination?.id, origin?.latitude, origin?.longitude, mode]);
+  }, [
+    request,
+    destination?.id,
+    origin?.latitude,
+    origin?.longitude,
+    mode,
+    show,
+  ]);
 
   async function chooseEvent(id: string): Promise<Destination | null> {
     const current = ++eventRequestId.current;
-    setError('');
     try {
       const event = await eventsClient.get(id);
       if (current !== eventRequestId.current) return null;
@@ -71,7 +77,10 @@ export function useExploreRoute(
       ) {
         setDestination(null);
         setRoute(null);
-        setError('The exact event venue is not available to your account.');
+        show(
+          'The exact event venue is not available to your account.',
+          'error',
+        );
         return null;
       }
       const next = {
@@ -86,10 +95,11 @@ export function useExploreRoute(
       return next;
     } catch (cause) {
       if (current === eventRequestId.current)
-        setError(
+        show(
           cause instanceof Error
             ? cause.message
             : 'Could not load the event venue.',
+          'error',
         );
       return null;
     }
@@ -103,10 +113,11 @@ export function useExploreRoute(
         'Current location',
       );
     } catch (cause) {
-      setError(
+      show(
         cause instanceof Error
           ? cause.message
           : 'Current location is unavailable.',
+        'error',
       );
     }
   }
@@ -114,7 +125,6 @@ export function useExploreRoute(
   function chooseOrigin(point: MapPoint, label: string) {
     setOrigin(point);
     setOriginLabel(label);
-    setError('');
   }
 
   function changeOriginLabel(value: string) {
@@ -130,7 +140,6 @@ export function useExploreRoute(
     mode,
     route,
     loading,
-    error,
     chooseEvent,
     chooseOrigin,
     changeOriginLabel,

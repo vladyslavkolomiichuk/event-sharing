@@ -61,6 +61,20 @@ export class ValhallaClient {
         503,
       );
     });
+    if (response.status === 401 || response.status === 403) {
+      throw new RouteError(
+        'Routing access is not configured correctly.',
+        'ROUTING_AUTH_FAILED',
+        503,
+      );
+    }
+    if (response.status === 429) {
+      throw new RouteError(
+        'The routing limit has been reached. Try again later.',
+        'ROUTING_LIMIT_REACHED',
+        503,
+      );
+    }
     if (!response.ok) {
       throw new RouteError(
         response.status === 400
@@ -70,7 +84,15 @@ export class ValhallaClient {
         response.status === 400 ? 422 : 503,
       );
     }
-    const result = RouteResultSchema.parse(await response.json()).routes[0]!;
+    const parsed = RouteResultSchema.safeParse(await response.json());
+    if (!parsed.success) {
+      throw new RouteError(
+        'The route service returned an invalid response.',
+        'ROUTING_BAD_RESPONSE',
+        503,
+      );
+    }
+    const result = parsed.data.routes[0]!;
     return {
       distanceMeters: result.distance,
       durationSeconds: result.duration,

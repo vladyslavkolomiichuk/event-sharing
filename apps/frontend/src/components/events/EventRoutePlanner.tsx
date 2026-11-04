@@ -12,9 +12,10 @@ import { useSearchPreference } from '@/contexts/SearchPreferenceContext';
 import { PlaceAutocomplete } from '@/components/map/PlaceAutocomplete';
 import { MapView } from '@/components/map/MapView';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/feedback/Notice';
+import { useToast } from '@/contexts/ToastContext';
 
 export function EventRoutePlanner({ event }: { event: EventDetail }) {
+  const { show } = useToast();
   const { requestPosition } = useSearchPreference();
   const [origin, setOrigin] = useState<RoutePoint | null>(null);
   const [originLabel, setOriginLabel] = useState('');
@@ -23,7 +24,6 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
   const [route, setRoute] = useState<EventRouteResponse | null>(null);
   const [routeRequestId, setRouteRequestId] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const destination =
     event.location.latitude !== null && event.location.longitude !== null
@@ -37,15 +37,15 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
     if (routeRequestId === 0 || !origin || !destination) return;
     const controller = new AbortController();
     setLoading(true);
-    setError('');
     setRoute(null);
     void eventRouteClient
       .route({ eventId: event.id, origin, mode }, controller.signal)
       .then(setRoute)
       .catch((cause) => {
         if (!controller.signal.aborted) {
-          setError(
+          show(
             cause instanceof Error ? cause.message : 'Could not build a route.',
+            'error',
           );
         }
       })
@@ -61,6 +61,7 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
     destination?.latitude,
     destination?.longitude,
     routeRequestId,
+    show,
   ]);
 
   async function useCurrentPosition() {
@@ -68,12 +69,12 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
       const position = await requestPosition();
       setOrigin({ latitude: position.latitude, longitude: position.longitude });
       setOriginLabel('Current location');
-      setError('');
     } catch (cause) {
-      setError(
+      show(
         cause instanceof Error
           ? cause.message
           : 'Current location is unavailable.',
+        'error',
       );
     }
   }
@@ -81,7 +82,6 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
   function choosePoint(point: RoutePoint) {
     setOrigin(point);
     setOriginLabel('Map point');
-    setError('');
   }
 
   if (!destination) return null;
@@ -91,8 +91,8 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
       <h2>Route to this event</h2>
       <p className="text-sm text-neutral-600">
         Choose a starting point by address, city, map, or your current location.
-        Interline&apos;s Transitland Valhalla API receives both route points when
-        you request a route.
+        Interline&apos;s Transitland Valhalla API receives both route points
+        when you request a route.
       </p>
       <div className="grid gap-3 sm:grid-cols-[140px_1fr_auto] sm:items-end">
         <div>
@@ -202,7 +202,6 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
           {Math.max(1, Math.round(route.durationSeconds / 60))} min
         </p>
       )}
-      {error && <Notice message={error} tone="error" />}
     </section>
   );
 }
