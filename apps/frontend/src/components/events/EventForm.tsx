@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CreateEventSchema,
+  EventLocationSchema,
   UpdateEventSchema,
   type EventDetail,
   type EventVisibility,
@@ -29,6 +30,7 @@ import {
   type ChatGroupDraft,
 } from '@/components/messages/ChatGroupDraftForm';
 import { messagesClient } from '@/lib/api/MessagesClient';
+import { EVENT_FORM_STEPS, EventStepNavigation } from './EventStepNavigation';
 
 const timeZones = [
   'UTC',
@@ -51,6 +53,11 @@ export function EventForm({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [step, setStep] = useState(0);
+  const [reachedStep, setReachedStep] = useState(0);
+  const submitLock = useRef(false);
+  const stepContent = useRef<HTMLDivElement>(null);
+  const stepVisited = useRef(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -83,6 +90,12 @@ export function EventForm({
   const [lookupMessage, setLookupMessage] = useState('');
 
   useEffect(() => () => reverseRequest.current?.abort(), []);
+
+  useEffect(() => {
+    if (stepVisited.current)
+      stepContent.current?.scrollIntoView({ block: 'start' });
+    else stepVisited.current = true;
+  }, [step]);
 
   useEffect(() => {
     async function load() {
@@ -203,8 +216,88 @@ export function EventForm({
     }
   }
 
-  async function submit(event: FormEvent) {
+  function validateStep(index: number): string | null {
+    if (index === 0) {
+      if (!title.trim()) return 'Enter an event title.';
+      if (!description.trim()) return 'Enter an event description.';
+      if (!startTime || !endTime)
+        return 'Choose the start and end date and time.';
+      if (
+        !participantLimit.trim() ||
+        !Number.isInteger(Number(participantLimit)) ||
+        Number(participantLimit) < 1
+      )
+        return 'Enter a whole number of participants greater than zero.';
+      try {
+        const start = eventUtcTime(startTime, timeZone);
+        const end = eventUtcTime(endTime, timeZone);
+        if (Date.parse(end) <= Date.parse(start))
+          return 'End time must be after start time.';
+        const changed =
+          !existing || start !== existing.startTime || end !== existing.endTime;
+        if (changed && Date.parse(start) <= Date.now())
+          return 'The event must start in the future.';
+      } catch (cause) {
+        return cause instanceof Error
+          ? cause.message
+          : 'Enter valid event dates.';
+      }
+    }
+    if (index === 1) {
+      if (lookingUpAddress) return 'Wait for the address lookup to finish.';
+      if (!address.trim()) return 'Enter the venue address.';
+      if (!latitude.trim() || !longitude.trim())
+        return 'Choose a venue point on the map.';
+      const result = EventLocationSchema.safeParse({
+        address,
+        region,
+        latitude: Number(latitude),
+        longitude: Number(longitude),
+        visibility,
+      });
+      if (!result.success) return 'Enter a valid address and coordinates.';
+    }
+    return null;
+  }
+
+  function goToStep(next: number) {
+    if (next < 0 || next >= EVENT_FORM_STEPS.length || next > reachedStep + 1)
+      return;
+    if (next > step) {
+      for (let index = 0; index < next; index++) {
+        const message = validateStep(index);
+        if (message) {
+          setStep(index);
+          setError(message);
+          show(message, 'error');
+          return;
+        }
+      }
+      setReachedStep((current) => Math.max(current, next));
+    }
+    setError('');
+    setStep(next);
+  }
+
+  function handleFormSubmit(event: FormEvent) {
     event.preventDefault();
+    if (step < EVENT_FORM_STEPS.length - 1) {
+      goToStep(step + 1);
+    }
+  }
+
+  async function submit() {
+    if (step !== EVENT_FORM_STEPS.length - 1 || submitLock.current) return;
+    for (let index = 0; index < EVENT_FORM_STEPS.length - 1; index++) {
+      const message = validateStep(index);
+      if (message) {
+        setStep(index);
+        setError(message);
+        show(message, 'error');
+        return;
+      }
+    }
+    submitLock.current = true;
     setError('');
     setBusy(true);
     try {
@@ -246,9 +339,11 @@ export function EventForm({
         const allInvitees = [
           ...new Set([
             ...invitees,
-            ...chatGroups.flatMap((group) =>
-              group.members.map((member) => member.username),
-            ),
+            ...(chatEnabled
+              ? chatGroups.flatMap((group) =>
+                  group.members.map((member) => member.username),
+                )
+              : []),
           ]),
         ];
         if (allInvitees.length) {
@@ -281,10 +376,12 @@ export function EventForm({
       }
       router.refresh();
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : 'Could not save event.',
-      );
+      const message =
+        cause instanceof Error ? cause.message : 'Could not save event.';
+      setError(message);
+      show(message, 'error');
     } finally {
+      submitLock.current = false;
       setBusy(false);
     }
   }
@@ -361,322 +458,465 @@ export function EventForm({
     venuePoint.longitude <= 180;
 
   return (
-    <>
-      <form onSubmit={submit} className="grid gap-8 lg:grid-cols-[1fr_1.15fr]">
-        <div className="space-y-6 rounded-xl border border-neutral-200 bg-white p-6 sm:p-8">
-          <h2>Event details</h2>
-          <div>
-            <label htmlFor="title">Title</label>
-            <Input
-              id="title"
-              required
-              maxLength={160}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="description">Description</label>
-            <Textarea
-              id="description"
-              required
-              maxLength={10000}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="category">Category</label>
-            <select
-              id="category"
-              className="w-full"
-              value={categoryId}
-              onChange={(event) => setCategoryId(event.target.value)}
-            >
-              <option value="">No category</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <label htmlFor="start">Start</label>
-              <Input
-                id="start"
-                type="datetime-local"
-                required
-                value={startTime}
-                onChange={(event) => setStartTime(event.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="end">End</label>
-              <Input
-                id="end"
-                type="datetime-local"
-                required
-                value={endTime}
-                onChange={(event) => setEndTime(event.target.value)}
-              />
-            </div>
-          </div>
-          <div>
-            <label htmlFor="event-time-zone">Event time zone</label>
-            <select
-              id="event-time-zone"
-              className="w-full"
-              value={timeZone}
-              onChange={(event) => setTimeZone(event.target.value)}
-            >
-              {timeZones.map((zone) => (
-                <option key={zone} value={zone}>
-                  {zone}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="limit">Participant limit</label>
-            <Input
-              id="limit"
-              type="number"
-              min={1}
-              step={1}
-              required
-              value={participantLimit}
-              onChange={(event) => setParticipantLimit(event.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="event-visibility">
-              Who can discover this event
-            </label>
-            <select
-              id="event-visibility"
-              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2"
-              value={eventVisibility}
-              onChange={(event) =>
-                setEventVisibility(event.target.value as EventVisibility)
-              }
-              disabled={Boolean(
-                existing &&
-                existing.status !== 'DRAFT' &&
-                existing.status !== 'REJECTED' &&
-                existing.status !== 'APPROVED',
+    <div className="grid gap-7 lg:grid-cols-[13rem_minmax(0,1fr)]">
+      <EventStepNavigation
+        current={step}
+        reached={reachedStep}
+        onSelect={(next) => {
+          if (!busy) goToStep(next);
+        }}
+      />
+      <div ref={stepContent} className="min-w-0 space-y-5">
+        <p className="text-sm text-neutral-500">
+          Step {step + 1} of {EVENT_FORM_STEPS.length}
+        </p>
+        <form id="event-form" noValidate onSubmit={handleFormSubmit}>
+          <div hidden={step !== 0}>
+            <div className="space-y-6 rounded-xl border border-neutral-200 bg-white p-6 sm:p-8">
+              <h2>Event details</h2>
+              <div>
+                <label htmlFor="title">Title</label>
+                <Input
+                  id="title"
+                  required
+                  maxLength={160}
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="description">Description</label>
+                <Textarea
+                  id="description"
+                  required
+                  maxLength={10000}
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="category">Category</label>
+                <select
+                  id="category"
+                  className="w-full"
+                  value={categoryId}
+                  onChange={(event) => setCategoryId(event.target.value)}
+                >
+                  <option value="">No category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="start">Start</label>
+                  <Input
+                    id="start"
+                    type="datetime-local"
+                    required
+                    value={startTime}
+                    onChange={(event) => setStartTime(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="end">End</label>
+                  <Input
+                    id="end"
+                    type="datetime-local"
+                    required
+                    value={endTime}
+                    onChange={(event) => setEndTime(event.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="event-time-zone">Event time zone</label>
+                <select
+                  id="event-time-zone"
+                  className="w-full"
+                  value={timeZone}
+                  onChange={(event) => setTimeZone(event.target.value)}
+                >
+                  {timeZones.map((zone) => (
+                    <option key={zone} value={zone}>
+                      {zone}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="limit">Participant limit</label>
+                <Input
+                  id="limit"
+                  type="number"
+                  min={1}
+                  step={1}
+                  required
+                  value={participantLimit}
+                  onChange={(event) => setParticipantLimit(event.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="event-visibility">
+                  Who can discover this event
+                </label>
+                <select
+                  id="event-visibility"
+                  className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2"
+                  value={eventVisibility}
+                  onChange={(event) =>
+                    setEventVisibility(event.target.value as EventVisibility)
+                  }
+                  disabled={Boolean(
+                    existing &&
+                    existing.status !== 'DRAFT' &&
+                    existing.status !== 'REJECTED' &&
+                    existing.status !== 'APPROVED',
+                  )}
+                >
+                  <option value="PUBLIC">Public search and direct link</option>
+                  <option value="UNLISTED">Direct link only</option>
+                  <option value="INVITE_ONLY">Invitation required</option>
+                </select>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <label htmlFor="event-chat-enabled" className="mb-0">
+                  Enable event chats for registered participants
+                </label>
+                <Switch
+                  id="event-chat-enabled"
+                  checked={chatEnabled}
+                  onCheckedChange={setChatEnabled}
+                />
+              </div>
+              {chatEnabled && !eventId && (
+                <ChatGroupDraftForm
+                  groups={chatGroups}
+                  onChange={setChatGroups}
+                />
               )}
-            >
-              <option value="PUBLIC">Public search and direct link</option>
-              <option value="UNLISTED">Direct link only</option>
-              <option value="INVITE_ONLY">Invitation required</option>
-            </select>
+            </div>
           </div>
-          <div className="flex items-center justify-between gap-3 text-sm">
-            <label htmlFor="event-chat-enabled" className="mb-0">
-              Enable event chats for registered participants
-            </label>
-            <Switch
-              id="event-chat-enabled"
-              checked={chatEnabled}
-              onCheckedChange={setChatEnabled}
+          {step === 1 && (
+            <div className="space-y-6 rounded-xl border border-neutral-200 bg-white p-6 sm:p-8">
+              <h2>Location</h2>
+              <p className="text-sm leading-6 text-neutral-600">
+                Find a city and address, then choose the precise venue point on
+                the map. You can adjust the pin by clicking anywhere on the map.
+              </p>
+              <PlaceAutocomplete
+                id="region"
+                label="City or region"
+                kind="city"
+                value={region}
+                onChange={(value) => {
+                  cancelReverseLookup();
+                  setRegion(value);
+                }}
+                onSelect={(place) => {
+                  cancelReverseLookup();
+                  setRegion((place.region ?? place.label).slice(0, 100));
+                  setMapCenter({
+                    latitude: place.latitude,
+                    longitude: place.longitude,
+                  });
+                  setMapZoom(12);
+                }}
+                placeholder="Start typing a city"
+              />
+              <p className="text-xs text-neutral-500">
+                City or region is public. Enter only a broad area when the venue
+                is private.
+              </p>
+              <PlaceAutocomplete
+                id="address"
+                label="Venue address"
+                kind="address"
+                context={region}
+                value={address}
+                onChange={(value) => {
+                  cancelReverseLookup();
+                  setAddress(value);
+                }}
+                onSelect={(place) => {
+                  setAddress(place.address);
+                  if (place.region) setRegion(place.region.slice(0, 100));
+                  void choosePoint({
+                    latitude: place.latitude,
+                    longitude: place.longitude,
+                  });
+                }}
+                placeholder="Start typing a street or venue"
+                required
+              />
+              <MapView
+                center={mapCenter}
+                zoom={mapZoom}
+                markers={
+                  validVenuePoint
+                    ? [
+                        {
+                          id: 'venue',
+                          label: 'Selected venue',
+                          ...venuePoint,
+                          selected: true,
+                        },
+                      ]
+                    : []
+                }
+                onPick={(point) => void choosePoint(point, true)}
+                className="h-[390px]"
+              />
+              <p className="text-sm text-neutral-600">
+                {latitude && longitude
+                  ? `Selected point: ${latitude}, ${longitude}`
+                  : 'Click the map or select an address suggestion to set the venue point.'}
+              </p>
+              <p className="text-xs text-neutral-500">
+                Choosing a point sends its coordinates to Photon to suggest an
+                address. Verify the result before saving.
+              </p>
+              {(lookingUpAddress || lookupMessage) && (
+                <p role="status" className="text-sm text-neutral-600">
+                  {lookingUpAddress ? 'Looking up the address…' : lookupMessage}
+                </p>
+              )}
+              <details className="rounded-md border border-neutral-200 p-4">
+                <summary className="cursor-pointer text-sm font-medium">
+                  Enter coordinates manually
+                </summary>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="latitude">Latitude</label>
+                    <Input
+                      id="latitude"
+                      type="number"
+                      min={-90}
+                      max={90}
+                      step="any"
+                      value={latitude}
+                      onChange={(event) => {
+                        cancelReverseLookup();
+                        setLatitude(event.target.value);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="longitude">Longitude</label>
+                    <Input
+                      id="longitude"
+                      type="number"
+                      min={-180}
+                      max={180}
+                      step="any"
+                      value={longitude}
+                      onChange={(event) => {
+                        cancelReverseLookup();
+                        setLongitude(event.target.value);
+                      }}
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => {
+                    const lat = Number(latitude);
+                    const lon = Number(longitude);
+                    if (
+                      latitude.trim() &&
+                      longitude.trim() &&
+                      lat >= -90 &&
+                      lat <= 90 &&
+                      lon >= -180 &&
+                      lon <= 180
+                    ) {
+                      void choosePoint({ latitude: lat, longitude: lon }, true);
+                      setMapZoom(15);
+                      setError('');
+                    } else
+                      setError(
+                        'Enter valid coordinates before placing the pin.',
+                      );
+                  }}
+                >
+                  Show on map
+                </Button>
+              </details>
+              <div>
+                <label htmlFor="visibility">Location visibility</label>
+                <select
+                  id="visibility"
+                  className="w-full"
+                  value={visibility}
+                  onChange={(event) =>
+                    setVisibility(event.target.value as typeof visibility)
+                  }
+                >
+                  <option value="PARTICIPANTS_ONLY">
+                    Registered participants only
+                  </option>
+                  <option value="PUBLIC">
+                    Public while a public event is active
+                  </option>
+                </select>
+                <p className="mt-2 text-xs leading-5 text-neutral-500">
+                  Organizers and administrators can always see the location.
+                  Private locations become visible to registered participants
+                  after the registration event is processed. Public search uses
+                  an approximate map point around the nearby streets for private
+                  venues. This may reveal the general area and does not
+                  guarantee anonymity.
+                </p>
+              </div>
+              <p className="text-xs leading-5 text-neutral-500">
+                Search terms and selected map coordinates are sent to Photon for
+                address suggestions. Map tiles are provided by OpenFreeMap.
+              </p>
+            </div>
+          )}
+        </form>
+        {reachedStep >= 2 && (
+          <div hidden={step !== 2}>
+            {eventId && (
+              <p className="mb-3 text-sm text-neutral-600">
+                Use Send invitations to send selected invitations separately
+                from saving event changes.
+              </p>
+            )}
+            <InviteParticipants
+              eventId={eventId}
+              onSelectionChange={setInvitees}
             />
           </div>
-          {chatEnabled && !eventId && (
-            <ChatGroupDraftForm groups={chatGroups} onChange={setChatGroups} />
-          )}
-        </div>
-        <div className="space-y-6 rounded-xl border border-neutral-200 bg-white p-6 sm:p-8">
-          <h2>Location</h2>
-          <p className="text-sm leading-6 text-neutral-600">
-            Find a city and address, then choose the precise venue point on the
-            map. You can adjust the pin by clicking anywhere on the map.
-          </p>
-          <PlaceAutocomplete
-            id="region"
-            label="City or region"
-            kind="city"
-            value={region}
-            onChange={(value) => {
-              cancelReverseLookup();
-              setRegion(value);
-            }}
-            onSelect={(place) => {
-              cancelReverseLookup();
-              setRegion((place.region ?? place.label).slice(0, 100));
-              setMapCenter({
-                latitude: place.latitude,
-                longitude: place.longitude,
-              });
-              setMapZoom(12);
-            }}
-            placeholder="Start typing a city"
-          />
-          <p className="text-xs text-neutral-500">
-            City or region is public. Enter only a broad area when the venue is
-            private.
-          </p>
-          <PlaceAutocomplete
-            id="address"
-            label="Venue address"
-            kind="address"
-            context={region}
-            value={address}
-            onChange={(value) => {
-              cancelReverseLookup();
-              setAddress(value);
-            }}
-            onSelect={(place) => {
-              setAddress(place.address);
-              if (place.region) setRegion(place.region.slice(0, 100));
-              void choosePoint({
-                latitude: place.latitude,
-                longitude: place.longitude,
-              });
-            }}
-            placeholder="Start typing a street or venue"
-            required
-          />
-          <MapView
-            center={mapCenter}
-            zoom={mapZoom}
-            markers={
-              validVenuePoint
-                ? [
-                    {
-                      id: 'venue',
-                      label: 'Selected venue',
-                      ...venuePoint,
-                      selected: true,
-                    },
-                  ]
-                : []
-            }
-            onPick={(point) => void choosePoint(point, true)}
-            className="h-[390px]"
-          />
-          <p className="text-sm text-neutral-600">
-            {latitude && longitude
-              ? `Selected point: ${latitude}, ${longitude}`
-              : 'Click the map or select an address suggestion to set the venue point.'}
-          </p>
-          <p className="text-xs text-neutral-500">
-            Choosing a point sends its coordinates to Photon to suggest an
-            address. Verify the result before saving.
-          </p>
-          {(lookingUpAddress || lookupMessage) && (
-            <p role="status" className="text-sm text-neutral-600">
-              {lookingUpAddress ? 'Looking up the address…' : lookupMessage}
-            </p>
-          )}
-          <details className="rounded-md border border-neutral-200 p-4">
-            <summary className="cursor-pointer text-sm font-medium">
-              Enter coordinates manually
-            </summary>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="latitude">Latitude</label>
-                <Input
-                  id="latitude"
-                  type="number"
-                  min={-90}
-                  max={90}
-                  step="any"
-                  value={latitude}
-                  onChange={(event) => {
-                    cancelReverseLookup();
-                    setLatitude(event.target.value);
-                  }}
-                />
-              </div>
-              <div>
-                <label htmlFor="longitude">Longitude</label>
-                <Input
-                  id="longitude"
-                  type="number"
-                  min={-180}
-                  max={180}
-                  step="any"
-                  value={longitude}
-                  onChange={(event) => {
-                    cancelReverseLookup();
-                    setLongitude(event.target.value);
-                  }}
-                />
-              </div>
+        )}
+        {step === 3 && (
+          <section className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6 sm:p-8">
+            <div>
+              <h2>Review event</h2>
+              <p className="mt-2 text-sm text-neutral-600">
+                Check the details before saving.
+              </p>
             </div>
+            <dl className="grid gap-4 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="font-semibold">Title</dt>
+                <dd>{title}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold">Category</dt>
+                <dd>
+                  {categories.find((category) => category.id === categoryId)
+                    ?.name ?? 'No category'}
+                </dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="font-semibold">Description</dt>
+                <dd className="whitespace-pre-wrap">{description}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold">Start</dt>
+                <dd>
+                  {startTime.replace('T', ' ')} · {timeZone}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold">End</dt>
+                <dd>
+                  {endTime.replace('T', ' ')} · {timeZone}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold">Venue address</dt>
+                <dd>{address}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold">City or region</dt>
+                <dd>{region || 'Not specified'}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold">Location visibility</dt>
+                <dd>
+                  {visibility === 'PUBLIC'
+                    ? 'Public while active'
+                    : 'Registered participants only'}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold">Event visibility</dt>
+                <dd>
+                  {eventVisibility === 'PUBLIC'
+                    ? 'Public'
+                    : eventVisibility === 'UNLISTED'
+                      ? 'Direct link only'
+                      : 'Invitation required'}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold">Participants</dt>
+                <dd>Up to {participantLimit}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold">Chats</dt>
+                <dd>
+                  {chatEnabled
+                    ? eventId
+                      ? 'Enabled'
+                      : `Enabled · ${chatGroups.length} custom groups`
+                    : 'Disabled'}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold">Selected invitations</dt>
+                <dd>{invitees.length}</dd>
+              </div>
+            </dl>
+          </section>
+        )}
+        {error && (
+          <p role="alert" className="text-sm text-red-700">
+            {error}
+          </p>
+        )}
+        {existing?.pendingStatus && (
+          <p className="text-sm text-amber-700">
+            A registration change is processing. Saving is available when it
+            finishes.
+          </p>
+        )}
+        <div className="flex flex-wrap justify-between gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={step === 0 || busy}
+            onClick={() => goToStep(step - 1)}
+          >
+            Back
+          </Button>
+          {step < EVENT_FORM_STEPS.length - 1 ? (
             <Button
               type="button"
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              onClick={() => {
-                const lat = Number(latitude);
-                const lon = Number(longitude);
-                if (
-                  latitude.trim() &&
-                  longitude.trim() &&
-                  lat >= -90 &&
-                  lat <= 90 &&
-                  lon >= -180 &&
-                  lon <= 180
-                ) {
-                  void choosePoint({ latitude: lat, longitude: lon }, true);
-                  setMapZoom(15);
-                  setError('');
-                } else
-                  setError('Enter valid coordinates before placing the pin.');
-              }}
+              disabled={busy}
+              onClick={() => goToStep(step + 1)}
             >
-              Show on map
+              Continue
             </Button>
-          </details>
-          <div>
-            <label htmlFor="visibility">Location visibility</label>
-            <select
-              id="visibility"
-              className="w-full"
-              value={visibility}
-              onChange={(event) =>
-                setVisibility(event.target.value as typeof visibility)
-              }
+          ) : (
+            <Button
+              type="button"
+              onClick={() => void submit()}
+              disabled={busy || Boolean(existing?.pendingStatus)}
             >
-              <option value="PARTICIPANTS_ONLY">
-                Registered participants only
-              </option>
-              <option value="PUBLIC">
-                Public while a public event is active
-              </option>
-            </select>
-            <p className="mt-2 text-xs leading-5 text-neutral-500">
-              Organizers and administrators can always see the location. Private
-              locations become visible to registered participants after the
-              registration event is processed. Public search uses an approximate
-              map point around the nearby streets for private venues. This may
-              reveal the general area and does not guarantee anonymity.
-            </p>
-          </div>
-          <p className="text-xs leading-5 text-neutral-500">
-            Search terms and selected map coordinates are sent to Photon for
-            address suggestions. Map tiles are provided by OpenFreeMap.
-          </p>
-          {existing?.pendingStatus && (
-            <Notice
-              message="A registration change is still being processed. Wait for it to finish before editing."
-              tone="warning"
-            />
+              {busy ? 'Saving…' : eventId ? 'Save changes' : 'Create draft'}
+            </Button>
           )}
-          {error && <Notice message={error} tone="error" />}
-          <Button
-            className="w-full"
-            disabled={busy || Boolean(existing?.pendingStatus)}
-          >
-            {busy ? 'Saving…' : eventId ? 'Save changes' : 'Create draft'}
-          </Button>
         </div>
-      </form>
-      <InviteParticipants eventId={eventId} onSelectionChange={setInvitees} />
-    </>
+      </div>
+    </div>
   );
 }

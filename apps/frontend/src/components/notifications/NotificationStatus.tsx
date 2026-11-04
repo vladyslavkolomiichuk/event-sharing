@@ -32,7 +32,7 @@ export function NotificationStatus() {
           show(
             `${item.title}: ${item.body}`,
             notificationPresentation[item.type].tone,
-            notificationLink(item.href),
+            notificationLink(item.href, item.type),
           );
           if (item.type === 'ORGANIZER_REQUEST_DECISION') void refreshAuth();
         }

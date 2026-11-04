@@ -1,5 +1,10 @@
 import { FriendsWorkspace } from '@/components/profile/FriendsWorkspace';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 
 export default function FriendsPage() {
-  return <FriendsWorkspace />;
+  return (
+    <RequireAuth>
+      <FriendsWorkspace />
+    </RequireAuth>
+  );
 }

@@ -100,6 +100,7 @@ export function InviteParticipants({
         `${result.sent.length} invitation(s) saved. ${result.skipped} skipped.`,
       );
       setSelected([]);
+      onSelectionChange?.([]);
       await refreshOutgoing();
     } catch (cause) {
       setMessage(

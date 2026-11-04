@@ -342,7 +342,7 @@ export class NotificationEventService {
               body: requested
                 ? `${data.actorName} sent you a friend request.`
                 : `${data.actorName} accepted your friend request.`,
-              href: '/friends',
+              href: requested ? '/friends/received' : '/friends',
               sourceEventId: event.eventId,
             },
           ],

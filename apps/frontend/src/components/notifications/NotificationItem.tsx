@@ -20,7 +20,7 @@ export function NotificationItem({
       className={`rounded-xl border ${item.readAt ? 'border-neutral-200 bg-white' : 'border-neutral-900 bg-neutral-50'}`}
     >
       <a
-        href={notificationLink(item.href)}
+        href={notificationLink(item.href, item.type)}
         className="block rounded-t-xl p-5 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-black"
         onClick={(event) => {
           event.preventDefault();
