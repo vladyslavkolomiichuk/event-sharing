@@ -51,22 +51,38 @@ export class EventRepository {
       where: {
         visibility: 'PUBLIC',
         locationVisibility: 'PARTICIPANTS_ONLY',
-        status: { in: ['PUBLISHED', 'ONGOING'] },
+        status: { in: ['PUBLISHED', 'ONGOING', 'COMPLETED', 'CANCELLED'] },
       },
       select: { id: true },
     });
+    let queued = 0;
     for (const event of events) {
-      await prisma.$transaction(async (transaction) => {
-        await this.lockEvent(transaction, event.id);
+      const changed = await prisma.$transaction(async (transaction) => {
+        const current = await this.lockEvent(transaction, event.id);
+        if (
+          current.visibility !== 'PUBLIC' ||
+          current.locationVisibility !== 'PARTICIPANTS_ONLY' ||
+          !['PUBLISHED', 'ONGOING', 'COMPLETED', 'CANCELLED'].includes(
+            current.status,
+          )
+        )
+          return false;
         const updated = await transaction.event.update({
           where: { id: event.id },
           data: { version: { increment: 1 } },
           include: { category: true },
         });
-        await this.addSnapshot(transaction, updated, EVENT_TYPES.eventUpdated);
+        await this.addSnapshot(
+          transaction,
+          updated,
+          EVENT_TYPES.eventUpdated,
+          false,
+        );
+        return true;
       });
+      if (changed) queued++;
     }
-    return events.length;
+    return queued;
   }
 
   listPublic(
@@ -665,9 +681,10 @@ export class EventRepository {
     transaction: Prisma.TransactionClient,
     event: EventWithCategory,
     eventType: EventSnapshotType,
+    includeCompletedRecipients = true,
   ): Promise<void> {
     const participants =
-      event.status === 'COMPLETED'
+      includeCompletedRecipients && event.status === 'COMPLETED'
         ? await transaction.participantAccess.findMany({
             where: { eventId: event.id, active: true },
             select: { userId: true },
@@ -680,7 +697,7 @@ export class EventRepository {
         payload: {
           ...this.responses.publicSnapshot(event),
           previousSnapshotEventId: event.lastSnapshotEventId,
-          ...(event.status === 'COMPLETED'
+          ...(includeCompletedRecipients && event.status === 'COMPLETED'
             ? {
                 completedParticipantIds: participants.map(
                   (item) => item.userId,

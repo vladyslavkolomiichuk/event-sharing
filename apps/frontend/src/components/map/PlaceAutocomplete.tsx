@@ -37,7 +37,11 @@ export function PlaceAutocomplete({
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (value.trim().length < 2 || value === selectedValue.current) {
+    if (
+      !focused.current ||
+      value.trim().length < 2 ||
+      value === selectedValue.current
+    ) {
       setItems([]);
       return;
     }

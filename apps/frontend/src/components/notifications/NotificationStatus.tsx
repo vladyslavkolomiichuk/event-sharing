@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { notificationsClient } from '@/lib/api/NotificationsClient';
 import { notificationPresentation } from './notificationPresentation';
+import { notificationLink } from './notificationLink';
 
 export function NotificationStatus() {
   const { user, refresh: refreshAuth } = useAuth();
@@ -31,7 +32,7 @@ export function NotificationStatus() {
           show(
             `${item.title}: ${item.body}`,
             notificationPresentation[item.type].tone,
-            item.href,
+            notificationLink(item.href),
           );
           if (item.type === 'ORGANIZER_REQUEST_DECISION') void refreshAuth();
         }

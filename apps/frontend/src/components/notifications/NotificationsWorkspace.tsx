@@ -14,6 +14,7 @@ import { Loading } from '@/components/feedback/Loading';
 import { useToast } from '@/contexts/ToastContext';
 import { NotificationItem } from './NotificationItem';
 import { SystemMessages } from './SystemMessages';
+import { notificationLink } from './notificationLink';
 
 const filters: { value: NotificationFilter; label: string }[] = [
   { value: 'ALL', label: 'All' },
@@ -94,7 +95,7 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
       if (item.messageId) {
         setMessage(await notificationsClient.getMessage(item.messageId));
         router.push(`/notifications?message=${item.messageId}`);
-      } else router.push(item.href);
+      } else router.push(notificationLink(item.href));
     } catch (cause) {
       show(
         cause instanceof Error ? cause.message : 'Could not open notification.',

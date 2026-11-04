@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import type {
   SystemServicesResponse,
@@ -21,7 +22,22 @@ import { ModerationQueue } from './ModerationQueue';
 import { PrivacyRequests } from './PrivacyRequests';
 import { SystemMessagesPanel } from './SystemMessagesPanel';
 
-export function AdminWorkspace() {
+export type AdminSection =
+  | 'overview'
+  | 'moderation'
+  | 'role-requests'
+  | 'user-roles'
+  | 'categories'
+  | 'privacy-requests'
+  | 'system-messages'
+  | 'danger-zone';
+
+export function AdminWorkspace({
+  section = 'overview',
+}: {
+  section?: AdminSection;
+}) {
+  const router = useRouter();
   const { show } = useToast();
   const [services, setServices] = useState<SystemServicesResponse | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -33,8 +49,8 @@ export function AdminWorkspace() {
   );
   const [role, setRole] = useState<UserRole>('ORGANIZER');
   const [busy, setBusy] = useState(false);
-  const [moderationCount, setModerationCount] = useState(0);
-  const [roleRequestCount, setRoleRequestCount] = useState(0);
+  const [moderationCount, setModerationCount] = useState<number | null>(null);
+  const [roleRequestCount, setRoleRequestCount] = useState<number | null>(null);
 
   async function refresh() {
     try {
@@ -53,8 +69,29 @@ export function AdminWorkspace() {
   }
 
   useEffect(() => {
-    void refresh();
-  }, []);
+    if (section === 'overview' || section === 'categories') void refresh();
+  }, [section]);
+
+  useEffect(() => {
+    if (
+      section === 'overview' &&
+      window.location.hash.startsWith('#organizer-request-')
+    )
+      router.replace(`/admin/role-requests${window.location.hash}`);
+    const loadCounts = () => {
+      void eventsClient
+        .moderation()
+        .then((page) => setModerationCount(page.total))
+        .catch(() => {});
+      void authClient
+        .pendingOrganizerRequests()
+        .then((page) => setRoleRequestCount(page.total))
+        .catch(() => {});
+    };
+    loadCounts();
+    window.addEventListener('notifications:remote', loadCounts);
+    return () => window.removeEventListener('notifications:remote', loadCounts);
+  }, [section, router]);
 
   async function createCategory(event: FormEvent) {
     event.preventDefault();
@@ -119,185 +156,193 @@ export function AdminWorkspace() {
         aria-label="Admin sections"
         className="flex gap-2 overflow-x-auto text-sm lg:sticky lg:top-5 lg:flex-col lg:self-start"
       >
-        <a
-          href="#admin-overview"
-          className="rounded-lg px-3 py-2 hover:bg-neutral-100"
-        >
-          Overview
-        </a>
-        <a
-          href="#moderation-queue"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-neutral-100"
-        >
-          Event moderation <Badge>{moderationCount}</Badge>
-        </a>
-        <a
-          href="#organizer-requests"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-neutral-100"
-        >
-          Role requests <Badge>{roleRequestCount}</Badge>
-        </a>
-        <a
-          href="#admin-user-roles"
-          className="rounded-lg px-3 py-2 hover:bg-neutral-100"
-        >
-          User roles
-        </a>
-        <a
-          href="#admin-categories"
-          className="rounded-lg px-3 py-2 hover:bg-neutral-100"
-        >
-          Categories
-        </a>
-        <a
-          href="#privacy-requests"
-          className="rounded-lg px-3 py-2 hover:bg-neutral-100"
-        >
-          Privacy requests
-        </a>
-        <a
-          href="#system-messages"
-          className="rounded-lg px-3 py-2 hover:bg-neutral-100"
-        >
-          System messages
-        </a>
-        <Link
-          href="/admin/danger-zone"
-          className="rounded-lg px-3 py-2 text-red-700 hover:bg-red-50"
-        >
-          Danger Zone
-        </Link>
+        {(
+          [
+            ['overview', 'Overview'],
+            ['moderation', 'Event moderation'],
+            ['role-requests', 'Role requests'],
+            ['user-roles', 'User roles'],
+            ['categories', 'Categories'],
+            ['privacy-requests', 'Privacy requests'],
+            ['system-messages', 'System messages'],
+            ['danger-zone', 'Danger Zone'],
+          ] as const
+        ).map(([key, label]) => {
+          const count =
+            key === 'moderation'
+              ? moderationCount
+              : key === 'role-requests'
+                ? roleRequestCount
+                : null;
+          return (
+            <Link
+              key={key}
+              href={key === 'overview' ? '/admin' : `/admin/${key}`}
+              aria-current={section === key ? 'page' : undefined}
+              className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 ${key === 'danger-zone' ? 'text-red-700 hover:bg-red-50' : 'hover:bg-neutral-100'} ${section === key ? 'bg-neutral-100 font-semibold' : ''}`}
+            >
+              {label}
+              {count !== null && <Badge>{count}</Badge>}
+            </Link>
+          );
+        })}
       </nav>
       <div className="grid min-w-0 gap-7 lg:grid-cols-2">
-        <OrganizerRequestsPanel onCountChange={setRoleRequestCount} />
-        <ModerationQueue onCountChange={setModerationCount} />
-        <SystemMessagesPanel />
-        <section
-          id="admin-overview"
-          className="space-y-5 rounded-xl border border-neutral-200 bg-white p-7"
-        >
-          <div className="flex items-center justify-between">
-            <h2>Services</h2>
-            <Button variant="outline" size="sm" onClick={() => void refresh()}>
-              Refresh
-            </Button>
-          </div>
-          <div className="divide-y divide-neutral-200">
-            {services?.services.map((service) => (
-              <div
-                key={service.service}
-                className="flex justify-between py-3 text-sm"
+        {section === 'role-requests' && (
+          <OrganizerRequestsPanel onCountChange={setRoleRequestCount} />
+        )}
+        {section === 'moderation' && (
+          <ModerationQueue onCountChange={setModerationCount} />
+        )}
+        {section === 'system-messages' && <SystemMessagesPanel />}
+        {section === 'danger-zone' && (
+          <section className="space-y-5 rounded-xl border border-red-200 bg-white p-7 lg:col-span-2">
+            <h2>Danger Zone</h2>
+            <p className="text-neutral-600">
+              Service container controls may be added here later.
+            </p>
+          </section>
+        )}
+        {section === 'overview' && (
+          <section
+            id="admin-overview"
+            className="space-y-5 rounded-xl border border-neutral-200 bg-white p-7"
+          >
+            <div className="flex items-center justify-between">
+              <h2>Services</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void refresh()}
               >
-                <span>{service.service}</span>
-                <Badge
-                  className={
-                    service.status === 'ok'
-                      ? 'border-green-300 bg-green-50 text-green-900'
-                      : 'border-red-300 bg-red-50 text-red-900'
-                  }
-                >
-                  {service.status}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </section>
-        <section
-          id="admin-categories"
-          className="space-y-5 rounded-xl border border-neutral-200 bg-white p-7"
-        >
-          <h2>Categories</h2>
-          <form onSubmit={createCategory} className="flex gap-2">
-            <Input
-              aria-label="Category name"
-              maxLength={100}
-              required
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="New category"
-            />
-            <Button disabled={busy}>Add</Button>
-          </form>
-          <ul className="divide-y divide-neutral-200 text-sm">
-            {categories.map((category) => (
-              <li key={category.id} className="py-2">
-                {category.name}
-              </li>
-            ))}
-          </ul>
-        </section>
-        <section
-          id="admin-user-roles"
-          className="space-y-5 rounded-xl border border-neutral-200 bg-white p-7"
-        >
-          <h2>User roles</h2>
-          <p className="text-sm text-neutral-600">
-            Find a user by username, then assign a role.
-          </p>
-          <form onSubmit={findUsers} className="flex gap-2">
-            <div>
-              <label htmlFor="user-name">Username</label>
-              <Input
-                id="user-name"
-                required
-                minLength={2}
-                maxLength={30}
-                value={userName}
-                onChange={(event) => setUserName(event.target.value)}
-                placeholder="Search by username"
-              />
+                Refresh
+              </Button>
             </div>
-            <Button className="self-end" disabled={busy}>
-              Find
-            </Button>
-          </form>
-          {userMatches.length > 0 && (
-            <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200">
-              {userMatches.map((person) => (
-                <li key={person.userId}>
-                  <button
-                    type="button"
-                    className="w-full px-4 py-3 text-left hover:bg-neutral-50"
-                    onClick={() => setSelectedUser(person)}
+            <div className="divide-y divide-neutral-200">
+              {services?.services.map((service) => (
+                <div
+                  key={service.service}
+                  className="flex justify-between py-3 text-sm"
+                >
+                  <span>{service.service}</span>
+                  <Badge
+                    className={
+                      service.status === 'ok'
+                        ? 'border-green-300 bg-green-50 text-green-900'
+                        : 'border-red-300 bg-red-50 text-red-900'
+                    }
                   >
-                    <span className="font-semibold">{person.name}</span>
-                    <span className="ml-2 text-sm text-neutral-500">
-                      @{person.username}
-                    </span>
-                  </button>
+                    {service.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+        {section === 'categories' && (
+          <section
+            id="admin-categories"
+            className="space-y-5 rounded-xl border border-neutral-200 bg-white p-7"
+          >
+            <h2>Categories</h2>
+            <form onSubmit={createCategory} className="flex gap-2">
+              <Input
+                aria-label="Category name"
+                maxLength={100}
+                required
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="New category"
+              />
+              <Button disabled={busy}>Add</Button>
+            </form>
+            <ul className="divide-y divide-neutral-200 text-sm">
+              {categories.map((category) => (
+                <li key={category.id} className="py-2">
+                  {category.name}
                 </li>
               ))}
             </ul>
-          )}
-          {selectedUser && (
-            <form onSubmit={changeRole} className="space-y-4">
+          </section>
+        )}
+        {section === 'user-roles' && (
+          <section
+            id="admin-user-roles"
+            className="space-y-5 rounded-xl border border-neutral-200 bg-white p-7"
+          >
+            <h2>User roles</h2>
+            <p className="text-sm text-neutral-600">
+              Find a user by username, then assign a role.
+            </p>
+            <form onSubmit={findUsers} className="flex gap-2">
               <div>
-                <p className="mb-2 text-sm font-semibold">Selected user</p>
-                <UserProfileLink
-                  userId={selectedUser.userId}
-                  profile={selectedUser}
+                <label htmlFor="user-name">Username</label>
+                <Input
+                  id="user-name"
+                  required
+                  minLength={2}
+                  maxLength={30}
+                  value={userName}
+                  onChange={(event) => setUserName(event.target.value)}
+                  placeholder="Search by username"
                 />
               </div>
-              <div>
-                <label htmlFor="role">Role</label>
-                <select
-                  id="role"
-                  className="w-full"
-                  value={role}
-                  onChange={(event) => setRole(event.target.value as UserRole)}
-                >
-                  <option value="USER">User</option>
-                  <option value="ORGANIZER">Organizer</option>
-                  <option value="ADMIN">Admin</option>
-                </select>
-              </div>
-              <Button disabled={busy}>Update role</Button>
+              <Button className="self-end" disabled={busy}>
+                Find
+              </Button>
             </form>
-          )}
-        </section>
-        <div className="lg:col-span-2">
-          <PrivacyRequests />
-        </div>
+            {userMatches.length > 0 && (
+              <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200">
+                {userMatches.map((person) => (
+                  <li key={person.userId}>
+                    <button
+                      type="button"
+                      className="w-full px-4 py-3 text-left hover:bg-neutral-50"
+                      onClick={() => setSelectedUser(person)}
+                    >
+                      <span className="font-semibold">{person.name}</span>
+                      <span className="ml-2 text-sm text-neutral-500">
+                        @{person.username}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {selectedUser && (
+              <form onSubmit={changeRole} className="space-y-4">
+                <div>
+                  <p className="mb-2 text-sm font-semibold">Selected user</p>
+                  <UserProfileLink
+                    userId={selectedUser.userId}
+                    profile={selectedUser}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="role">Role</label>
+                  <select
+                    id="role"
+                    className="w-full"
+                    value={role}
+                    onChange={(event) =>
+                      setRole(event.target.value as UserRole)
+                    }
+                  >
+                    <option value="USER">User</option>
+                    <option value="ORGANIZER">Organizer</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </div>
+                <Button disabled={busy}>Update role</Button>
+              </form>
+            )}
+          </section>
+        )}
+        {section === 'privacy-requests' && (
+          <div className="lg:col-span-2">
+            <PrivacyRequests />
+          </div>
+        )}
       </div>
     </div>
   );

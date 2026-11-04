@@ -28,10 +28,12 @@ export default function PrivacyPolicyPage() {
           the selected coordinates to Geo Search for that request; search
           analytics record only whether a location was used and the result
           count. Map tiles come from OpenFreeMap, place suggestions from Photon,
-          and routes currently use Interline&apos;s Transitland Valhalla API. A
-          route request sends its start and destination coordinates and travel
-          mode to that provider, without your account ID. These providers
-          receive the requests needed to serve those features.
+          and routes currently use Interline&apos;s Transitland Valhalla API.
+          Selecting an event venue on the map sends its exact coordinates to
+          Photon to suggest an address. A route request sends its start and
+          destination coordinates and travel mode to that provider, without your
+          account ID. These providers receive the requests needed to serve those
+          features.
         </p>
       </section>
       <section>
@@ -41,8 +43,9 @@ export default function PrivacyPolicyPage() {
           username discovery, friend requests, city, and phone. Participation
           history is private unless you enable it for completed public events.
           Public events can appear in search. Unlisted events require a direct
-          link, and invite-only events require access. An event link alone does
-          not reveal a private venue address.
+          link, and invite-only events require access. The exact address of a
+          private venue is restricted, while its approximate map point may
+          reveal the nearby streets.
         </p>
       </section>
       <section>
@@ -59,8 +62,8 @@ export default function PrivacyPolicyPage() {
         <p>
           A sign-in email and an authentication method are required to use an
           account. Profile biography, phone, city, device location, and social
-          sign-in are optional. The service does not make decisions with legal or
-          similarly significant effects solely by automated processing.
+          sign-in are optional. The service does not make decisions with legal
+          or similarly significant effects solely by automated processing.
         </p>
       </section>
       <section>
@@ -82,12 +85,12 @@ export default function PrivacyPolicyPage() {
       <section>
         <h2>Your rights</h2>
         <p>
-          You can ask to access, correct, erase, restrict, or transfer your data,
-          and object to processing based on legitimate interests. You can
+          You can ask to access, correct, erase, restrict, or transfer your
+          data, and object to processing based on legitimate interests. You can
           withdraw optional sharing choices in Privacy settings. Contact the
-          address above for requests that the site cannot complete directly.
-          You may also lodge a complaint with the data protection authority in
-          your country of residence or work.
+          address above for requests that the site cannot complete directly. You
+          may also lodge a complaint with the data protection authority in your
+          country of residence or work.
         </p>
       </section>
       <section>

@@ -78,6 +78,11 @@ export function EventForm({
   });
   const [mapZoom, setMapZoom] = useState(2);
   const pointChosen = useRef(false);
+  const reverseRequest = useRef<AbortController | null>(null);
+  const [lookingUpAddress, setLookingUpAddress] = useState(false);
+  const [lookupMessage, setLookupMessage] = useState('');
+
+  useEffect(() => () => reverseRequest.current?.abort(), []);
 
   useEffect(() => {
     async function load() {
@@ -151,12 +156,51 @@ export function EventForm({
       .catch(() => undefined);
   }, [eventId, copyFromId, user?.id]);
 
-  function choosePoint(point: MapPoint) {
+  function cancelReverseLookup() {
+    reverseRequest.current?.abort();
+    reverseRequest.current = null;
+    setLookingUpAddress(false);
+  }
+
+  async function choosePoint(point: MapPoint, lookup = false) {
+    cancelReverseLookup();
     pointChosen.current = true;
     setLatitude(point.latitude.toFixed(6));
     setLongitude(point.longitude.toFixed(6));
     setMapCenter(point);
     setMapZoom(15);
+    setLookupMessage('');
+    if (!lookup) return;
+    setAddress('');
+    setRegion('');
+    const controller = new AbortController();
+    reverseRequest.current = controller;
+    setLookingUpAddress(true);
+    try {
+      const place = await placesClient.reverse(
+        point.latitude,
+        point.longitude,
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
+      if (place) {
+        setRegion((place.region ?? place.city ?? '').slice(0, 100));
+        setAddress(place.address);
+        setLookupMessage(
+          place.address
+            ? 'Check the suggested address before saving.'
+            : 'No street was found. Enter the address manually.',
+        );
+      } else setLookupMessage('No address was found. Enter it manually.');
+    } catch {
+      if (!controller.signal.aborted)
+        setLookupMessage('Address lookup failed. Enter the address manually.');
+    } finally {
+      if (!controller.signal.aborted) {
+        reverseRequest.current = null;
+        setLookingUpAddress(false);
+      }
+    }
   }
 
   async function submit(event: FormEvent) {
@@ -454,8 +498,12 @@ export function EventForm({
             label="City or region"
             kind="city"
             value={region}
-            onChange={setRegion}
+            onChange={(value) => {
+              cancelReverseLookup();
+              setRegion(value);
+            }}
             onSelect={(place) => {
+              cancelReverseLookup();
               setRegion((place.region ?? place.label).slice(0, 100));
               setMapCenter({
                 latitude: place.latitude,
@@ -475,11 +523,14 @@ export function EventForm({
             kind="address"
             context={region}
             value={address}
-            onChange={setAddress}
+            onChange={(value) => {
+              cancelReverseLookup();
+              setAddress(value);
+            }}
             onSelect={(place) => {
               setAddress(place.address);
               if (place.region) setRegion(place.region.slice(0, 100));
-              choosePoint({
+              void choosePoint({
                 latitude: place.latitude,
                 longitude: place.longitude,
               });
@@ -502,7 +553,7 @@ export function EventForm({
                   ]
                 : []
             }
-            onPick={choosePoint}
+            onPick={(point) => void choosePoint(point, true)}
             className="h-[390px]"
           />
           <p className="text-sm text-neutral-600">
@@ -510,6 +561,15 @@ export function EventForm({
               ? `Selected point: ${latitude}, ${longitude}`
               : 'Click the map or select an address suggestion to set the venue point.'}
           </p>
+          <p className="text-xs text-neutral-500">
+            Choosing a point sends its coordinates to Photon to suggest an
+            address. Verify the result before saving.
+          </p>
+          {(lookingUpAddress || lookupMessage) && (
+            <p role="status" className="text-sm text-neutral-600">
+              {lookingUpAddress ? 'Looking up the address…' : lookupMessage}
+            </p>
+          )}
           <details className="rounded-md border border-neutral-200 p-4">
             <summary className="cursor-pointer text-sm font-medium">
               Enter coordinates manually
@@ -524,7 +584,10 @@ export function EventForm({
                   max={90}
                   step="any"
                   value={latitude}
-                  onChange={(event) => setLatitude(event.target.value)}
+                  onChange={(event) => {
+                    cancelReverseLookup();
+                    setLatitude(event.target.value);
+                  }}
                 />
               </div>
               <div>
@@ -536,7 +599,10 @@ export function EventForm({
                   max={180}
                   step="any"
                   value={longitude}
-                  onChange={(event) => setLongitude(event.target.value)}
+                  onChange={(event) => {
+                    cancelReverseLookup();
+                    setLongitude(event.target.value);
+                  }}
                 />
               </div>
             </div>
@@ -556,8 +622,7 @@ export function EventForm({
                   lon >= -180 &&
                   lon <= 180
                 ) {
-                  pointChosen.current = true;
-                  setMapCenter({ latitude: lat, longitude: lon });
+                  void choosePoint({ latitude: lat, longitude: lon }, true);
                   setMapZoom(15);
                   setError('');
                 } else
@@ -588,13 +653,13 @@ export function EventForm({
               Organizers and administrators can always see the location. Private
               locations become visible to registered participants after the
               registration event is processed. Public search uses an approximate
-              map point for private venues.
+              map point around the nearby streets for private venues. This may
+              reveal the general area and does not guarantee anonymity.
             </p>
           </div>
           <p className="text-xs leading-5 text-neutral-500">
-            Search terms are sent to Photon for suggestions. Moving the pin does
-            not send its exact coordinates to Photon. Map tiles are provided by
-            OpenFreeMap.
+            Search terms and selected map coordinates are sent to Photon for
+            address suggestions. Map tiles are provided by OpenFreeMap.
           </p>
           {existing?.pendingStatus && (
             <Notice

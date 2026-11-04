@@ -52,7 +52,9 @@ function NavigationContent({ close }: { close?: () => void }) {
     const active =
       href === '/'
         ? pathname === '/' || pathname === '/events'
-        : pathname === href || pathname.startsWith(`${href}/`);
+        : href === '/profile' || href === '/admin'
+          ? pathname === '/profile'
+          : pathname === href || pathname.startsWith(`${href}/`);
     const color = dangerous
       ? 'text-red-700 hover:bg-red-50 hover:text-red-800'
       : 'text-neutral-600 hover:bg-neutral-100 hover:text-black';

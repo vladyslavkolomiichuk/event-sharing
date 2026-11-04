@@ -2,6 +2,7 @@ import type { InAppNotification } from '@event-sharing/contracts';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { notificationPresentation } from './notificationPresentation';
+import { notificationLink } from './notificationLink';
 
 export function NotificationItem({
   item,
@@ -19,7 +20,7 @@ export function NotificationItem({
       className={`rounded-xl border ${item.readAt ? 'border-neutral-200 bg-white' : 'border-neutral-900 bg-neutral-50'}`}
     >
       <a
-        href={item.href}
+        href={notificationLink(item.href)}
         className="block rounded-t-xl p-5 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-black"
         onClick={(event) => {
           event.preventDefault();

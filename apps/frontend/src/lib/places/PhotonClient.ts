@@ -8,6 +8,9 @@ const PhotonFeatureSchema = z.object({
     street: z.string().optional(),
     housenumber: z.string().optional(),
     city: z.string().optional(),
+    locality: z.string().optional(),
+    type: z.string().optional(),
+    osm_key: z.string().optional(),
     state: z.string().optional(),
     country: z.string().optional(),
     osm_type: z.string().optional(),
@@ -24,6 +27,42 @@ export class PhotonClient {
     string,
     { items: Place[]; expiresAt: number }
   >();
+
+  async reverse(latitude: number, longitude: number): Promise<Place | null> {
+    const baseUrl = process.env.PHOTON_BASE_URL ?? 'https://photon.komoot.io';
+    const url = new URL('/reverse', baseUrl);
+    url.searchParams.set('lat', String(latitude));
+    url.searchParams.set('lon', String(longitude));
+    url.searchParams.set('limit', '5');
+    url.searchParams.set('radius', '1');
+    url.searchParams.set('lang', 'en');
+    const response = await fetch(url, {
+      headers: {
+        accept: 'application/json',
+        'user-agent': 'EventSharing/0.1 (venue lookup)',
+      },
+      signal: AbortSignal.timeout(6000),
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Address lookup is unavailable.');
+    const payload = PhotonResponseSchema.parse(await response.json());
+    const feature =
+      payload.features.find(
+        (item) =>
+          item.properties.street ||
+          item.properties.type === 'street' ||
+          item.properties.osm_key === 'highway',
+      ) ?? payload.features[0];
+    if (!feature) return null;
+    const place = this.toPlace(feature, 'address');
+    if (
+      !feature.properties.street &&
+      feature.properties.type !== 'street' &&
+      feature.properties.osm_key !== 'highway'
+    )
+      place.address = '';
+    return place;
+  }
 
   async search(query: string, kind: PlaceKind): Promise<Place[]> {
     const key = `${kind}:${query.toLowerCase()}`;
@@ -68,6 +107,7 @@ export class PhotonClient {
     const properties = feature.properties;
     const city =
       properties.city ??
+      properties.locality ??
       (kind === 'city' ? properties.name : undefined) ??
       null;
     const region =
