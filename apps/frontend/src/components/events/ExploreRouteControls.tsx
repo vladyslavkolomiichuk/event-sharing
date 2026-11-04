@@ -46,8 +46,8 @@ export function ExploreRouteControls({
           Clear route
         </Button>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2 min-w-0">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(180px,1fr)_auto_auto_auto_130px_auto] lg:items-end">
+        <div className="col-span-2 min-w-0 lg:col-span-1">
           <PlaceAutocomplete
             id="explore-route-origin"
             label="Starting address or city"
@@ -80,7 +80,7 @@ export function ExploreRouteControls({
         <Button type="button" variant="outline" onClick={onPickOnMap}>
           Pick on map
         </Button>
-        <div className="col-span-2">
+        <div className="col-span-2 lg:col-span-1">
           <label htmlFor="explore-route-mode">Travel mode</label>
           <select
             id="explore-route-mode"
@@ -95,7 +95,7 @@ export function ExploreRouteControls({
         </div>
         <Button
           type="button"
-          className="col-span-2"
+          className="col-span-2 lg:col-span-1"
           disabled={!eventTitle || !origin || loading}
           onClick={onBuild}
         >

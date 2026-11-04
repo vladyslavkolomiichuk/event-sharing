@@ -34,6 +34,7 @@ export function MapView({
   onMarkerClick,
   onMarkerDrag,
   visible = true,
+  exploreLayout = false,
   className,
 }: {
   center: MapPoint;
@@ -45,6 +46,7 @@ export function MapView({
   onMarkerClick?: (id: string) => void;
   onMarkerDrag?: (id: string, point: MapPoint) => void;
   visible?: boolean;
+  exploreLayout?: boolean;
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -194,26 +196,28 @@ export function MapView({
       for (const point of coordinates) bounds.extend(point as [number, number]);
       const width = map.getContainer().clientWidth;
       const height = map.getContainer().clientHeight;
-      const desktop = width >= 800;
+      const desktop = window.matchMedia('(min-width: 1024px)').matches;
       map.fitBounds(bounds, {
-        padding: desktop
-          ? {
-              left: Math.min(430, width * 0.4),
-              right: 60,
-              top: 80,
-              bottom: 100,
-            }
-          : {
-              left: 24,
-              right: 24,
-              top: Math.min(270, height * 0.36),
-              bottom: Math.min(190, height * 0.26),
-            },
+        padding: !exploreLayout
+          ? 50
+          : desktop
+            ? {
+                left: Math.min(430, width * 0.4),
+                right: 60,
+                top: Math.min(350, height * 0.45),
+                bottom: 100,
+              }
+            : {
+                left: 24,
+                right: 24,
+                top: Math.min(270, height * 0.36),
+                bottom: Math.min(190, height * 0.26),
+              },
         maxZoom: 14,
         duration: 700,
       });
     }
-  }, [route, ready]);
+  }, [route, ready, exploreLayout]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -282,7 +286,7 @@ function radiusCoordinates({
 }: MapRadius): [number, number][] {
   const latitude = (center.latitude * Math.PI) / 180;
   const longitude = (center.longitude * Math.PI) / 180;
-  const distance = radiusMeters / 6371000;
+  const distance = radiusMeters / 6371008.771415;
   const points: [number, number][] = [];
   for (let index = 0; index <= 96; index++) {
     const bearing = (index / 96) * 2 * Math.PI;
@@ -296,9 +300,10 @@ function radiusCoordinates({
         Math.sin(bearing) * Math.sin(distance) * Math.cos(latitude),
         Math.cos(distance) - Math.sin(latitude) * Math.sin(nextLatitude),
       );
-    const normalizedLongitude =
-      (((nextLongitude * 180) / Math.PI + 540) % 360) - 180;
-    points.push([normalizedLongitude, (nextLatitude * 180) / Math.PI]);
+    points.push([
+      (nextLongitude * 180) / Math.PI,
+      (nextLatitude * 180) / Math.PI,
+    ]);
   }
   return points;
 }

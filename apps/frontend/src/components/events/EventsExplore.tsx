@@ -50,6 +50,7 @@ export function EventsExplore() {
   const [center, setCenter] = useState<MapPoint>(worldCenter);
   const [zoom, setZoom] = useState(2);
   const [placeQuery, setPlaceQuery] = useState('');
+  const [anchorLabel, setAnchorLabel] = useState('');
   const [placeKind, setPlaceKind] = useState<'city' | 'address'>('city');
   const [anchor, setAnchor] = useState<MapPoint | null>(null);
   const [anchorSource, setAnchorSource] = useState<SearchLocationSource | null>(
@@ -70,6 +71,7 @@ export function EventsExplore() {
   const requestId = useRef(0);
   const locationRequestId = useRef(0);
   const locationSelected = useRef(false);
+  const needsLocation = mode !== 'UNSET' && mode !== 'ANYWHERE' && !anchor;
 
   useEffect(() => {
     const timer = setTimeout(() => setSearchText(text.trim()), 350);
@@ -96,6 +98,7 @@ export function EventsExplore() {
     setAnchor(null);
     setAnchorSource(null);
     setPlaceQuery('');
+    setAnchorLabel('');
     setCenter(worldCenter);
     setZoom(2);
   }, [user?.id]);
@@ -126,6 +129,7 @@ export function EventsExplore() {
           if (mode === 'CITY') {
             setPlaceKind('city');
             setPlaceQuery(profile.city);
+            setAnchorLabel(profile.city);
             setAnchor(point);
             setAnchorSource('CITY');
             setSort('distance');
@@ -169,6 +173,10 @@ export function EventsExplore() {
   const load = useCallback(
     async (next?: string) => {
       if (!user) return;
+      if (needsLocation) {
+        setLoading(false);
+        return;
+      }
       const current = ++requestId.current;
       setLoading(true);
       setError('');
@@ -182,7 +190,7 @@ export function EventsExplore() {
           ? { startFrom: new Date(`${startFrom}T00:00:00`).toISOString() }
           : {}),
         ...(startTo
-          ? { startTo: new Date(`${startTo}T23:59:59`).toISOString() }
+          ? { startTo: new Date(`${startTo}T23:59:59.999`).toISOString() }
           : {}),
         ...(anchor && anchorSource
           ? {
@@ -222,6 +230,7 @@ export function EventsExplore() {
       anchor,
       anchorSource,
       radiusKm,
+      needsLocation,
       show,
     ],
   );
@@ -417,20 +426,14 @@ export function EventsExplore() {
     setUserLocation(null);
     setAccuracy(null);
     setPlaceQuery(label);
+    setAnchorLabel(label);
     setCenter(point);
     setZoom(11);
     setSort('distance');
   }
 
   function changePlace(value: string) {
-    locationRequestId.current++;
-    locationSelected.current = true;
     setPlaceQuery(value);
-    setAnchor(null);
-    setAnchorSource(null);
-    setUserLocation(null);
-    setAccuracy(null);
-    if (sort === 'distance') setSort('start_time');
   }
 
   function changePlaceKind(kind: 'city' | 'address') {
@@ -459,6 +462,7 @@ export function EventsExplore() {
     setUserLocation(null);
     setAccuracy(null);
     setPlaceQuery('');
+    setAnchorLabel('');
     setCenter(point);
     setZoom((current) => Math.max(current, 11));
     setSort('distance');
@@ -478,6 +482,7 @@ export function EventsExplore() {
       setAnchor(point);
       setAnchorSource('DEVICE');
       setPlaceQuery('');
+      setAnchorLabel('');
       setCenter(point);
       setZoom(12);
       setSort('distance');
@@ -514,6 +519,7 @@ export function EventsExplore() {
     setAnchor(null);
     setAnchorSource(null);
     setPlaceQuery('');
+    setAnchorLabel('');
     setSort('start_time');
     setCenter(worldCenter);
     setZoom(2);
@@ -579,8 +585,10 @@ export function EventsExplore() {
       ? 'GPS'
       : anchorSource === 'MAP'
         ? 'Map point'
-        : placeQuery || 'Selected place'
-    : 'Anywhere';
+        : anchorLabel || 'Selected place'
+    : needsLocation
+      ? 'Choose a location'
+      : 'Anywhere';
 
   if (authLoading) return <Loading />;
   if (!user)
@@ -614,6 +622,7 @@ export function EventsExplore() {
           anchor ? { center: anchor, radiusMeters: radiusKm * 1000 } : undefined
         }
         route={routePoints}
+        exploreLayout
         onPick={(point) => {
           if (mapPickMode === 'route-origin') {
             routePlanner.chooseOrigin(point, 'Map point');
@@ -632,10 +641,10 @@ export function EventsExplore() {
         className="absolute inset-0 h-full w-full rounded-none border-0"
       />
 
-      <div className="pointer-events-none absolute inset-y-3 left-3 z-20 flex w-[min(390px,calc(100%-24px))] flex-col gap-3">
+      <div className="pointer-events-none absolute inset-y-3 left-3 right-14 z-20 flex flex-col gap-3">
         <section
           aria-label="Search events"
-          className="pointer-events-auto max-h-[min(42dvh,420px)] shrink-0 space-y-3 overflow-y-auto rounded-xl border border-neutral-200 bg-white/95 p-4 shadow-lg backdrop-blur-sm lg:max-h-[min(58dvh,620px)]"
+          className="pointer-events-auto max-h-[min(42dvh,420px)] shrink-0 space-y-2 overflow-y-auto rounded-xl border border-neutral-200 bg-white/95 p-4 shadow-lg backdrop-blur-sm lg:max-h-[45dvh] lg:overflow-y-auto"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -666,7 +675,7 @@ export function EventsExplore() {
               enter a place.
             </p>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-200 pt-3 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-200 pt-2 text-xs">
             <span className="font-semibold text-neutral-700">
               {locationLabel}
               {anchor ? ` · ${radiusKm} km` : ''}
@@ -679,6 +688,12 @@ export function EventsExplore() {
               Pick search point
             </button>
           </div>
+          {anchor && (
+            <p className="text-xs text-neutral-600">
+              Results use the displayed map position. Hidden venues use an
+              approximate position, so their actual distance may differ.
+            </p>
+          )}
           <EventLocationFilters
             placeQuery={placeQuery}
             onPlaceQueryChange={changePlace}
@@ -686,6 +701,7 @@ export function EventsExplore() {
             onPlaceKindChange={changePlaceKind}
             onPlaceSelect={(point, label) => void choosePlace(point, label)}
             locationActive={Boolean(anchor && anchorSource)}
+            canClearLocation={Boolean(anchor) || needsLocation}
             radiusKm={radiusKm}
             onRadiusChange={setRadiusKm}
             startFrom={startFrom}
@@ -735,7 +751,7 @@ export function EventsExplore() {
               Click the map to set the route start.
             </p>
           )}
-          <details className="border-t border-neutral-200 pt-3 text-xs text-neutral-600">
+          <details className="text-xs text-neutral-600">
             <summary className="cursor-pointer font-semibold text-neutral-700">
               Location privacy
             </summary>
@@ -749,7 +765,7 @@ export function EventsExplore() {
           </details>
         </section>
         <div
-          className={`pointer-events-auto absolute inset-x-0 bottom-0 h-[min(34dvh,300px)] min-h-[120px] ${resultsOpen ? 'flex' : 'hidden'} lg:static lg:flex lg:h-auto lg:min-h-0 lg:flex-1`}
+          className={`pointer-events-auto absolute bottom-0 left-0 w-[min(390px,100%)] h-[min(34dvh,300px)] min-h-[120px] ${resultsOpen ? 'flex' : 'hidden'} lg:static lg:flex lg:h-auto lg:min-h-0 lg:flex-1`}
         >
           <ExploreResultsPanel
             items={items}
@@ -762,6 +778,7 @@ export function EventsExplore() {
             onRoute={(id) => void chooseRouteEvent(id)}
             onLoadMore={(next) => void load(next)}
             onClose={() => setResultsOpen(false)}
+            needsLocation={needsLocation}
           />
         </div>
       </div>

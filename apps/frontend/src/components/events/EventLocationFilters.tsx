@@ -10,6 +10,7 @@ export function EventLocationFilters({
   onPlaceKindChange,
   onPlaceSelect,
   locationActive,
+  canClearLocation,
   radiusKm,
   onRadiusChange,
   startFrom,
@@ -26,6 +27,7 @@ export function EventLocationFilters({
   onPlaceKindChange: (kind: 'city' | 'address') => void;
   onPlaceSelect: (point: MapPoint, label: string) => void;
   locationActive: boolean;
+  canClearLocation: boolean;
   radiusKm: number;
   onRadiusChange: (value: number) => void;
   startFrom: string;
@@ -37,7 +39,7 @@ export function EventLocationFilters({
   onClearLocation: () => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(90px,0.6fr)_minmax(200px,2fr)_minmax(90px,0.6fr)_auto] lg:items-end">
       <div>
         <label htmlFor="event-place-kind">Find by</label>
         <select
@@ -93,13 +95,13 @@ export function EventLocationFilters({
       <Button
         type="button"
         variant="ghost"
-        disabled={!locationActive}
+        disabled={!canClearLocation}
         onClick={onClearLocation}
         className="self-end"
       >
         Clear location
       </Button>
-      <details className="col-span-2 border-t border-neutral-200 pt-3">
+      <details className="col-span-2 border-t border-neutral-200 pt-2 lg:col-span-4">
         <summary className="cursor-pointer text-sm font-semibold">
           More filters{startFrom || startTo || status ? ' · Active' : ''}
         </summary>

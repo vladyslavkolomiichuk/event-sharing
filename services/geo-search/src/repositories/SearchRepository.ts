@@ -76,21 +76,19 @@ export class SearchRepository {
         Prisma.sql`ST_DWithin(
           p.location,
           ${origin},
-          CASE WHEN p.visibility = 'PUBLIC'
-            THEN ${query.radiusMeters}::double precision
-            ELSE ${query.radiusMeters + 16000}::double precision
-          END
+          ${query.radiusMeters}::double precision,
+          false
         )`,
       );
     }
 
     const distance = hasLocation
-      ? Prisma.sql`ST_Distance(p.location, ${origin})`
+      ? Prisma.sql`ST_Distance(p.location, ${origin}, false)`
       : Prisma.sql`NULL::double precision`;
     const rank = term
       ? Prisma.sql`CASE
           WHEN lower(p.title) = ${term.toLowerCase()} THEN 3
-          WHEN lower(p.title) LIKE ${`${term.toLowerCase()}%`} THEN 2
+          WHEN lower(p.title) LIKE ${`${term.toLowerCase().replace(/[\\%_]/g, '\\$&')}%`} THEN 2
           ELSE 1 END`
       : Prisma.sql`0`;
 

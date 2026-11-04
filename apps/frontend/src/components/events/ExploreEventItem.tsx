@@ -52,7 +52,7 @@ export function ExploreEventItem({
           {event.distanceMeters !== null &&
             (event.location.visibility === 'PUBLIC'
               ? ` · ${(event.distanceMeters / 1000).toFixed(1)} km`
-              : ` · about ${Math.round(event.distanceMeters / 10000) * 10} km`)}
+              : ` · about ${(event.distanceMeters / 1000).toFixed(1)} km`)}
         </span>
         <div className="flex gap-3">
           <button

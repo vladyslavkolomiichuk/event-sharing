@@ -27,8 +27,8 @@ export function EventSearchToolbar({
   onUseLocation: () => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3">
-      <div className="col-span-2">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(200px,2fr)_minmax(130px,1fr)_minmax(120px,1fr)_auto] lg:items-end">
+      <div className="col-span-2 lg:col-span-1">
         <label htmlFor="event-search-text">Search events</label>
         <Input
           id="event-search-text"
@@ -73,7 +73,7 @@ export function EventSearchToolbar({
       <Button
         type="button"
         variant="outline"
-        className="col-span-2"
+        className="col-span-2 lg:col-span-1"
         onClick={onUseLocation}
       >
         Use my location

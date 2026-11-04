@@ -14,6 +14,7 @@ export function ExploreResultsPanel({
   onRoute,
   onLoadMore,
   onClose,
+  needsLocation,
 }: {
   items: SearchEvent[];
   selectedId: string | null;
@@ -25,6 +26,7 @@ export function ExploreResultsPanel({
   onRoute: (id: string) => void;
   onLoadMore: (cursor: string) => void;
   onClose?: () => void;
+  needsLocation: boolean;
 }) {
   return (
     <section
@@ -66,9 +68,11 @@ export function ExploreResultsPanel({
           ))
         ) : (
           <p className="p-4 text-sm text-neutral-600">
-            {error
-              ? 'Search is temporarily unavailable.'
-              : 'No events match these filters. Try a wider area or another date.'}
+            {needsLocation
+              ? 'Choose a location or clear it to search everywhere.'
+              : error
+                ? 'Search is temporarily unavailable.'
+                : 'No events match these filters. Try a wider area or another date.'}
           </p>
         )}
         {cursor && (
