@@ -7,6 +7,7 @@ import {
   type FriendList,
   type FriendPerson,
 } from '@/lib/api/FriendsClient';
+import { useFriendSearch } from '@/lib/useFriendSearch';
 import { usersClient, type UserSearchResult } from '@/lib/api/UsersClient';
 import { ProfileAvatar } from './ProfileAvatar';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,12 @@ export function FriendsWorkspace({
   const [searched, setSearched] = useState(false);
   const [friendFilter, setFriendFilter] = useState('');
   const [friendSort, setFriendSort] = useState<'name' | 'username'>('name');
+  const friends = useFriendSearch(
+    friendFilter,
+    friendSort,
+    section === 'friends',
+  );
+  const friendPage = friends.page;
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -113,6 +120,7 @@ export function FriendsWorkspace({
     try {
       await action();
       await refresh();
+      friends.refresh();
       if (searched && query.trim()) {
         const page = await usersClient.searchByUsername(query.trim());
         setResults(page.items);
@@ -137,13 +145,7 @@ export function FriendsWorkspace({
     );
   }
 
-  const shownFriends = [...(list?.friends ?? [])]
-    .filter((person) =>
-      `${person.name} ${person.username}`
-        .toLowerCase()
-        .includes(friendFilter.toLowerCase()),
-    )
-    .sort((left, right) => left[friendSort].localeCompare(right[friendSort]));
+  const shownFriends = friendPage?.items ?? [];
 
   return (
     <div className="space-y-7">
@@ -226,7 +228,9 @@ export function FriendsWorkspace({
               )}
             </section>
           )}
-          {error && <Notice message={error} tone="error" />}
+          {(error || friends.error) && (
+            <Notice message={error || friends.error} tone="error" />
+          )}
           {section === 'received' && (
             <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
               <h2>Received requests</h2>
@@ -304,7 +308,7 @@ export function FriendsWorkspace({
                   aria-label="Search friends"
                   value={friendFilter}
                   onChange={(event) => setFriendFilter(event.target.value)}
-                  placeholder="Search loaded friends"
+                  placeholder="Search friends"
                 />
                 <select
                   aria-label="Sort friends"
@@ -319,19 +323,13 @@ export function FriendsWorkspace({
                 </select>
               </div>
               <p className="text-sm text-neutral-600" role="status">
-                {list
-                  ? `${list.friends.length} friends loaded${list.nextPage !== null ? '; more pages available' : ''}. Search and sort apply to loaded friends.`
+                {friendPage
+                  ? `${friendPage.items.length} friends shown${friendPage.nextPage !== null ? '; more results available' : ''}.`
                   : 'Loading friends…'}
               </p>
-              {list && shownFriends.length === 0 && (
+              {friendPage && shownFriends.length === 0 && (
                 <p>
-                  {friendFilter
-                    ? list && list.nextPage !== null
-                      ? 'No matches in the loaded friends. Load more to continue searching.'
-                      : 'No matching friends.'
-                    : list && list.nextPage !== null
-                      ? 'No friends on this page. Load more to continue.'
-                      : 'No friends yet.'}
+                  {friendFilter ? 'No matching friends.' : 'No friends yet.'}
                 </p>
               )}
               {shownFriends.map((person) => (
@@ -384,6 +382,16 @@ export function FriendsWorkspace({
                   </Button>
                 </div>
               ))}
+              {friendPage?.nextPage !== null &&
+                friendPage?.nextPage !== undefined && (
+                  <Button
+                    variant="outline"
+                    disabled={friends.loadingMore}
+                    onClick={() => void friends.loadMore()}
+                  >
+                    {friends.loadingMore ? 'Loading…' : 'Load more friends'}
+                  </Button>
+                )}
             </div>
           )}
           {section === 'blocked' && (
@@ -411,6 +419,7 @@ export function FriendsWorkspace({
             </div>
           )}
           {section !== 'find' &&
+            section !== 'friends' &&
             list?.nextPage !== null &&
             list?.nextPage !== undefined && (
               <Button

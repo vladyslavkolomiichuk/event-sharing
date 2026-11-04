@@ -6,6 +6,7 @@ export function userProfileRoutes(controller: UserProfileController): Router {
   const router = Router();
   const friends = new FriendController();
   router.get('/friends', friends.list);
+  router.get('/friends/search', friends.search);
   router.get('/invitation-target/:username', friends.invitationTarget);
   router.post('/friends/requests', friends.request);
   router.patch('/friends/requests/:id', friends.decide);

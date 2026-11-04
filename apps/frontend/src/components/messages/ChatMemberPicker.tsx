@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { friendsClient, type FriendPerson } from '@/lib/api/FriendsClient';
+import { useState } from 'react';
+import type { FriendPerson } from '@/lib/api/FriendsClient';
+import { useFriendSearch } from '@/lib/useFriendSearch';
 import { usersClient } from '@/lib/api/UsersClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,23 +19,9 @@ export function ChatMemberPicker({
   const [tab, setTab] = useState<'search' | 'friends'>('search');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ChatPerson[]>([]);
-  const [friends, setFriends] = useState<ChatPerson[]>([]);
+  const friends = useFriendSearch(query, 'name', tab === 'friends');
   const [error, setError] = useState('');
   const [searchAttempted, setSearchAttempted] = useState(false);
-
-  useEffect(() => {
-    async function load() {
-      const people: ChatPerson[] = [];
-      for (let page = 0; page < 50; page++) {
-        const batch = await friendsClient.list(page);
-        people.push(...batch.friends);
-        if (batch.nextPage === null) break;
-      }
-      setFriends(people);
-    }
-    void load().catch(() => setFriends([]));
-  }, []);
-
   async function search() {
     setSearchAttempted(true);
     if (query.trim().length < 2) return;
@@ -59,14 +46,7 @@ export function ChatMemberPicker({
     );
   }
 
-  const people =
-    tab === 'friends'
-      ? friends.filter((person) =>
-          `${person.name} ${person.username}`
-            .toLowerCase()
-            .includes(query.toLowerCase()),
-        )
-      : results;
+  const people = tab === 'friends' ? (friends.page?.items ?? []) : results;
 
   return (
     <div className="space-y-3">
@@ -114,7 +94,9 @@ export function ChatMemberPicker({
           </Button>
         )}
       </div>
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {(error || friends.error) && (
+        <p className="text-sm text-red-700">{error || friends.error}</p>
+      )}
       <div className="max-h-36 overflow-y-auto border border-neutral-200">
         {people.map((person) => (
           <button
@@ -134,6 +116,17 @@ export function ChatMemberPicker({
           </button>
         ))}
       </div>
+      {tab === 'friends' && friends.page?.nextPage != null && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={friends.loadingMore}
+          onClick={() => void friends.loadMore()}
+        >
+          {friends.loadingMore ? 'Loading…' : 'Load more friends'}
+        </Button>
+      )}
       {selected.length > 0 && (
         <p className="text-xs text-neutral-600">
           Selected: {selected.map((person) => `@${person.username}`).join(', ')}

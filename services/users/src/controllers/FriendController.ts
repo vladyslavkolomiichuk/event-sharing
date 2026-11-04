@@ -25,6 +25,29 @@ export class FriendController {
     );
   };
 
+  search: RequestHandler = async (request, response) => {
+    const query = z.string().trim().max(100).default('').parse(request.query.q);
+    const sort = z
+      .enum(['name', 'username'])
+      .default('name')
+      .parse(request.query.sort);
+    const page = z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(1000)
+      .default(0)
+      .parse(request.query.page);
+    response.json(
+      await this.service.search(
+        this.actor(request.authenticatedUser?.id),
+        query,
+        sort,
+        page,
+      ),
+    );
+  };
+
   invitationTarget: RequestHandler = async (request, response) => {
     const username = UsernameSchema.parse(request.params.username);
     response.json(

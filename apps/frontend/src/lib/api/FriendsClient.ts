@@ -20,7 +20,21 @@ export type FriendList = {
   blocked: FriendPerson[];
 };
 
+export type FriendSearchPage = {
+  items: FriendPerson[];
+  nextPage: number | null;
+};
+
 export class FriendsClient {
+  search(
+    query = '',
+    sort: 'name' | 'username' = 'name',
+    page = 0,
+  ): Promise<FriendSearchPage> {
+    const params = new URLSearchParams({ q: query, sort, page: String(page) });
+    return gateway.get(`/api/users/friends/search?${params}`);
+  }
+
   list(page = 0): Promise<FriendList> {
     return gateway.get(`/api/users/friends?page=${page}`);
   }

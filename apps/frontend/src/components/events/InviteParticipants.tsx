@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import type { UserProfilePublic } from '@event-sharing/contracts';
-import { friendsClient, type FriendPerson } from '@/lib/api/FriendsClient';
+import type { FriendPerson } from '@/lib/api/FriendsClient';
+import { useFriendSearch } from '@/lib/useFriendSearch';
 import { usersClient } from '@/lib/api/UsersClient';
 import {
   invitationClient,
@@ -25,27 +26,13 @@ export function InviteParticipants({
 }) {
   const [tab, setTab] = useState<'search' | 'friends'>('search');
   const [query, setQuery] = useState('');
-  const [friends, setFriends] = useState<FriendPerson[]>([]);
+  const friends = useFriendSearch(query, 'name', tab === 'friends');
   const [results, setResults] = useState<UserProfilePublic[]>([]);
   const [selected, setSelected] = useState<Person[]>([]);
   const [outgoing, setOutgoing] = useState<PersonalInvite[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    async function load() {
-      const people: FriendPerson[] = [];
-      for (let page = 0; page < 50; page++) {
-        const batch = await friendsClient.list(page);
-        people.push(...batch.friends);
-        if (batch.nextPage === null) break;
-      }
-      setFriends(people);
-    }
-    void load().catch(() => setFriends([]));
-  }, []);
-
   async function refreshOutgoing() {
     if (!eventId) return;
     const invites = await invitationClient.outgoing(eventId);
@@ -112,14 +99,7 @@ export function InviteParticipants({
     }
   }
 
-  const shown =
-    tab === 'friends'
-      ? friends.filter((person) =>
-          `${person.name} ${person.username}`
-            .toLowerCase()
-            .includes(query.toLowerCase()),
-        )
-      : results;
+  const shown = tab === 'friends' ? (friends.page?.items ?? []) : results;
 
   return (
     <section className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
@@ -198,6 +178,17 @@ export function InviteParticipants({
           </li>
         ))}
       </ul>
+      {tab === 'friends' && friends.page?.nextPage != null && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={friends.loadingMore}
+          onClick={() => void friends.loadMore()}
+        >
+          {friends.loadingMore ? 'Loading…' : 'Load more friends'}
+        </Button>
+      )}
       {selected.length > 0 && (
         <div className="space-y-2">
           <h3>Selected people</h3>
@@ -217,6 +208,7 @@ export function InviteParticipants({
           tone={message.startsWith('Could not') ? 'error' : 'success'}
         />
       )}
+      {friends.error && <Notice message={friends.error} tone="error" />}
       {eventId && (
         <div className="space-y-2">
           <h3>Sent invitations</h3>

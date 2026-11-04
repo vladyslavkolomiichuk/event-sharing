@@ -4,6 +4,7 @@ import {
 } from '@event-sharing/contracts';
 import { AppError } from '@event-sharing/common';
 import { prisma } from '../database/client.js';
+import { Prisma } from '../generated/prisma/client.js';
 
 class FriendActionError extends AppError {
   readonly statusCode: number;
@@ -21,6 +22,47 @@ class FriendActionError extends AppError {
 }
 
 export class FriendService {
+  async search(
+    actorId: string,
+    query: string,
+    sort: 'name' | 'username',
+    page: number,
+  ) {
+    const term = query.replace(/^@/, '').toLowerCase();
+    const order =
+      sort === 'username' ? Prisma.sql`p."username"` : Prisma.sql`p."name"`;
+    const people = await prisma.$queryRaw<
+      {
+        userId: string;
+        username: string;
+        name: string;
+        avatarUrl: string | null;
+      }[]
+    >`
+      SELECT p."userId", p."username", p."name",
+        CASE WHEN pref."profileVisibility" IN ('PUBLIC', 'FRIENDS')
+          THEN p."avatarUrl" ELSE NULL END AS "avatarUrl"
+      FROM "friendship" f
+      JOIN "user_profile" p ON p."userId" = CASE
+        WHEN f."userIdA" = ${actorId}::uuid THEN f."userIdB" ELSE f."userIdA" END
+      LEFT JOIN "user_preference" pref ON pref."userId" = p."userId"
+      WHERE (f."userIdA" = ${actorId}::uuid OR f."userIdB" = ${actorId}::uuid)
+        AND (position(${term} in lower(p."name")) > 0
+          OR position(${term} in lower(p."username")) > 0)
+        AND NOT EXISTS (
+          SELECT 1 FROM "user_block" b
+          WHERE (b."blockerId" = ${actorId}::uuid AND b."blockedId" = p."userId")
+             OR (b."blockedId" = ${actorId}::uuid AND b."blockerId" = p."userId")
+        )
+      ORDER BY lower(${order}), p."userId"
+      OFFSET ${page * 20} LIMIT 21
+    `;
+    return {
+      items: people.slice(0, 20),
+      nextPage: people.length > 20 ? page + 1 : null,
+    };
+  }
+
   async blocked(actorId: string, userIds: string[]): Promise<Set<string>> {
     const blocks = await prisma.userBlock.findMany({
       where: {
