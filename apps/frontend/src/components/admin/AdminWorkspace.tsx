@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { UserProfileLink } from '@/components/profile/UserProfileLink';
+import { OrganizerRequestsPanel } from './OrganizerRequestsPanel';
 
 export function AdminWorkspace() {
   const router = useRouter();
@@ -113,6 +114,7 @@ export function AdminWorkspace() {
 
   return (
     <div className="grid gap-7 lg:grid-cols-2">
+      <OrganizerRequestsPanel />
       <section className="space-y-5 rounded-xl border border-neutral-200 bg-white p-7">
         <div className="flex items-center justify-between">
           <h2>Services</h2>

@@ -4,6 +4,7 @@ import type { ReadinessCheck } from '@event-sharing/common';
 import { toNodeHandler } from 'better-auth/node';
 import { UserRoleController } from './controllers/UserRoleController.js';
 import { UserIdentityController } from './controllers/UserIdentityController.js';
+import { OrganizerRequestController } from './controllers/OrganizerRequestController.js';
 import { PrivacyController } from './controllers/PrivacyController.js';
 import {
   accountMailAvailable,
@@ -17,6 +18,7 @@ import { requireUserSession } from './middleware/require-user-session.js';
 import { requireTrustedOrigin } from './middleware/require-trusted-origin.js';
 import { UserRoleRepository } from './repositories/UserRoleRepository.js';
 import { userRoleRoutes } from './routes/user-role.routes.js';
+import { organizerRequestRoutes } from './routes/organizer-request.routes.js';
 import { UserRoleService } from './services/UserRoleService.js';
 
 export function createApp(readinessCheck: ReadinessCheck): Express {
@@ -26,6 +28,19 @@ export function createApp(readinessCheck: ReadinessCheck): Express {
     new UserRoleService(new UserRoleRepository()),
   );
   const privacyController = new PrivacyController();
+  const organizerRequests = organizerRequestRoutes(
+    new OrganizerRequestController(),
+  );
+  app.use(
+    '/backend/auth/organizer-requests',
+    express.json(),
+    organizerRequests.member,
+  );
+  app.use(
+    '/backend/auth/admin/organizer-requests',
+    express.json(),
+    organizerRequests.admin,
+  );
   app.get(
     '/backend/auth/privacy/export',
     requireUserSession,

@@ -16,6 +16,8 @@ export const InAppNotificationSchema = z.strictObject({
     'EVENT_INVITATION',
     'CHAT_GROUP_CHANGED',
     'CHAT_MESSAGE',
+    'ORGANIZER_REQUEST',
+    'ORGANIZER_REQUEST_DECISION',
   ]),
   title: z.string(),
   body: z.string(),

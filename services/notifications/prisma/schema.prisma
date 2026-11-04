@@ -63,14 +63,25 @@ model UserProjection {
   @@map("user_projection")
 }
 
+model PendingOrganizerRequest {
+  id            String   @id @db.Uuid
+  requesterId   String   @db.Uuid
+  requesterName String
+  sourceEventId String   @db.Uuid
+  receivedAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([receivedAt])
+  @@map("pending_organizer_request")
+}
+
 model EventProjection {
-  id          String   @id @db.Uuid
-  organizerId String   @db.Uuid
-  title       String
-  status      String
-  version     Int
-  lastSourceEventId String @db.Uuid
-  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  id                String   @id @db.Uuid
+  organizerId       String   @db.Uuid
+  title             String
+  status            String
+  version           Int
+  lastSourceEventId String   @db.Uuid
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
 
   @@index([organizerId])
   @@map("event_projection")

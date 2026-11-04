@@ -11,6 +11,8 @@ import {
   ChatMessageCreatedPayloadSchema,
   InvitationSentPayloadSchema,
   UserRoleChangedPayloadSchema,
+  OrganizerRequestSubmittedPayloadSchema,
+  OrganizerRequestResolvedPayloadSchema,
   isEventSnapshotType,
   isMembershipEventType,
   type EventEnvelope,
@@ -192,6 +194,11 @@ export class NotificationEventService {
         );
         if (data.role === 'ADMIN') {
           await this.backfillModeration(transaction, data.userId, recipients);
+          await this.backfillOrganizerRequests(
+            transaction,
+            data.userId,
+            recipients,
+          );
         }
         return 'processed';
       }
@@ -203,13 +210,96 @@ export class NotificationEventService {
         await this.projections.updateRole(transaction, data.userId, data.role);
         if (data.role === 'ADMIN') {
           await this.backfillModeration(transaction, data.userId, recipients);
+          await this.backfillOrganizerRequests(
+            transaction,
+            data.userId,
+            recipients,
+          );
         } else {
           await this.notifications.deleteModerationForUser(
             transaction,
             data.userId,
           );
+          await this.notifications.deleteRoleRequestsForUser(
+            transaction,
+            data.userId,
+          );
           recipients.add(data.userId);
         }
+        return 'processed';
+      }
+      if (
+        event.eventType === EVENT_TYPES.organizerRequestSubmitted &&
+        event.producer === 'auth'
+      ) {
+        const data = OrganizerRequestSubmittedPayloadSchema.parse(
+          event.payload,
+        );
+        await this.projections.recordOrganizerRequest(transaction, {
+          id: data.requestId,
+          requesterId: data.userId,
+          requesterName: data.name,
+          sourceEventId: event.eventId,
+        });
+        const admins = await this.projections.getAdmins(transaction);
+        await this.createNotifications(
+          transaction,
+          admins
+            .filter((admin) => admin.id !== data.userId)
+            .map((admin) => ({
+              recipientId: admin.id,
+              senderId: data.userId,
+              type: 'ORGANIZER_REQUEST',
+              title: 'Organizer access request',
+              body: `${data.name} requested organizer access.`,
+              href: `/admin#organizer-request-${data.requestId}`,
+              sourceEventId: event.eventId,
+            })),
+          recipients,
+        );
+        return 'processed';
+      }
+      if (
+        event.eventType === EVENT_TYPES.organizerRequestResolved &&
+        event.producer === 'auth'
+      ) {
+        const data = OrganizerRequestResolvedPayloadSchema.parse(event.payload);
+        const pendingRequest = await this.projections.getOrganizerRequest(
+          transaction,
+          data.requestId,
+        );
+        await this.projections.resolveOrganizerRequest(
+          transaction,
+          data.requestId,
+        );
+        if (pendingRequest) {
+          await this.notifications.deleteRoleRequestNotifications(
+            transaction,
+            pendingRequest.sourceEventId,
+          );
+          const admins = await this.projections.getAdmins(transaction);
+          admins.forEach((admin) => recipients.add(admin.id));
+        }
+        await this.createNotifications(
+          transaction,
+          [
+            {
+              recipientId: data.userId,
+              type: 'ORGANIZER_REQUEST_DECISION',
+              title:
+                data.status === 'APPROVED'
+                  ? 'Organizer access approved'
+                  : 'Organizer access declined',
+              body:
+                data.status === 'APPROVED'
+                  ? 'You can now create events.'
+                  : (data.decisionReason ?? 'Your request was declined.'),
+              href: data.status === 'APPROVED' ? '/events/new' : '/',
+              sourceEventId: event.eventId,
+            },
+          ],
+          recipients,
+        );
         return 'processed';
       }
       if (
@@ -543,6 +633,29 @@ export class NotificationEventService {
           href: `/events/${item.id}`,
           eventId: item.id,
           sourceEventId: item.lastSourceEventId,
+        })),
+      recipients,
+    );
+  }
+
+  private async backfillOrganizerRequests(
+    transaction: Prisma.TransactionClient,
+    adminId: string,
+    recipients: Set<string>,
+  ) {
+    const pending = await this.projections.listOrganizerRequests(transaction);
+    await this.createNotifications(
+      transaction,
+      pending
+        .filter((item) => item.requesterId !== adminId)
+        .map((item) => ({
+          recipientId: adminId,
+          senderId: item.requesterId,
+          type: 'ORGANIZER_REQUEST',
+          title: 'Organizer access request',
+          body: `${item.requesterName} requested organizer access.`,
+          href: `/admin#organizer-request-${item.id}`,
+          sourceEventId: item.sourceEventId,
         })),
       recipients,
     );

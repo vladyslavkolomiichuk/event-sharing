@@ -6,6 +6,8 @@ import {
   UserNameUpdatedPayloadSchema,
   UserUsernameUpdatedPayloadSchema,
   UserRoleChangedPayloadSchema,
+  OrganizerRequestSubmittedPayloadSchema,
+  OrganizerRequestResolvedPayloadSchema,
 } from '@event-sharing/contracts';
 import {
   AbstractOutboxWorker,
@@ -38,6 +40,8 @@ export class IdentityOutboxWorker extends AbstractOutboxWorker<IdentityOutboxEve
             EVENT_TYPES.userNameUpdated,
             EVENT_TYPES.userUsernameUpdated,
             EVENT_TYPES.userRoleChanged,
+            EVENT_TYPES.organizerRequestSubmitted,
+            EVENT_TYPES.organizerRequestResolved,
           ],
         },
         publishedAt: null,
@@ -57,6 +61,10 @@ export class IdentityOutboxWorker extends AbstractOutboxWorker<IdentityOutboxEve
       payload = UserUsernameUpdatedPayloadSchema.parse(event.payload);
     } else if (event.eventType === EVENT_TYPES.userRoleChanged) {
       payload = UserRoleChangedPayloadSchema.parse(event.payload);
+    } else if (event.eventType === EVENT_TYPES.organizerRequestSubmitted) {
+      payload = OrganizerRequestSubmittedPayloadSchema.parse(event.payload);
+    } else if (event.eventType === EVENT_TYPES.organizerRequestResolved) {
+      payload = OrganizerRequestResolvedPayloadSchema.parse(event.payload);
     } else {
       throw new Error(`Unsupported identity event type: ${event.eventType}`);
     }

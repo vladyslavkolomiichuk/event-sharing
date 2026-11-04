@@ -24,7 +24,7 @@ export class UserRoleService {
       throw new SelfDemotionError();
     }
 
-    await this.repository.updateRole(user.id, role);
+    await this.repository.updateRole(user.id, role, actorId);
 
     return { id: user.id, role };
   }

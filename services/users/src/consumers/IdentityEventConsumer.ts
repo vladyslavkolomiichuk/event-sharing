@@ -5,6 +5,8 @@ import {
   UserNameUpdatedPayloadSchema,
   UserUsernameUpdatedPayloadSchema,
   UserRoleChangedPayloadSchema,
+  OrganizerRequestSubmittedPayloadSchema,
+  OrganizerRequestResolvedPayloadSchema,
 } from '@event-sharing/contracts';
 import {
   EventCodec,
@@ -122,6 +124,18 @@ export class IdentityEventConsumer {
 
         if (event.eventType === EVENT_TYPES.userRoleChanged) {
           UserRoleChangedPayloadSchema.parse(event.payload);
+          EventTrace.received('Users', EVENT_TOPICS.identity, event, 'ignored');
+          return;
+        }
+
+        if (event.eventType === EVENT_TYPES.organizerRequestSubmitted) {
+          OrganizerRequestSubmittedPayloadSchema.parse(event.payload);
+          EventTrace.received('Users', EVENT_TOPICS.identity, event, 'ignored');
+          return;
+        }
+
+        if (event.eventType === EVENT_TYPES.organizerRequestResolved) {
+          OrganizerRequestResolvedPayloadSchema.parse(event.payload);
           EventTrace.received('Users', EVENT_TOPICS.identity, event, 'ignored');
           return;
         }

@@ -77,6 +77,36 @@ export class ProjectionRepository {
     return transaction.userProjection.findMany({ where: { role: 'ADMIN' } });
   }
 
+  recordOrganizerRequest(
+    transaction: Prisma.TransactionClient,
+    request: {
+      id: string;
+      requesterId: string;
+      requesterName: string;
+      sourceEventId: string;
+    },
+  ) {
+    return transaction.pendingOrganizerRequest.upsert({
+      where: { id: request.id },
+      create: request,
+      update: {},
+    });
+  }
+
+  resolveOrganizerRequest(transaction: Prisma.TransactionClient, id: string) {
+    return transaction.pendingOrganizerRequest.deleteMany({ where: { id } });
+  }
+
+  getOrganizerRequest(transaction: Prisma.TransactionClient, id: string) {
+    return transaction.pendingOrganizerRequest.findUnique({ where: { id } });
+  }
+
+  listOrganizerRequests(transaction: Prisma.TransactionClient) {
+    return transaction.pendingOrganizerRequest.findMany({
+      orderBy: { receivedAt: 'asc' },
+    });
+  }
+
   getUser(transaction: Prisma.TransactionClient, userId: string) {
     return transaction.userProjection.findUnique({ where: { id: userId } });
   }

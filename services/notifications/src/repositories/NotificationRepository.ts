@@ -35,6 +35,24 @@ export class NotificationRepository {
     });
   }
 
+  deleteRoleRequestsForUser(
+    transaction: Prisma.TransactionClient,
+    userId: string,
+  ) {
+    return transaction.inAppNotification.deleteMany({
+      where: { recipientId: userId, type: 'ORGANIZER_REQUEST' },
+    });
+  }
+
+  deleteRoleRequestNotifications(
+    transaction: Prisma.TransactionClient,
+    sourceEventId: string,
+  ) {
+    return transaction.inAppNotification.deleteMany({
+      where: { sourceEventId, type: 'ORGANIZER_REQUEST' },
+    });
+  }
+
   list(recipientId: string, cursor?: string) {
     return prisma.inAppNotification.findMany({
       where: { recipientId },

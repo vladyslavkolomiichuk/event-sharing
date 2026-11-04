@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loading } from '@/components/feedback/Loading';
 import { Button } from '@/components/ui/button';
+import { OrganizerRoleRequestDialog } from './OrganizerRoleRequestDialog';
 
 export function RequireAuth({
   children,
@@ -33,6 +34,9 @@ export function RequireAuth({
         <p className="text-neutral-600">
           This page requires the {role.toLowerCase()} role.
         </p>
+        {role === 'ORGANIZER' && user.role === 'USER' && (
+          <OrganizerRoleRequestDialog />
+        )}
       </div>
     );
   return <>{children}</>;

@@ -7,7 +7,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { notificationsClient } from '@/lib/api/NotificationsClient';
 
 export function NotificationStatus() {
-  const { user } = useAuth();
+  const { user, refresh: refreshAuth } = useAuth();
   const { show } = useToast();
   const [unread, setUnread] = useState(0);
   const seen = useRef(new Set<string>());
@@ -28,6 +28,7 @@ export function NotificationStatus() {
           .slice(-4);
         for (const item of incoming) {
           show(`${item.title}: ${item.body}`, 'info', item.href);
+          if (item.type === 'ORGANIZER_REQUEST_DECISION') void refreshAuth();
         }
       }
       seen.current = new Set(
@@ -41,7 +42,7 @@ export function NotificationStatus() {
       if (!failed.current) show('Could not load notifications.', 'error');
       failed.current = true;
     }
-  }, [user?.id, show]);
+  }, [user?.id, show, refreshAuth]);
 
   useEffect(() => {
     seen.current.clear();

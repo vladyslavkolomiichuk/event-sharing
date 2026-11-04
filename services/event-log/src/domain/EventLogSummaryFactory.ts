@@ -10,6 +10,8 @@ import {
   UserProfileUpdatedPayloadSchema,
   UserRegisteredPayloadSchema,
   UserRoleChangedPayloadSchema,
+  OrganizerRequestSubmittedPayloadSchema,
+  OrganizerRequestResolvedPayloadSchema,
   isEventSnapshotType,
   UserNameUpdatedPayloadSchema,
   type EventEnvelope,
@@ -51,6 +53,29 @@ export class EventLogSummaryFactory {
           ...base,
           subjectUserId: payload.data.userId,
           details: { role: payload.data.role },
+        };
+    }
+    if (event.eventType === EVENT_TYPES.organizerRequestSubmitted) {
+      const payload = OrganizerRequestSubmittedPayloadSchema.safeParse(
+        event.payload,
+      );
+      if (payload.success)
+        return {
+          ...base,
+          actorId: payload.data.userId,
+          subjectUserId: payload.data.userId,
+        };
+    }
+    if (event.eventType === EVENT_TYPES.organizerRequestResolved) {
+      const payload = OrganizerRequestResolvedPayloadSchema.safeParse(
+        event.payload,
+      );
+      if (payload.success)
+        return {
+          ...base,
+          actorId: payload.data.decidedById,
+          subjectUserId: payload.data.userId,
+          details: { status: payload.data.status },
         };
     }
     if (event.eventType === EVENT_TYPES.userNameUpdated) {

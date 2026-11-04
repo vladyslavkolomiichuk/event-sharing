@@ -1,4 +1,9 @@
-import type { UpdateIdentity, UserRole } from '@event-sharing/contracts';
+import type {
+  AdminOrganizerRequest,
+  OrganizerRequest,
+  UpdateIdentity,
+  UserRole,
+} from '@event-sharing/contracts';
 import { gateway } from './GatewayClient';
 
 export type SessionUser = {
@@ -131,6 +136,28 @@ export class AuthClient {
       `/auth/admin/users/${encodeURIComponent(username)}/role`,
       { role },
     );
+  }
+
+  organizerRequest(): Promise<{ request: OrganizerRequest | null }> {
+    return gateway.get('/auth/organizer-requests/me');
+  }
+
+  submitOrganizerRequest(reason: string): Promise<OrganizerRequest> {
+    return gateway.post('/auth/organizer-requests', { reason });
+  }
+
+  pendingOrganizerRequests(): Promise<{ requests: AdminOrganizerRequest[] }> {
+    return gateway.get('/auth/admin/organizer-requests');
+  }
+
+  decideOrganizerRequest(
+    id: string,
+    decision: 'approve' | 'reject',
+    decisionReason?: string,
+  ): Promise<OrganizerRequest> {
+    return gateway.post(`/auth/admin/organizer-requests/${id}/${decision}`, {
+      decisionReason,
+    });
   }
 }
 

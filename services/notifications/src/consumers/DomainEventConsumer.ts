@@ -18,6 +18,8 @@ const topics = [
 const supportedTypes = new Set<string>([
   EVENT_TYPES.userRegistered,
   EVENT_TYPES.userRoleChanged,
+  EVENT_TYPES.organizerRequestSubmitted,
+  EVENT_TYPES.organizerRequestResolved,
   EVENT_TYPES.userNameUpdated,
   EVENT_TYPES.userProfileUpdated,
   EVENT_TYPES.friendRequested,
