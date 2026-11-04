@@ -6,6 +6,7 @@ import {
   LngLatBounds,
   Map,
   Marker,
+  Popup,
   NavigationControl,
   setWorkerUrl,
 } from 'maplibre-gl';
@@ -35,6 +36,10 @@ export function MapView({
   onMarkerDrag,
   visible = true,
   exploreLayout = false,
+  selectedPopup,
+  onPopupRoute,
+  onPopupClose,
+  onViewportChange,
   className,
 }: {
   center: MapPoint;
@@ -47,6 +52,15 @@ export function MapView({
   onMarkerDrag?: (id: string, point: MapPoint) => void;
   visible?: boolean;
   exploreLayout?: boolean;
+  selectedPopup?: {
+    id: string;
+    title: string;
+    point: MapPoint;
+    approximate: boolean;
+  } | null;
+  onPopupRoute?: (id: string) => void;
+  onPopupClose?: () => void;
+  onViewportChange?: (point: MapPoint) => void;
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,11 +69,17 @@ export function MapView({
   const onPickRef = useRef(onPick);
   const onMarkerClickRef = useRef(onMarkerClick);
   const onMarkerDragRef = useRef(onMarkerDrag);
+  const onPopupRouteRef = useRef(onPopupRoute);
+  const onPopupCloseRef = useRef(onPopupClose);
+  const onViewportChangeRef = useRef(onViewportChange);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   onPickRef.current = onPick;
   onMarkerClickRef.current = onMarkerClick;
   onMarkerDragRef.current = onMarkerDrag;
+  onPopupRouteRef.current = onPopupRoute;
+  onPopupCloseRef.current = onPopupClose;
+  onViewportChangeRef.current = onViewportChange;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -99,6 +119,14 @@ export function MapView({
           longitude: point.lng,
         });
       });
+      map.on('moveend', (event) => {
+        if (!event.originalEvent) return;
+        const point = map.getCenter().wrap();
+        onViewportChangeRef.current?.({
+          latitude: point.lat,
+          longitude: point.lng,
+        });
+      });
       mapRef.current = map;
       return () => {
         markerRef.current.forEach((marker) => marker.remove());
@@ -123,6 +151,17 @@ export function MapView({
   useEffect(() => {
     if (visible) requestAnimationFrame(() => mapRef.current?.resize());
   }, [visible]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(() => {
+      if (container.clientWidth && container.clientHeight)
+        mapRef.current?.resize();
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -194,25 +233,16 @@ export function MapView({
     if (coordinates.length >= 2) {
       const bounds = new LngLatBounds();
       for (const point of coordinates) bounds.extend(point as [number, number]);
-      const width = map.getContainer().clientWidth;
       const height = map.getContainer().clientHeight;
-      const desktop = window.matchMedia('(min-width: 1024px)').matches;
       map.fitBounds(bounds, {
-        padding: !exploreLayout
-          ? 50
-          : desktop
-            ? {
-                left: Math.min(430, width * 0.4),
-                right: 60,
-                top: Math.min(350, height * 0.45),
-                bottom: 100,
-              }
-            : {
-                left: 24,
-                right: 24,
-                top: Math.min(270, height * 0.36),
-                bottom: Math.min(190, height * 0.26),
-              },
+        padding: exploreLayout
+          ? {
+              left: 40,
+              right: 50,
+              top: Math.min(110, height * 0.25),
+              bottom: 75,
+            }
+          : 50,
         maxZoom: 14,
         duration: 700,
       });
@@ -257,6 +287,62 @@ export function MapView({
       return marker;
     });
   }, [markers, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !selectedPopup) return;
+    const content = document.createElement('div');
+    content.className = 'space-y-2 p-1 text-sm';
+    const title = document.createElement('p');
+    title.className = 'font-semibold';
+    title.textContent = selectedPopup.title;
+    content.appendChild(title);
+    if (selectedPopup.approximate) {
+      const note = document.createElement('p');
+      note.className = 'text-xs text-neutral-600';
+      note.textContent = 'Approximate location';
+      content.appendChild(note);
+    }
+    const actions = document.createElement('div');
+    actions.className = 'flex flex-wrap gap-3';
+    const link = document.createElement('a');
+    link.href = `/events/${encodeURIComponent(selectedPopup.id)}`;
+    link.className = 'font-semibold underline';
+    link.textContent = 'View event';
+    const routeButton = document.createElement('button');
+    routeButton.type = 'button';
+    routeButton.className = 'font-semibold underline';
+    routeButton.textContent = 'Build route';
+    routeButton.addEventListener('click', () =>
+      onPopupRouteRef.current?.(selectedPopup.id),
+    );
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'font-semibold underline';
+    closeButton.textContent = 'Close';
+    closeButton.addEventListener('click', () => onPopupCloseRef.current?.());
+    actions.append(link, routeButton, closeButton);
+    content.appendChild(actions);
+    const popup = new Popup({
+      offset: 20,
+      closeButton: false,
+      closeOnClick: false,
+      maxWidth: '260px',
+    })
+      .setLngLat([selectedPopup.point.longitude, selectedPopup.point.latitude])
+      .setDOMContent(content)
+      .addTo(map);
+    return () => {
+      popup.remove();
+    };
+  }, [
+    ready,
+    selectedPopup?.id,
+    selectedPopup?.title,
+    selectedPopup?.point.latitude,
+    selectedPopup?.point.longitude,
+    selectedPopup?.approximate,
+  ]);
 
   return (
     <div

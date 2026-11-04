@@ -22,7 +22,7 @@ export function ExploreEventItem({
       <Link
         href={`/events/${event.id}`}
         aria-label={`Open ${event.title}`}
-        className="block rounded-t-xl p-4 focus-visible:outline-2 focus-visible:outline-black"
+        className="block rounded-t-xl p-3 focus-visible:outline-2 focus-visible:outline-black"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
@@ -38,11 +38,11 @@ export function ExploreEventItem({
             <EventStatusBadge status={event.status} />
           </div>
         </div>
-        <h3 className="mt-4">{event.title}</h3>
+        <h3 className="mt-2 line-clamp-2">{event.title}</h3>
         <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
           {event.categoryName || 'Uncategorized'}
         </p>
-        <p className="mt-2 line-clamp-2 text-sm leading-6 text-neutral-600">
+        <p className="mt-1 line-clamp-2 text-sm leading-5 text-neutral-600">
           {event.description}
         </p>
       </Link>

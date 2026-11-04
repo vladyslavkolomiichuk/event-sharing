@@ -13,8 +13,8 @@ export function ExploreResultsPanel({
   onSelect,
   onRoute,
   onLoadMore,
-  onClose,
   needsLocation,
+  grid = false,
 }: {
   items: SearchEvent[];
   selectedId: string | null;
@@ -25,47 +25,42 @@ export function ExploreResultsPanel({
   onSelect: (item: SearchEvent) => void;
   onRoute: (id: string) => void;
   onLoadMore: (cursor: string) => void;
-  onClose?: () => void;
   needsLocation: boolean;
+  grid?: boolean;
 }) {
   return (
     <section
       aria-label="Search results"
-      className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white/95 shadow-lg backdrop-blur-sm"
+      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white"
     >
       <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
         <h2 className="text-base font-semibold">Events</h2>
         <div className="flex items-center gap-3">
           <span className="text-xs text-neutral-500">{items.length} shown</span>
-          {onClose && (
-            <button
-              type="button"
-              className="text-xs font-semibold underline lg:hidden"
-              onClick={onClose}
-            >
-              Hide
-            </button>
-          )}
         </div>
       </div>
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {loading && !items.length ? (
           <Loading label="Searching events…" />
         ) : items.length ? (
-          items.map((item) => (
-            <ExploreEventItem
-              key={item.id}
-              event={item}
-              selected={
-                selectedId === item.id ||
-                Boolean(
-                  selectedRegion && selectedRegion === item.location.region,
-                )
-              }
-              onSelect={() => onSelect(item)}
-              onRoute={() => onRoute(item.id)}
-            />
-          ))
+          <div
+            className={`grid gap-2 ${grid ? 'sm:grid-cols-2 2xl:grid-cols-3' : ''}`}
+          >
+            {items.map((item) => (
+              <ExploreEventItem
+                key={item.id}
+                event={item}
+                selected={
+                  selectedId === item.id ||
+                  Boolean(
+                    selectedRegion && selectedRegion === item.location.region,
+                  )
+                }
+                onSelect={() => onSelect(item)}
+                onRoute={() => onRoute(item.id)}
+              />
+            ))}
+          </div>
         ) : (
           <p className="p-4 text-sm text-neutral-600">
             {needsLocation
@@ -79,7 +74,7 @@ export function ExploreResultsPanel({
           <Button
             type="button"
             variant="outline"
-            className="w-full"
+            className="mt-3 w-full"
             disabled={loading}
             onClick={() => onLoadMore(cursor)}
           >

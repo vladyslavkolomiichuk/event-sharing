@@ -179,7 +179,7 @@ export function SiteHeader() {
 
   return (
     <>
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 border-r border-neutral-200 bg-white px-4 py-5 lg:block">
+      <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 border-r border-neutral-200 bg-white px-4 py-5 lg:block">
         <NavigationContent />
       </aside>
       <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-4 py-3 lg:hidden">

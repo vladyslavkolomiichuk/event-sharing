@@ -20,8 +20,9 @@ import {
   type MapPoint,
 } from '@/components/map/MapView';
 import { ExploreResultsPanel } from './ExploreResultsPanel';
-import { EventSearchToolbar } from './EventSearchToolbar';
-import { EventLocationFilters } from './EventLocationFilters';
+import { ExploreSearchPanel } from './ExploreSearchPanel';
+import { ExploreViewSwitch, type ExploreView } from './ExploreViewSwitch';
+import { ExploreSplitDivider } from './ExploreSplitDivider';
 import { ExploreRouteControls } from './ExploreRouteControls';
 import { useExploreRoute } from './useExploreRoute';
 import { Button } from '@/components/ui/button';
@@ -61,7 +62,16 @@ export function EventsExplore() {
   const [cityCenters, setCityCenters] = useState<Record<string, MapPoint>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-  const [resultsOpen, setResultsOpen] = useState(false);
+  const [view, setView] = useState<ExploreView>('list');
+  const [splitAvailable, setSplitAvailable] = useState(false);
+  const [areaWidth, setAreaWidth] = useState(0);
+  const [preferredListWidth, setPreferredListWidth] = useState<number | null>(
+    null,
+  );
+  const [mapMoved, setMapMoved] = useState(false);
+  const [viewportPoint, setViewportPoint] = useState<MapPoint | null>(null);
+  const [routeControlsOpen, setRouteControlsOpen] = useState(true);
+  const areaRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mapPickMode, setMapPickMode] = useState<'search' | 'route-origin'>(
@@ -72,6 +82,34 @@ export function EventsExplore() {
   const locationRequestId = useRef(0);
   const locationSelected = useRef(false);
   const needsLocation = mode !== 'UNSET' && mode !== 'ANYWHERE' && !anchor;
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 768px)');
+    setView(media.matches ? 'split' : 'list');
+    const changed = () => {
+      if (!media.matches)
+        setView((current) => (current === 'split' ? 'list' : current));
+    };
+    media.addEventListener('change', changed);
+    return () => media.removeEventListener('change', changed);
+  }, []);
+
+  useEffect(() => {
+    if (!areaRef.current) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry.contentRect.width;
+      setAreaWidth(width);
+      const available =
+        width >= 680 && window.matchMedia('(min-width: 768px)').matches;
+      setSplitAvailable(available);
+      if (!available)
+        setView((current) => (current === 'split' ? 'list' : current));
+    });
+    observer.observe(areaRef.current);
+    return () => observer.disconnect();
+  }, [authLoading, user?.id]);
+
+  useEffect(() => setMapMoved(false), [anchor?.latitude, anchor?.longitude]);
 
   useEffect(() => {
     const timer = setTimeout(() => setSearchText(text.trim()), 350);
@@ -383,6 +421,10 @@ export function EventsExplore() {
     if (!destination) return;
     setSelectedId(id);
     setSelectedRegion(null);
+    setView((current) =>
+      current === 'list' ? (splitAvailable ? 'split' : 'map') : current,
+    );
+    setRouteControlsOpen(true);
     if (!routePlanner.origin && anchor) {
       routePlanner.chooseOrigin(
         anchor,
@@ -392,7 +434,6 @@ export function EventsExplore() {
     if (routePlanner.origin || anchor) {
       routePlanner.build();
       setMapPickMode('search');
-      setResultsOpen(false);
     } else {
       setMapPickMode('route-origin');
       show('Choose a route start on the map or enter an address.', 'info');
@@ -441,7 +482,7 @@ export function EventsExplore() {
     changePlace('');
   }
 
-  async function chooseMapPoint(point: MapPoint) {
+  async function chooseMapPoint(point: MapPoint, preserveView = false) {
     const currentRequest = ++locationRequestId.current;
     try {
       if (mode !== 'MAP') await chooseMode('MAP');
@@ -463,8 +504,11 @@ export function EventsExplore() {
     setAccuracy(null);
     setPlaceQuery('');
     setAnchorLabel('');
-    setCenter(point);
-    setZoom((current) => Math.max(current, 11));
+    if (!preserveView) {
+      setCenter(point);
+      setZoom((current) => Math.max(current, 11));
+    }
+    setMapMoved(false);
     setSort('distance');
   }
 
@@ -542,7 +586,7 @@ export function EventsExplore() {
     if (point) {
       setCenter(point);
       setZoom(item.location.visibility === 'PUBLIC' ? 12 : 9);
-      setResultsOpen(false);
+      if (view === 'list') setView(splitAvailable ? 'split' : 'map');
     } else show('This event has no map position yet.', 'info');
   }
 
@@ -568,7 +612,6 @@ export function EventsExplore() {
           ?.scrollIntoView({ block: 'nearest' }),
       );
     }
-    setResultsOpen(true);
   }
 
   const routePoints = useMemo(
@@ -590,6 +633,14 @@ export function EventsExplore() {
       ? 'Choose a location'
       : 'Anywhere';
 
+  const selectedMarker = selectedEvent
+    ? markers.find((marker) => marker.id === selectedEvent.id)
+    : undefined;
+  const listWidth = Math.min(
+    Math.max(320, preferredListWidth ?? Math.min(440, areaWidth * 0.35)),
+    Math.max(320, areaWidth - 332),
+  );
+
   if (authLoading) return <Loading />;
   if (!user)
     return (
@@ -600,7 +651,7 @@ export function EventsExplore() {
           markers={[]}
           className="absolute inset-0 h-full w-full rounded-none border-0"
         />
-        <div className="absolute left-3 top-3 z-20 w-[min(390px,calc(100%-24px))] rounded-xl border border-neutral-200 bg-white/95 p-5 shadow-lg backdrop-blur-sm">
+        <div className="absolute left-3 top-3 z-20 w-[min(390px,calc(100%-24px))] rounded-xl border border-neutral-200 bg-white/95 p-5 shadow-lg">
           <h1>Explore events</h1>
           <p className="mt-2 text-sm text-neutral-600">
             Sign in to search events, use your location, and plan a route.
@@ -612,247 +663,222 @@ export function EventsExplore() {
       </div>
     );
 
-  return (
-    <div className="events-explore-fullscreen relative h-[calc(100dvh-61px)] overflow-hidden lg:h-dvh">
-      <MapView
-        center={center}
-        zoom={zoom}
-        markers={markers}
-        radius={
-          anchor ? { center: anchor, radiusMeters: radiusKm * 1000 } : undefined
-        }
-        route={routePoints}
-        exploreLayout
-        onPick={(point) => {
-          if (mapPickMode === 'route-origin') {
-            routePlanner.chooseOrigin(point, 'Map point');
-            routePlanner.build();
-            setMapPickMode('search');
-          } else {
-            void chooseMapPoint(point);
-          }
-        }}
-        onMarkerDrag={(id, point) => {
-          if (id === 'search-anchor') void chooseMapPoint(point);
-          if (id === 'route-origin')
-            routePlanner.chooseOrigin(point, 'Map point');
-        }}
-        onMarkerClick={selectMarker}
-        className="absolute inset-0 h-full w-full rounded-none border-0"
-      />
+  const searchProps = {
+    view,
+    text,
+    onTextChange: setText,
+    categories,
+    categoryId,
+    onCategoryChange: setCategoryId,
+    sort,
+    onSortChange: setSort,
+    canSortByDistance: Boolean(anchor),
+    canSortByRelevance: Boolean(searchText),
+    placeQuery,
+    onPlaceQueryChange: changePlace,
+    placeKind,
+    onPlaceKindChange: changePlaceKind,
+    onPlaceSelect: (point: MapPoint, label: string) =>
+      void choosePlace(point, label),
+    locationActive: Boolean(anchor && anchorSource),
+    canClearLocation: Boolean(anchor) || needsLocation,
+    locationLabel,
+    radiusKm,
+    onRadiusChange: setRadiusKm,
+    startFrom,
+    onStartFromChange: setStartFrom,
+    startTo,
+    onStartToChange: setStartTo,
+    status,
+    onStatusChange: setStatus,
+    onClearLocation: () => void clearLocation(),
+    onUseLocation: () => void useMyLocation(),
+    onPickMap: () => {
+      setMapPickMode('search');
+      if (view === 'list') setView(splitAvailable ? 'split' : 'map');
+      show('Click the map to choose a search point.', 'info');
+    },
+  };
 
-      <div className="pointer-events-none absolute inset-y-3 left-3 right-14 z-20 flex flex-col gap-3">
-        <section
-          aria-label="Search events"
-          className="pointer-events-auto max-h-[min(42dvh,420px)] shrink-0 space-y-2 overflow-y-auto rounded-xl border border-neutral-200 bg-white/95 p-4 shadow-lg backdrop-blur-sm lg:max-h-[45dvh] lg:overflow-y-auto"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-500">
-                Discover
-              </p>
-              <h1>Explore events</h1>
-            </div>
-            <Button asChild size="sm" className="shrink-0">
-              <Link href="/events/new">Create event</Link>
-            </Button>
-          </div>
-          <EventSearchToolbar
-            text={text}
-            onTextChange={setText}
-            categories={categories}
-            categoryId={categoryId}
-            onCategoryChange={setCategoryId}
-            sort={sort}
-            onSortChange={setSort}
-            canSortByDistance={Boolean(anchor)}
-            canSortByRelevance={Boolean(searchText)}
-            onUseLocation={() => void useMyLocation()}
+  return (
+    <div className="events-explore-fullscreen flex h-[calc(100dvh-61px)] flex-col gap-2 overflow-hidden p-3 lg:h-dvh">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+            Discover
+          </p>
+          <h1>Explore events</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <ExploreViewSwitch
+            view={view}
+            splitAvailable={splitAvailable}
+            onChange={setView}
           />
-          {mode === 'DEVICE' && permission !== 'granted' && !userLocation && (
-            <p className="text-xs text-neutral-600">
-              Location is paused. Choose “Use my location” to try again, or
-              enter a place.
-            </p>
-          )}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-200 pt-2 text-xs">
-            <span className="font-semibold text-neutral-700">
-              {locationLabel}
-              {anchor ? ` · ${radiusKm} km` : ''}
-            </span>
-            <button
-              type="button"
-              className="font-semibold underline"
-              onClick={() => setMapPickMode('search')}
-            >
-              Pick search point
-            </button>
-          </div>
-          {anchor && (
-            <p className="text-xs text-neutral-600">
-              Results use the displayed map position. Hidden venues use an
-              approximate position, so their actual distance may differ.
-            </p>
-          )}
-          <EventLocationFilters
-            placeQuery={placeQuery}
-            onPlaceQueryChange={changePlace}
-            placeKind={placeKind}
-            onPlaceKindChange={changePlaceKind}
-            onPlaceSelect={(point, label) => void choosePlace(point, label)}
-            locationActive={Boolean(anchor && anchorSource)}
-            canClearLocation={Boolean(anchor) || needsLocation}
-            radiusKm={radiusKm}
-            onRadiusChange={setRadiusKm}
-            startFrom={startFrom}
-            onStartFromChange={setStartFrom}
-            startTo={startTo}
-            onStartToChange={setStartTo}
-            status={status}
-            onStatusChange={setStatus}
-            onClearLocation={() => void clearLocation()}
-          />
-          {routePlanner.destination && (
-            <ExploreRouteControls
-              eventTitle={routePlanner.destination.title}
-              origin={routePlanner.origin}
-              originLabel={routePlanner.originLabel}
-              onOriginLabelChange={routePlanner.changeOriginLabel}
-              onOriginChange={(point, label) => {
-                routePlanner.chooseOrigin(point, label);
-                setMapPickMode('search');
-              }}
-              mode={routePlanner.mode}
-              onModeChange={routePlanner.setMode}
-              onUseLocation={() => {
-                setMapPickMode('search');
-                void routePlanner.useCurrentLocation();
-              }}
-              onUseSearchCenter={
-                anchor
-                  ? () => {
-                      routePlanner.chooseOrigin(anchor, locationLabel);
-                      setMapPickMode('search');
-                    }
-                  : undefined
-              }
-              onPickOnMap={() => setMapPickMode('route-origin')}
-              onBuild={routePlanner.build}
-              onClear={clearRoute}
-              route={routePlanner.route}
-              loading={routePlanner.loading}
+          <Button asChild size="sm">
+            <Link href="/events/new">Create event</Link>
+          </Button>
+        </div>
+      </header>
+      {view !== 'map' && <ExploreSearchPanel {...searchProps} />}
+      <div ref={areaRef} className="relative flex min-h-0 min-w-0 flex-1">
+        {view !== 'map' && (
+          <div
+            className="flex min-h-0 min-w-0"
+            style={view === 'split' ? { width: listWidth } : { width: '100%' }}
+          >
+            <ExploreResultsPanel
+              items={items}
+              selectedId={selectedId}
+              selectedRegion={selectedRegion}
+              loading={loading}
+              error={error}
+              cursor={cursor}
+              onSelect={selectEvent}
+              onRoute={(id) => void chooseRouteEvent(id)}
+              onLoadMore={(next) => void load(next)}
+              needsLocation={needsLocation}
+              grid={view === 'list'}
             />
+          </div>
+        )}
+        {view === 'split' && splitAvailable && (
+          <ExploreSplitDivider
+            width={listWidth}
+            min={320}
+            max={Math.max(320, areaWidth - 332)}
+            onChange={setPreferredListWidth}
+          />
+        )}
+        <section
+          aria-label="Event map"
+          className={`relative min-h-0 min-w-0 flex-1 ${view === 'list' ? 'hidden' : ''}`}
+        >
+          <MapView
+            center={center}
+            zoom={zoom}
+            markers={markers}
+            radius={
+              anchor
+                ? { center: anchor, radiusMeters: radiusKm * 1000 }
+                : undefined
+            }
+            route={routePoints}
+            exploreLayout
+            visible={view !== 'list'}
+            selectedPopup={
+              selectedEvent && selectedMarker
+                ? {
+                    id: selectedEvent.id,
+                    title: selectedEvent.title,
+                    point: selectedMarker,
+                    approximate: Boolean(selectedMarker.approximate),
+                  }
+                : null
+            }
+            onPopupRoute={(id) => void chooseRouteEvent(id)}
+            onPopupClose={() => setSelectedId(null)}
+            onViewportChange={(point) => {
+              setViewportPoint(point);
+              setMapMoved(true);
+            }}
+            onPick={(point) => {
+              if (mapPickMode === 'route-origin') {
+                routePlanner.chooseOrigin(point, 'Map point');
+                routePlanner.build();
+                setMapPickMode('search');
+              } else void chooseMapPoint(point);
+            }}
+            onMarkerDrag={(id, point) => {
+              if (id === 'search-anchor') void chooseMapPoint(point);
+              if (id === 'route-origin')
+                routePlanner.chooseOrigin(point, 'Map point');
+            }}
+            onMarkerClick={selectMarker}
+            className="absolute inset-0 h-full w-full"
+          />
+          {view === 'map' && (
+            <div className="pointer-events-none absolute left-3 right-3 top-3 z-20">
+              <div className="pointer-events-auto w-[min(620px,calc(100%-5rem))]">
+                <ExploreSearchPanel {...searchProps} />
+              </div>
+            </div>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="absolute right-3 top-24 z-10 bg-white shadow-sm"
+            onClick={() => void useMyLocation()}
+          >
+            My location
+          </Button>
           {mapPickMode === 'route-origin' && (
             <p
               role="status"
-              className="rounded-md bg-neutral-900 px-3 py-2 text-xs text-white"
+              className="pointer-events-none absolute left-3 top-16 z-10 rounded-lg bg-neutral-900 px-3 py-2 text-xs text-white"
             >
               Click the map to set the route start.
             </p>
           )}
-          <details className="text-xs text-neutral-600">
-            <summary className="cursor-pointer font-semibold text-neutral-700">
-              Location privacy
-            </summary>
-            <p className="mt-2 leading-5">
-              GPS is requested only when you choose it. Your position is used
-              for the current search and is not saved to your profile or search
-              history. Map tiles come from OpenFreeMap and OpenStreetMap; place
-              suggestions come from Photon. Building a route sends its endpoints
-              to Transitland Valhalla.
-            </p>
-          </details>
+          {mapMoved && viewportPoint && (
+            <Button
+              type="button"
+              className="absolute bottom-10 left-1/2 z-10 -translate-x-1/2 shadow-lg"
+              onClick={() => void chooseMapPoint(viewportPoint, true)}
+            >
+              Search this area
+            </Button>
+          )}
+          {routePlanner.destination && (
+            <details
+              open={routeControlsOpen}
+              onToggle={(event) =>
+                setRouteControlsOpen(event.currentTarget.open)
+              }
+              className="absolute bottom-10 right-3 z-20 max-h-[min(60dvh,500px)] w-[min(420px,calc(100%-24px))] overflow-y-auto rounded-xl border border-neutral-200 bg-white p-4 shadow-lg"
+            >
+              <summary className="cursor-pointer text-sm font-semibold">
+                Route to {routePlanner.destination.title}
+                {routePlanner.route &&
+                  ` · ${(routePlanner.route.distanceMeters / 1000).toFixed(1)} km · ${Math.max(1, Math.round(routePlanner.route.durationSeconds / 60))} min`}
+              </summary>
+              <ExploreRouteControls
+                eventTitle={routePlanner.destination.title}
+                origin={routePlanner.origin}
+                originLabel={routePlanner.originLabel}
+                onOriginLabelChange={routePlanner.changeOriginLabel}
+                onOriginChange={(point, label) => {
+                  routePlanner.chooseOrigin(point, label);
+                  setMapPickMode('search');
+                }}
+                mode={routePlanner.mode}
+                onModeChange={routePlanner.setMode}
+                onUseLocation={() => {
+                  setMapPickMode('search');
+                  void routePlanner.useCurrentLocation();
+                }}
+                onUseSearchCenter={
+                  anchor
+                    ? () => {
+                        routePlanner.chooseOrigin(anchor, locationLabel);
+                        setMapPickMode('search');
+                      }
+                    : undefined
+                }
+                onPickOnMap={() => {
+                  setMapPickMode('route-origin');
+                  setRouteControlsOpen(false);
+                }}
+                onBuild={routePlanner.build}
+                onClear={clearRoute}
+                route={routePlanner.route}
+                loading={routePlanner.loading}
+              />
+            </details>
+          )}
         </section>
-        <div
-          className={`pointer-events-auto absolute bottom-0 left-0 w-[min(390px,100%)] h-[min(34dvh,300px)] min-h-[120px] ${resultsOpen ? 'flex' : 'hidden'} lg:static lg:flex lg:h-auto lg:min-h-0 lg:flex-1`}
-        >
-          <ExploreResultsPanel
-            items={items}
-            selectedId={selectedId}
-            selectedRegion={selectedRegion}
-            loading={loading}
-            error={error}
-            cursor={cursor}
-            onSelect={selectEvent}
-            onRoute={(id) => void chooseRouteEvent(id)}
-            onLoadMore={(next) => void load(next)}
-            onClose={() => setResultsOpen(false)}
-            needsLocation={needsLocation}
-          />
-        </div>
       </div>
-
-      {selectedEvent && !routePlanner.destination && (
-        <aside
-          aria-label="Selected event"
-          className={`pointer-events-auto absolute bottom-16 left-3 z-20 w-[min(320px,calc(100%-24px))] rounded-xl border border-neutral-200 bg-white/95 p-4 shadow-lg backdrop-blur-sm lg:bottom-4 lg:left-auto lg:right-4 lg:w-72 ${resultsOpen ? 'hidden lg:block' : 'block'}`}
-        >
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            Selected event
-          </p>
-          <h2 className="mt-1 text-lg font-semibold">{selectedEvent.title}</h2>
-          <p className="mt-1 text-xs text-neutral-600">
-            {selectedEvent.location.region || 'Location not listed'}
-          </p>
-          <div className="mt-3 flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => void chooseRouteEvent(selectedEvent.id)}
-            >
-              Build route
-            </Button>
-            <Button asChild size="sm" variant="outline">
-              <Link href={`/events/${selectedEvent.id}`}>View event</Link>
-            </Button>
-          </div>
-        </aside>
-      )}
-      {routePlanner.destination &&
-        (routePlanner.loading || routePlanner.route) && (
-          <aside
-            aria-label="Route summary"
-            className={`pointer-events-auto absolute bottom-16 left-3 z-20 w-[min(320px,calc(100%-24px))] rounded-xl border border-neutral-200 bg-white/95 p-4 shadow-lg backdrop-blur-sm lg:bottom-4 lg:left-auto lg:right-4 lg:w-72 ${resultsOpen ? 'hidden lg:block' : 'block'}`}
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Route to {routePlanner.destination.title}
-            </p>
-            {routePlanner.loading ? (
-              <p role="status" className="mt-2 text-sm">
-                Building route…
-              </p>
-            ) : routePlanner.route ? (
-              <p className="mt-2 text-lg font-semibold">
-                {(routePlanner.route.distanceMeters / 1000).toFixed(1)} km ·
-                About{' '}
-                {Math.max(
-                  1,
-                  Math.round(routePlanner.route.durationSeconds / 60),
-                )}{' '}
-                min
-              </p>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={clearRoute}
-            >
-              Clear route
-            </Button>
-          </aside>
-        )}
-      {!resultsOpen && (
-        <button
-          type="button"
-          className="absolute bottom-3 left-3 z-30 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold shadow-lg lg:hidden"
-          onClick={() => setResultsOpen(true)}
-        >
-          Events ({items.length})
-        </button>
-      )}
       <p className="sr-only">
         Your position is requested only when you choose Use my location. It is
         not saved to your profile or search history. Map tiles come from
