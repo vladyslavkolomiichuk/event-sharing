@@ -101,8 +101,7 @@ export class NotificationEventService {
           prisma.inboxEvent.findUnique({ where: { id: event.eventId } }),
           prisma.inboxEvent.findUnique({ where: { id: previousId } }),
         ]);
-        if (processed) return 'duplicate';
-        if (!previous) {
+        if (!processed && !previous) {
           await prisma.pendingSnapshotEvent.createMany({
             data: {
               id: event.eventId,
@@ -138,17 +137,17 @@ export class NotificationEventService {
   }
 
   async recoverPending(): Promise<void> {
-    const pending = await prisma.pendingSnapshotEvent.findMany({
-      orderBy: { receivedAt: 'asc' },
-      take: 100,
-    });
+    const pending = await prisma.$queryRaw<{ envelope: string }[]>`
+      SELECT pending.envelope FROM pending_snapshot_event pending
+      WHERE EXISTS (
+        SELECT 1 FROM inbox_event inbox
+        WHERE inbox.id = pending."previousEventId" OR inbox.id = pending.id
+      )
+      ORDER BY pending."receivedAt", pending.id
+      LIMIT 100
+    `;
     for (const item of pending) {
-      const previous = await prisma.inboxEvent.findUnique({
-        where: { id: item.previousEventId },
-      });
-      if (previous) {
-        await this.apply(EventEnvelopeSchema.parse(JSON.parse(item.envelope)));
-      }
+      await this.apply(EventEnvelopeSchema.parse(JSON.parse(item.envelope)));
     }
     let after: string | undefined;
     while (true) {
