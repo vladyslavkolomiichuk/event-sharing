@@ -77,6 +77,13 @@ model UserProjection {
   @@map("user_projection")
 }
 
+model DeletedChatUser {
+  userId    String   @id @db.Uuid
+  deletedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("deleted_chat_user")
+}
+
 model ChatRoom {
   id         String          @id @default(uuid()) @db.Uuid
   eventId    String          @db.Uuid
@@ -123,8 +130,8 @@ model ChatMessage {
   id        String   @id @default(uuid()) @db.Uuid
   roomId    String   @db.Uuid
   eventId   String   @db.Uuid
-  senderId  String   @db.Uuid
-  clientMessageId String @db.Uuid
+  senderId  String?  @db.Uuid
+  clientMessageId String? @db.Uuid
   body      String
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   room      ChatRoom @relation(fields: [roomId], references: [id])

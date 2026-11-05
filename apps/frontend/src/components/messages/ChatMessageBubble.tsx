@@ -13,13 +13,18 @@ export function ChatMessageBubble({
       <article
         className={`max-w-[88%] rounded-xl px-3 py-2 text-sm shadow-sm sm:max-w-[72%] ${own ? 'rounded-tr-sm border border-orange-100 bg-orange-50' : 'rounded-tl-sm bg-white'}`}
       >
-        {!own && (
+        {!own && message.senderId && (
           <Link
             href={`/users/${message.senderId}`}
             className="mb-1 block font-semibold text-orange-800 hover:underline"
           >
             {message.senderName}
           </Link>
+        )}
+        {!own && !message.senderId && (
+          <span className="mb-1 block font-semibold text-neutral-600">
+            {message.senderName}
+          </span>
         )}
         <p className="whitespace-pre-wrap break-words leading-5">
           {message.body}

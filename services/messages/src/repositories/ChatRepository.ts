@@ -16,6 +16,26 @@ import {
 } from '@event-sharing/contracts';
 
 export class ChatRepository {
+  private async requireAvailableUsers(
+    transaction: Prisma.TransactionClient,
+    userIds: string[],
+  ): Promise<void> {
+    const ids = [...new Set(userIds)].sort();
+    for (const id of ids)
+      await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${id}))`;
+    if (
+      await transaction.deletedChatUser.findFirst({
+        where: { userId: { in: ids } },
+      })
+    )
+      throw new ResourceNotFoundError();
+  }
+
+  async isDeletedUser(userId: string): Promise<boolean> {
+    return Boolean(
+      await prisma.deletedChatUser.findUnique({ where: { userId } }),
+    );
+  }
   async eventsWithUser(userId: string): Promise<string[]> {
     const [organized, memberships, messages] = await Promise.all([
       prisma.eventProjection.findMany({
@@ -151,7 +171,7 @@ export class ChatRepository {
     return prisma.chatMessage.count({
       where: {
         roomId,
-        senderId: { not: userId },
+        AND: [{ OR: [{ senderId: null }, { senderId: { not: userId } }] }],
         ...(joinedAt ? { createdAt: { gte: joinedAt } } : {}),
         ...(read
           ? {
@@ -182,7 +202,7 @@ export class ChatRepository {
         event."organizerId",
         event.title,
         COUNT(message.id) FILTER (
-          WHERE message."senderId" <> ${userId}::uuid
+          WHERE message.id IS NOT NULL AND message."senderId" IS DISTINCT FROM ${userId}::uuid
             AND (event."organizerId" = ${userId}::uuid OR message."createdAt" >= membership."joinedAt")
             AND (room.access = 'ALL_PARTICIPANTS' OR event."organizerId" = ${userId}::uuid OR message."createdAt" >= group_member."joinedAt")
             AND (
@@ -216,6 +236,7 @@ export class ChatRepository {
     visibleSince?: Date,
   ) {
     return prisma.$transaction(async (transaction) => {
+      await this.requireAvailableUsers(transaction, [userId]);
       await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${roomId}), hashtext(${userId}))`;
       const message = await transaction.chatMessage.findFirst({
         where: {
@@ -260,6 +281,10 @@ export class ChatRepository {
   ) {
     return prisma.$transaction(async (transaction) => {
       await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${eventId}))`;
+      await this.requireAvailableUsers(transaction, [
+        createdBy,
+        ...members.map((member) => member.userId),
+      ]);
       const existing = await transaction.chatRoom.findFirst({
         where: { eventId, name: { equals: name, mode: 'insensitive' } },
       });
@@ -338,6 +363,10 @@ export class ChatRepository {
   ) {
     return prisma.$transaction(async (transaction) => {
       await transaction.$queryRaw`SELECT 1 FROM "chat_room" WHERE "id" = ${roomId}::uuid FOR UPDATE`;
+      await this.requireAvailableUsers(transaction, [
+        actorId,
+        ...members.map((member) => member.userId),
+      ]);
       const room = await transaction.chatRoom.findUnique({
         where: { id: roomId },
       });
@@ -375,6 +404,7 @@ export class ChatRepository {
   async removeMember(roomId: string, userId: string, actorId: string) {
     return prisma.$transaction(async (transaction) => {
       await transaction.$queryRaw`SELECT 1 FROM "chat_room" WHERE "id" = ${roomId}::uuid FOR UPDATE`;
+      await this.requireAvailableUsers(transaction, [actorId, userId]);
       const room = await transaction.chatRoom.findUnique({
         where: { id: roomId },
       });
@@ -503,6 +533,12 @@ export class ChatRepository {
         if (member?.status !== 'ACTIVE') throw new ResourceNotFoundError();
       }
       await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${senderId}))`;
+      if (
+        await transaction.deletedChatUser.findUnique({
+          where: { userId: senderId },
+        })
+      )
+        throw new ResourceNotFoundError();
       const existing = await transaction.chatMessage.findUnique({
         where: { senderId_clientMessageId: { senderId, clientMessageId } },
       });

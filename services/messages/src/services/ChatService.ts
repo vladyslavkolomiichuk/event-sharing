@@ -47,6 +47,7 @@ export class ChatService {
     authorization: string,
     action: 'read' | 'write' | 'manage' = 'read',
   ) {
+    if (await this.repository.isDeletedUser(userId)) throw new ForbiddenError();
     const event = await this.repository.event(eventId);
     if (!event) throw new ResourceNotFoundError();
     const owner = event.organizerId === userId;
@@ -139,7 +140,7 @@ export class ChatService {
       (
         await this.repository.userNames(
           details.flatMap(({ lastMessage }) =>
-            lastMessage ? [lastMessage.senderId] : [],
+            lastMessage?.senderId ? [lastMessage.senderId] : [],
           ),
         )
       ).map((user) => [user.id, user.name]),
@@ -152,7 +153,9 @@ export class ChatService {
           lastMessage
             ? {
                 body: lastMessage.body,
-                senderName: names.get(lastMessage.senderId) ?? 'User',
+                senderName: lastMessage.senderId
+                  ? (names.get(lastMessage.senderId) ?? 'User')
+                  : 'Deleted user',
                 createdAt: lastMessage.createdAt.toISOString(),
               }
             : null,
@@ -395,13 +398,18 @@ export class ChatService {
     if (!records) throw new ResourceNotFoundError();
     const page = records.slice(0, 50);
     const names = new Map(
-      (await this.repository.userNames(page.map((item) => item.senderId))).map(
-        (user) => [user.id, user.name],
-      ),
+      (
+        await this.repository.userNames(
+          page.flatMap((item) => (item.senderId ? [item.senderId] : [])),
+        )
+      ).map((user) => [user.id, user.name]),
     );
     return {
       items: page.map((item) =>
-        this.messageResponse(item, names.get(item.senderId) ?? 'User'),
+        this.messageResponse(
+          item,
+          item.senderId ? (names.get(item.senderId) ?? 'User') : 'Deleted user',
+        ),
       ),
       nextBefore: records.length > 50 ? (page.at(-1)?.id ?? null) : null,
     };
@@ -498,8 +506,8 @@ export class ChatService {
       id: string;
       roomId: string;
       eventId: string;
-      senderId: string;
-      clientMessageId: string;
+      senderId: string | null;
+      clientMessageId: string | null;
       body: string;
       createdAt: Date;
     },

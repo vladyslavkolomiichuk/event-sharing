@@ -121,6 +121,18 @@ export class ChatProjectionRepository {
         isMembershipEventType(event.eventType)
       ) {
         const data = MembershipEventPayloadSchema.parse(event.payload);
+        await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${data.userId}))`;
+        if (
+          await transaction.deletedChatUser.findUnique({
+            where: { userId: data.userId },
+          })
+        ) {
+          await transaction.inboxEvent.createMany({
+            data: { id: event.eventId, eventType: event.eventType },
+            skipDuplicates: true,
+          });
+          return 'ignored';
+        }
         await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${`${data.eventId}:${data.userId}`}, 0))`;
         if (
           await transaction.inboxEvent.findUnique({
@@ -156,6 +168,13 @@ export class ChatProjectionRepository {
         event.eventType === EVENT_TYPES.userRegistered
       ) {
         const data = UserRegisteredPayloadSchema.parse(event.payload);
+        await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${data.userId}))`;
+        if (
+          await transaction.deletedChatUser.findUnique({
+            where: { userId: data.userId },
+          })
+        )
+          return 'ignored';
         await transaction.userProjection.upsert({
           where: { id: data.userId },
           create: { id: data.userId, name: data.name ?? 'User' },
@@ -168,6 +187,13 @@ export class ChatProjectionRepository {
         event.eventType === EVENT_TYPES.userNameUpdated
       ) {
         const data = UserNameUpdatedPayloadSchema.parse(event.payload);
+        await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${data.userId}))`;
+        if (
+          await transaction.deletedChatUser.findUnique({
+            where: { userId: data.userId },
+          })
+        )
+          return 'ignored';
         await transaction.userProjection.upsert({
           where: { id: data.userId },
           create: { id: data.userId, name: data.name },

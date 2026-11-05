@@ -29,10 +29,10 @@ export const ChatMessageSchema = z.strictObject({
   id: z.uuid(),
   roomId: z.uuid(),
   eventId: z.uuid(),
-  senderId: z.uuid(),
+  senderId: z.uuid().nullable(),
   senderName: z.string(),
   body: z.string(),
-  clientMessageId: z.uuid(),
+  clientMessageId: z.uuid().nullable(),
   createdAt: z.iso.datetime(),
 });
 export const CreateChatRoomSchema = z.strictObject({
