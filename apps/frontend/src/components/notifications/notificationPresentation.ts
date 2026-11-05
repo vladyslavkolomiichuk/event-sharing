@@ -20,6 +20,7 @@ export const notificationPresentation: Record<
   },
   EVENT_APPROVED: { label: 'Event approved', tone: 'success', badge: success },
   EVENT_REJECTED: { label: 'Event declined', tone: 'error', badge: error },
+  EVENT_UPDATED: { label: 'Event updated', tone: 'info', badge: info },
   EVENT_CANCELLED: {
     label: 'Event cancelled',
     tone: 'warning',

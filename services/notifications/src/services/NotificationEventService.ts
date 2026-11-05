@@ -457,6 +457,28 @@ export class NotificationEventService {
           const admins = await this.projections.getAdmins(transaction);
           admins.forEach((admin) => recipients.add(admin.id));
         }
+        if (data.detailsChanged) {
+          const members = await this.projections.getActiveMembers(
+            transaction,
+            data.id,
+          );
+          await this.createNotifications(
+            transaction,
+            members
+              .filter((member) => member.userId !== data.organizerId)
+              .map((member) => ({
+                recipientId: member.userId,
+                type: 'EVENT_UPDATED',
+                title: 'Event updated',
+                body: `${data.title} was updated. Open the event for details.`,
+                href: `/events/${data.id}`,
+                eventId: data.id,
+                sourceEventId: event.eventId,
+              })),
+            recipients,
+          );
+          return 'processed';
+        }
         if (previous?.status === data.status && data.status !== 'COMPLETED') {
           return 'processed';
         }

@@ -19,6 +19,7 @@ import { EventConflictError } from '../domain/errors/EventConflictError.js';
 import { EventNotFoundError } from '../domain/errors/EventNotFoundError.js';
 import { ForbiddenError } from '../domain/errors/ForbiddenError.js';
 import type { Event, Prisma } from '../generated/prisma/client.js';
+import { eventDetailsChanged } from '../lib/event-details-changed.js';
 import type { EventWithCategory } from '../models/EventWithCategory.js';
 import type { EventListCursor } from '../lib/event-list-cursor.js';
 import { EventResponseFactory } from '../services/EventResponseFactory.js';
@@ -350,7 +351,13 @@ export class EventRepository {
         include: { category: true },
       });
       if (this.isPublic(updated.status)) {
-        await this.addSnapshot(transaction, updated, EVENT_TYPES.eventUpdated);
+        await this.addSnapshot(
+          transaction,
+          updated,
+          EVENT_TYPES.eventUpdated,
+          true,
+          eventDetailsChanged(event, updated),
+        );
       }
       return updated;
     });
@@ -704,6 +711,7 @@ export class EventRepository {
     event: EventWithCategory,
     eventType: EventSnapshotType,
     includeCompletedRecipients = true,
+    detailsChanged = false,
   ): Promise<void> {
     const participants =
       includeCompletedRecipients && event.status === 'COMPLETED'
@@ -726,6 +734,7 @@ export class EventRepository {
                 ),
               }
             : {}),
+          ...(detailsChanged ? { detailsChanged } : {}),
         },
       },
     });

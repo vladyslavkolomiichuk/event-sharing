@@ -11,6 +11,7 @@ export const EventSnapshotPayloadSchema = EventDetailSchema.omit({
   categoryName: z.string().nullable().optional(),
   previousSnapshotEventId: z.uuid().nullable().optional(),
   completedParticipantIds: z.array(z.uuid()).optional(),
+  detailsChanged: z.boolean().optional(),
 });
 
 export type EventSnapshotPayload = z.infer<typeof EventSnapshotPayloadSchema>;
