@@ -53,7 +53,9 @@ export class IdentityOutboxWorker extends AbstractOutboxWorker<IdentityOutboxEve
 
   protected async publishEvent(event: IdentityOutboxEvent): Promise<void> {
     let payload: unknown;
-    if (event.eventType === EVENT_TYPES.userRegistered) {
+    if (event.redacted) {
+      payload = {};
+    } else if (event.eventType === EVENT_TYPES.userRegistered) {
       payload = UserRegisteredPayloadSchema.parse(event.payload);
     } else if (event.eventType === EVENT_TYPES.userNameUpdated) {
       payload = UserNameUpdatedPayloadSchema.parse(event.payload);
@@ -76,6 +78,13 @@ export class IdentityOutboxWorker extends AbstractOutboxWorker<IdentityOutboxEve
       occurredAt: event.occurredAt.toISOString(),
       correlationId: event.id,
       producer: 'auth',
+      redacted: event.redacted,
+      delivery: event.ordered
+        ? {
+            stream: `auth:${event.aggregateId}`,
+            previousEventId: event.previousEventId,
+          }
+        : undefined,
       payload,
     });
 

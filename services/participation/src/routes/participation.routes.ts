@@ -9,6 +9,10 @@ export function participationRoutes(
 ): Router {
   const router = Router();
   const invitations = new InvitationController();
+  router.delete(
+    '/me/history/:eventId',
+    new ParticipationHistoryController().hide,
+  );
   router.get('/invitations', invitations.incoming);
   router.get('/invitations/link/:token', invitations.previewLink);
   router.post('/invitations/link/:token/accept', invitations.acceptLink);

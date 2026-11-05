@@ -1,5 +1,6 @@
 import {
   EVENT_TYPES,
+  ANONYMOUS_USER_ID,
   EventEnvelopeSchema,
   EventSnapshotPayloadSchema,
   MembershipEventPayloadSchema,
@@ -78,7 +79,7 @@ export class NotificationEventService {
         !projectedEvent ||
         !membershipReadyStatuses.has(projectedEvent.status) ||
         !user ||
-        !organizer
+        (!organizer && projectedEvent.organizerId !== ANONYMOUS_USER_ID)
       ) {
         await prisma.pendingMembershipEvent.createMany({
           data: {
@@ -696,7 +697,10 @@ export class NotificationEventService {
     items: NotificationInput[],
     recipients: Set<string>,
   ): Promise<void> {
-    const count = await this.notifications.createMany(transaction, items);
+    const count = await this.notifications.createMany(
+      transaction,
+      items.filter((item) => item.recipientId !== ANONYMOUS_USER_ID),
+    );
     if (count > 0) items.forEach((item) => recipients.add(item.recipientId));
   }
 

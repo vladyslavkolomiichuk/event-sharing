@@ -7,6 +7,9 @@ import type {
 import { ApiError, gateway } from './GatewayClient';
 
 export class ParticipationClient {
+  hideHistory(eventId: string): Promise<void> {
+    return gateway.delete(`/api/participation/me/history/${eventId}`);
+  }
   availability(eventId: string): Promise<Availability> {
     return gateway.get(`/api/participation/events/${eventId}/availability`);
   }

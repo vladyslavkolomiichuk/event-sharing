@@ -1,3 +1,5 @@
+import { privacyRequestGuard } from '@event-sharing/messaging';
+import { privacyDatabase } from '../config/service-bus.js';
 import { InternalJwtVerifier } from '@event-sharing/common';
 import type { RequestHandler } from 'express';
 import { env } from '../config/env.js';
@@ -11,7 +13,7 @@ const verifier = new InternalJwtVerifier({
 });
 export const requireInternalJwt: RequestHandler = async (
   request,
-  _response,
+  response,
   next,
 ) => {
   const claims = await verifier.verify(request.get('authorization'));
@@ -20,5 +22,5 @@ export const requireInternalJwt: RequestHandler = async (
       new StorageError('Authentication required.', 'UNAUTHORIZED', 401),
     );
   request.authenticatedUser = { id: claims.sub, role: claims.role };
-  next();
+  await privacyRequestGuard(privacyDatabase.pool)(claims.sub, response, next);
 };

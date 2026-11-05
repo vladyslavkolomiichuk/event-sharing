@@ -6,6 +6,17 @@ import { ParticipationHistoryService } from '../services/ParticipationHistorySer
 export class ParticipationHistoryController {
   constructor(private readonly service = new ParticipationHistoryService()) {}
 
+  hide: RequestHandler = async (request, response) => {
+    const userId = request.authenticatedUser?.id;
+    if (!userId) throw new UnauthorizedError();
+    await this.service.hide(
+      z.uuid().parse(request.params.eventId),
+      userId,
+      request.get('authorization') ?? '',
+    );
+    response.status(204).end();
+  };
+
   list: RequestHandler = async (request, response) => {
     const actorId = request.authenticatedUser?.id;
     if (!actorId) throw new UnauthorizedError();

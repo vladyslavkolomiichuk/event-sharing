@@ -188,7 +188,11 @@ export class ParticipationRepository {
   }
 
   listMine(userId: string, cursor: string | undefined): Promise<Membership[]> {
-    const where: Prisma.MembershipWhereInput = { userId, status: 'JOINED' };
+    const where: Prisma.MembershipWhereInput = {
+      userId,
+      status: 'JOINED',
+      hiddenAt: null,
+    };
     if (cursor) where.eventId = { gt: cursor };
     return prisma.membership.findMany({
       where,

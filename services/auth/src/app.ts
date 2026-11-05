@@ -6,6 +6,7 @@ import { UserRoleController } from './controllers/UserRoleController.js';
 import { UserIdentityController } from './controllers/UserIdentityController.js';
 import { OrganizerRequestController } from './controllers/OrganizerRequestController.js';
 import { PrivacyController } from './controllers/PrivacyController.js';
+import { PrivacyExportController } from './controllers/PrivacyExportController.js';
 import {
   accountMailAvailable,
   auth,
@@ -28,6 +29,23 @@ export function createApp(readinessCheck: ReadinessCheck): Express {
     new UserRoleService(new UserRoleRepository()),
   );
   const privacyController = new PrivacyController();
+  const exports = new PrivacyExportController();
+  app.post(
+    '/backend/auth/privacy/exports',
+    requireTrustedOrigin,
+    requireUserSession,
+    exports.create,
+  );
+  app.get('/backend/auth/privacy/exports', requireUserSession, exports.status);
+  app.get(
+    '/backend/auth/privacy/exports/:id/file',
+    requireUserSession,
+    exports.download,
+  );
+  app.get(
+    '/backend/auth/privacy/deletion-status',
+    privacyController.deletionStatus,
+  );
   const organizerRequests = organizerRequestRoutes(
     new OrganizerRequestController(),
   );
@@ -40,11 +58,6 @@ export function createApp(readinessCheck: ReadinessCheck): Express {
     '/backend/auth/admin/organizer-requests',
     express.json(),
     organizerRequests.admin,
-  );
-  app.get(
-    '/backend/auth/privacy/export',
-    requireUserSession,
-    privacyController.export,
   );
   app.get(
     '/backend/auth/privacy/deletion-request',

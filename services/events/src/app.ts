@@ -2,7 +2,6 @@ import express, { type Express } from 'express';
 import { HealthResponseSchema } from '@event-sharing/contracts';
 import type { ReadinessCheck } from '@event-sharing/common';
 import { EventController } from './controllers/EventController.js';
-import { EventPrivacyController } from './controllers/EventPrivacyController.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFound } from './middleware/not-found.js';
 import { requireInternalJwt } from './middleware/require-internal-jwt.js';
@@ -14,10 +13,6 @@ export function createApp(readinessCheck: ReadinessCheck): Express {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json());
-  app.post(
-    '/internal/privacy/reserve-events',
-    new EventPrivacyController().reserve,
-  );
   app.use('/api/public/events', publicEventRoutes());
   app.use(
     '/api/events',

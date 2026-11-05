@@ -7,7 +7,7 @@ export class ServiceProxy {
     private readonly baseUrl: string,
     private readonly path: string,
     private readonly serviceName: string,
-    private readonly timeout = 5000,
+    private readonly timeout = 35000,
   ) {}
 
   create(): RequestHandler {

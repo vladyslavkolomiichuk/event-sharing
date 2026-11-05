@@ -154,6 +154,9 @@ services:
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
     volumes:
       - ./infra/backup/backup.sh:/app/backup.sh:ro
+      - ./.env:/configuration/.env:ro
+      - ./services:/configuration/services:ro
+      - ./apps/gateway:/configuration/apps/gateway:ro
       - storage-data:/data/files:ro
       - ${PROJECT_BACKUP_PATH:-/storage/event-sharing-backups}:/backups
     depends_on:

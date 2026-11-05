@@ -18,6 +18,13 @@ export const EventEnvelopeSchema = z.strictObject({
   occurredAt: z.iso.datetime(),
   correlationId: z.uuid(),
   producer: EventProducerSchema,
+  redacted: z.boolean().optional(),
+  delivery: z
+    .object({
+      stream: z.string().min(1).max(100),
+      previousEventId: z.uuid().nullable(),
+    })
+    .optional(),
   payload: z.unknown(),
 });
 

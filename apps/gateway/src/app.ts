@@ -4,7 +4,6 @@ import { HealthResponseSchema } from '@event-sharing/contracts';
 import type { ServiceHealthClient } from './clients/ServiceHealthClient.js';
 import { env } from './config/env.js';
 import { SystemController } from './controllers/SystemController.js';
-import { DataExportController } from './controllers/DataExportController.js';
 import { blockPublicAuthToken } from './middleware/block-public-auth-token.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { GatewayRateLimiter } from './middleware/GatewayRateLimiter.js';
@@ -50,12 +49,6 @@ export function createApp(dependencies: GatewayAppDependencies): Express {
   const credentialRateLimiter = new GatewayRateLimiter(10, 60_000);
   const userSearchRateLimiter = new GatewayRateLimiter(60, 60_000);
   const routeRateLimiter = new GatewayRateLimiter(30, 60_000);
-  const dataExportRateLimiter = new GatewayRateLimiter(
-    9,
-    60_000,
-    10_000,
-    (request) => request.authenticatedUser?.id,
-  );
   const storageUploadRateLimiter = new GatewayRateLimiter(
     20,
     60_000,
@@ -85,12 +78,6 @@ export function createApp(dependencies: GatewayAppDependencies): Express {
   });
 
   const authenticate = dependencies.authenticateBrowserSession;
-  app.get(
-    '/api/privacy/export',
-    authenticate,
-    dataExportRateLimiter.middleware(),
-    new DataExportController().export,
-  );
   app.use('/api', authenticate, requireCompleteProfile);
   app.use('/api/users/search', userSearchRateLimiter.middleware());
   app.use('/api/users', dependencies.serviceProxies.users);

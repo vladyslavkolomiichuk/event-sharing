@@ -1,3 +1,5 @@
+import { PrivacyEventGuard } from '@event-sharing/messaging';
+import { env } from '../config/env.js';
 import {
   EVENT_TOPICS,
   EVENT_TYPES,
@@ -15,6 +17,7 @@ import type { EventRepository } from '../repositories/EventRepository.js';
 import type { ParticipantAccessRepository } from '../repositories/ParticipantAccessRepository.js';
 
 export class ParticipationEventConsumer {
+  private readonly privacy = new PrivacyEventGuard(env.DATABASE_URL);
   private readonly consumer: Consumer;
   private interval?: NodeJS.Timeout;
   private recoveryInterval?: NodeJS.Timeout;
@@ -33,6 +36,9 @@ export class ParticipationEventConsumer {
       clientId: 'event-sharing-events',
       brokers,
     }).createConsumer(groupId);
+    this.consumer.on(this.consumer.events.CRASH, ({ payload }) => {
+      if (!payload.restart) this.running = false;
+    });
   }
 
   async start(): Promise<void> {
@@ -46,6 +52,7 @@ export class ParticipationEventConsumer {
     await this.pending;
     await this.recovering;
     if (this.running) await this.consumer.disconnect();
+    await this.privacy.close();
   }
 
   private async connect(): Promise<void> {
@@ -66,49 +73,52 @@ export class ParticipationEventConsumer {
     await this.consumer.subscribe({ topic: this.topic, fromBeginning: true });
     await this.consumer.run({
       eachMessage: async ({ message }) => {
-        const event = EventCodec.decode(message.value, this.topic);
-        if (event.producer !== 'participation' || event.eventVersion !== 1) {
-          throw new Error('Unsupported participation event envelope.');
-        }
-        if (event.eventType === EVENT_TYPES.registrationPolicyApplied) {
-          const payload = RegistrationPolicyAppliedPayloadSchema.parse(
-            event.payload,
-          );
-          const result = await this.events.applyPolicyResult(
-            event.eventId,
-            event.eventType,
-            payload,
-          );
-          EventTrace.received('Events', this.topic, event, result);
-          return;
-        }
-        if (event.eventType === EVENT_TYPES.registrationPolicyRejected) {
-          const payload = RegistrationPolicyRejectedPayloadSchema.parse(
-            event.payload,
-          );
-          const result = await this.events.applyPolicyResult(
-            event.eventId,
-            event.eventType,
-            payload,
-          );
-          EventTrace.received('Events', this.topic, event, result);
-          return;
-        }
-        if (isMembershipEventType(event.eventType)) {
-          const result = await this.access.apply(event);
-          EventTrace.received('Events', this.topic, event, result);
-          return;
-        }
-        EventTrace.received('Events', this.topic, event, 'ignored');
+        const decoded = EventCodec.decode(message.value, this.topic);
+        await this.privacy.run(decoded, async (event) => {
+          if (event.producer !== 'participation' || event.eventVersion !== 1) {
+            throw new Error('Unsupported participation event envelope.');
+          }
+          if (event.eventType === EVENT_TYPES.registrationPolicyApplied) {
+            const payload = RegistrationPolicyAppliedPayloadSchema.parse(
+              event.payload,
+            );
+            const result = await this.events.applyPolicyResult(
+              event.eventId,
+              event.eventType,
+              payload,
+            );
+            EventTrace.received('Events', this.topic, event, result);
+            return;
+          }
+          if (event.eventType === EVENT_TYPES.registrationPolicyRejected) {
+            const payload = RegistrationPolicyRejectedPayloadSchema.parse(
+              event.payload,
+            );
+            const result = await this.events.applyPolicyResult(
+              event.eventId,
+              event.eventType,
+              payload,
+            );
+            EventTrace.received('Events', this.topic, event, result);
+            return;
+          }
+          if (isMembershipEventType(event.eventType)) {
+            const result = await this.access.apply(event);
+            EventTrace.received('Events', this.topic, event, result);
+            return;
+          }
+          EventTrace.received('Events', this.topic, event, 'ignored');
+        });
       },
     });
+    if (this.recoveryInterval) clearInterval(this.recoveryInterval);
     this.recoveryInterval = setInterval(() => void this.recover(), 5000);
     void this.recover();
   }
 
   private async recover(): Promise<void> {
     if (this.recovering) return;
-    this.recovering = this.access.recoverPending();
+    this.recovering = this.privacy.recover(() => this.access.recoverPending());
     try {
       await this.recovering;
     } catch (error) {

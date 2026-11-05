@@ -1,4 +1,5 @@
 import { env } from './config/env.js';
+import { serviceBus } from './config/service-bus.js';
 import { AuthServiceClient } from './clients/AuthServiceClient.js';
 import { ServiceHealthClient } from './clients/ServiceHealthClient.js';
 import { createApp } from './app.js';
@@ -8,22 +9,22 @@ import { ServiceProxy } from './proxies/ServiceProxy.js';
 import { GatewayRealtimeProxy } from './realtime/GatewayRealtimeProxy.js';
 
 const services = [
-  ['Auth', env.AUTH_SERVICE_URL],
-  ['Users', env.USERS_SERVICE_URL],
-  ['Events', env.EVENTS_SERVICE_URL],
-  ['Geo Search', env.GEO_SEARCH_SERVICE_URL],
-  ['Participation', env.PARTICIPATION_SERVICE_URL],
-  ['Notifications', env.NOTIFICATIONS_SERVICE_URL],
-  ['Messages', env.MESSAGES_SERVICE_URL],
-  ['Event Log', env.EVENT_LOG_SERVICE_URL],
-  ['Storage', env.STORAGE_SERVICE_URL],
+  ['Auth', 'auth'],
+  ['Users', 'users'],
+  ['Events', 'events'],
+  ['Geo Search', 'geo-search'],
+  ['Participation', 'participation'],
+  ['Notifications', 'notifications'],
+  ['Messages', 'messages'],
+  ['Event Log', 'event-log'],
+  ['Storage', 'storage'],
 ] as const;
 
 const clients = services.map(
   ([name, url]) => new ServiceHealthClient(name, url),
 );
 
-const authClient = new AuthServiceClient(env.AUTH_SERVICE_URL);
+const authClient = new AuthServiceClient();
 const realtime = new GatewayRealtimeProxy(authClient);
 const app = createApp({
   clients,
@@ -93,9 +94,10 @@ realtime.attach(server);
 
 console.info(`Gateway listening on port ${env.PORT}.`);
 
-function shutdown(): void {
+async function shutdown(): Promise<void> {
   realtime.close();
   server.close();
+  await serviceBus.stop();
 }
 
 process.on('SIGINT', shutdown);

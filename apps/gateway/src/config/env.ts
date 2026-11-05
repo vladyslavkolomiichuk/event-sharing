@@ -1,11 +1,13 @@
 import {
   BaseHttpEnvSchema,
+  ServiceBusEnvSchema,
   PortSchema,
   loadServiceEnvFile,
 } from '@event-sharing/common';
 import { z } from 'zod';
 
-const EnvSchema = BaseHttpEnvSchema.extend({
+const EnvSchema = BaseHttpEnvSchema.extend(ServiceBusEnvSchema.shape).extend({
+  KAFKA_BROKERS: z.string().min(1),
   PORT: PortSchema.default(8000),
   FRONTEND_ORIGIN: z.url(),
   AUTH_SERVICE_URL: z.url(),

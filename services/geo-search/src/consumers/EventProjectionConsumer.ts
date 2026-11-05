@@ -1,3 +1,5 @@
+import { PrivacyEventGuard } from '@event-sharing/messaging';
+import { env } from '../config/env.js';
 import { EVENT_TOPICS } from '@event-sharing/contracts';
 import {
   EventCodec,
@@ -8,6 +10,7 @@ import type { Consumer } from 'kafkajs';
 import type { SearchProjectionRepository } from '../repositories/SearchProjectionRepository.js';
 
 export class EventProjectionConsumer {
+  private readonly privacy = new PrivacyEventGuard(env.DATABASE_URL);
   private readonly consumer: Consumer;
   private interval?: NodeJS.Timeout;
   private recoveryInterval?: NodeJS.Timeout;
@@ -23,6 +26,9 @@ export class EventProjectionConsumer {
       clientId: 'event-sharing-geo-search',
       brokers,
     }).createConsumer('event-sharing-geo-search-v1');
+    this.consumer.on(this.consumer.events.CRASH, ({ payload }) => {
+      if (!payload.restart) this.running = false;
+    });
   }
 
   async start(): Promise<void> {
@@ -36,6 +42,7 @@ export class EventProjectionConsumer {
     await this.pending;
     await this.recovering;
     if (this.running) await this.consumer.disconnect();
+    await this.privacy.close();
   }
 
   private async connect(): Promise<void> {
@@ -59,18 +66,23 @@ export class EventProjectionConsumer {
     });
     await this.consumer.run({
       eachMessage: async ({ topic, message }) => {
-        const event = EventCodec.decode(message.value, topic);
-        const result = await this.repository.apply(event);
-        EventTrace.received('Geo Search', topic, event, result);
+        const decoded = EventCodec.decode(message.value, topic);
+        await this.privacy.run(decoded, async (event) => {
+          const result = await this.repository.apply(event);
+          EventTrace.received('Geo Search', topic, event, result);
+        });
       },
     });
+    if (this.recoveryInterval) clearInterval(this.recoveryInterval);
     this.recoveryInterval = setInterval(() => void this.recover(), 5000);
     void this.recover();
   }
 
   private async recover(): Promise<void> {
     if (this.recovering) return;
-    this.recovering = this.repository.recoverPending();
+    this.recovering = this.privacy.recover(() =>
+      this.repository.recoverPending(),
+    );
     try {
       await this.recovering;
     } catch (error) {

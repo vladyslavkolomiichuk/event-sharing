@@ -1,18 +1,14 @@
-import { EventDetailSchema } from '@event-sharing/contracts';
-import { env } from '../config/env.js';
-import { InvitationError } from '../domain/errors/InvitationError.js';
-
+import { EventDetailSchema, RPC_OPERATIONS } from '@event-sharing/contracts';
+import { serviceBus } from '../config/service-bus.js';
 export class EventDirectoryClient {
   async get(eventId: string, authorization: string) {
-    const response = await fetch(
-      `${env.EVENTS_SERVICE_URL}/api/events/${eventId}`,
-      {
-        headers: { authorization },
-        signal: AbortSignal.timeout(5000),
-      },
+    return EventDetailSchema.parse(
+      await serviceBus.call(
+        'events',
+        RPC_OPERATIONS.eventDetail,
+        { eventId },
+        authorization,
+      ),
     );
-    if (!response.ok)
-      throw new InvitationError('Event not found.', 'EVENT_NOT_FOUND', 404);
-    return EventDetailSchema.parse(await response.json());
   }
 }

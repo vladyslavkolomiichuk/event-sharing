@@ -26,6 +26,11 @@ export const notificationPresentation: Record<
     badge: warning,
   },
   EVENT_COMPLETED: { label: 'Event completed', tone: 'info', badge: info },
+  EVENT_ORGANIZER_DELETED: {
+    label: 'Organizer left',
+    tone: 'info',
+    badge: info,
+  },
   PARTICIPANT_JOINED: {
     label: 'Participant joined',
     tone: 'info',

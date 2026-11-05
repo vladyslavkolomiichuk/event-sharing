@@ -8,7 +8,6 @@ import { z } from 'zod';
 const EnvSchema = DatabaseServiceEnvSchema.extend({
   PORT: PortSchema.default(8001),
   HOST: z.string().min(1).default('127.0.0.1'),
-  AUTH_JWKS_URL: z.url(),
   AUTH_JWT_ISSUER: z.url(),
   AUTH_JWT_AUDIENCE: z.string().min(1),
   KAFKA_BROKERS: z.string().min(1),

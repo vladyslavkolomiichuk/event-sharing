@@ -1,6 +1,7 @@
 import type { MailRequest } from '@event-sharing/contracts';
 import { MailMessageCipher } from '@event-sharing/messaging';
 import type { MailRequestRepository } from '../repositories/MailRequestRepository.js';
+import { prisma } from '../database/client.js';
 
 export class AuthMailService {
   constructor(
@@ -14,6 +15,12 @@ export class AuthMailService {
     recipient: string,
     url: string,
   ): Promise<void> {
+    if (
+      await prisma.privacyDeletionJob.findFirst({
+        where: { userId, frozenAt: { not: null } },
+      })
+    )
+      return;
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     await this.repository.enqueue(
       userId,

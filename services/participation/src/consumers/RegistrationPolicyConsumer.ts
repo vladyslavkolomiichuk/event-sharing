@@ -1,3 +1,5 @@
+import { PrivacyEventGuard } from '@event-sharing/messaging';
+import { env } from '../config/env.js';
 import {
   EVENT_TOPICS,
   EVENT_TYPES,
@@ -12,6 +14,7 @@ import type { Consumer } from 'kafkajs';
 import type { RegistrationPolicyRepository } from '../repositories/RegistrationPolicyRepository.js';
 
 export class RegistrationPolicyConsumer {
+  private readonly privacy = new PrivacyEventGuard(env.DATABASE_URL);
   private readonly consumer: Consumer;
   private interval?: NodeJS.Timeout;
   private recoveryInterval?: NodeJS.Timeout;
@@ -29,6 +32,9 @@ export class RegistrationPolicyConsumer {
       clientId: 'event-sharing-participation',
       brokers,
     }).createConsumer(groupId);
+    this.consumer.on(this.consumer.events.CRASH, ({ payload }) => {
+      if (!payload.restart) this.running = false;
+    });
   }
 
   async start(): Promise<void> {
@@ -42,6 +48,7 @@ export class RegistrationPolicyConsumer {
     await this.pending;
     await this.recovering;
     if (this.running) await this.consumer.disconnect();
+    await this.privacy.close();
   }
 
   private async connect(): Promise<void> {
@@ -65,28 +72,33 @@ export class RegistrationPolicyConsumer {
     });
     await this.consumer.run({
       eachMessage: async ({ message }) => {
-        const event = EventCodec.decode(message.value, this.topic);
-        if (event.producer !== 'events' || event.eventVersion !== 1) {
-          throw new Error('Unsupported events topic envelope.');
-        }
-        if (event.eventType !== EVENT_TYPES.registrationPolicyRequested) {
-          EventTrace.received('Participation', this.topic, event, 'ignored');
-          return;
-        }
-        const payload = RegistrationPolicyRequestedPayloadSchema.parse(
-          event.payload,
-        );
-        const result = await this.policies.apply(event.eventId, payload);
-        EventTrace.received('Participation', this.topic, event, result);
+        const decoded = EventCodec.decode(message.value, this.topic);
+        await this.privacy.run(decoded, async (event) => {
+          if (event.producer !== 'events' || event.eventVersion !== 1) {
+            throw new Error('Unsupported events topic envelope.');
+          }
+          if (event.eventType !== EVENT_TYPES.registrationPolicyRequested) {
+            EventTrace.received('Participation', this.topic, event, 'ignored');
+            return;
+          }
+          const payload = RegistrationPolicyRequestedPayloadSchema.parse(
+            event.payload,
+          );
+          const result = await this.policies.apply(event.eventId, payload);
+          EventTrace.received('Participation', this.topic, event, result);
+        });
       },
     });
+    if (this.recoveryInterval) clearInterval(this.recoveryInterval);
     this.recoveryInterval = setInterval(() => void this.recover(), 5000);
     void this.recover();
   }
 
   private async recover(): Promise<void> {
     if (this.recovering) return;
-    this.recovering = this.policies.recoverPending();
+    this.recovering = this.privacy.recover(() =>
+      this.policies.recoverPending(),
+    );
     try {
       await this.recovering;
     } catch (error) {

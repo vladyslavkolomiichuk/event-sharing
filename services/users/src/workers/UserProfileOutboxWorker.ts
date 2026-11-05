@@ -51,8 +51,16 @@ export class UserProfileOutboxWorker extends AbstractOutboxWorker<ProfileOutboxE
       occurredAt: event.occurredAt.toISOString(),
       correlationId: event.id,
       producer: 'users',
-      payload:
-        event.eventType === EVENT_TYPES.userProfileUpdated
+      delivery: event.ordered
+        ? {
+            stream: `users:${event.aggregateId}`,
+            previousEventId: event.previousEventId,
+          }
+        : undefined,
+      redacted: event.redacted,
+      payload: event.redacted
+        ? {}
+        : event.eventType === EVENT_TYPES.userProfileUpdated
           ? UserProfileUpdatedPayloadSchema.parse(event.payload)
           : FriendEventPayloadSchema.parse(event.payload),
     });

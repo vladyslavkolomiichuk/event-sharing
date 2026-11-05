@@ -5,4 +5,3 @@ export * from './database/ReadinessCheck.js';
 export * from './errors/AppError.js';
 export * from './errors/map-api-error.js';
 export * from './auth/InternalJwtVerifier.js';
-export * from './auth/PrivacyCommandVerifier.js';

@@ -1,4 +1,6 @@
-import type { UserRole } from '@event-sharing/contracts';
+import { RPC_OPERATIONS, type UserRole } from '@event-sharing/contracts';
+import { z } from 'zod';
+import { serviceBus } from '../config/service-bus.js';
 import { AuthServiceUnavailableError } from '../domain/errors/AuthServiceUnavailableError.js';
 import { AuthSessionSchema } from '../schemas/auth-session.schema.js';
 
@@ -12,11 +14,6 @@ export type GatewayIdentity = {
 };
 
 export class AuthServiceClient {
-  constructor(
-    private readonly baseUrl: string,
-    private readonly timeoutMs = 3000,
-  ) {}
-
   async getSessionIdentity(
     cookie: string | undefined,
   ): Promise<GatewayIdentity | null> {
@@ -25,31 +22,20 @@ export class AuthServiceClient {
     }
 
     try {
-      const response = await fetch(
-        new URL(
-          '/backend/auth/get-session?disableCookieCache=true',
-          this.baseUrl,
-        ),
-        {
-          headers: { cookie },
-          signal: AbortSignal.timeout(this.timeoutMs),
-        },
+      const data = await serviceBus.call(
+        'auth',
+        RPC_OPERATIONS.session,
+        { cookie },
+        undefined,
+        5000,
       );
-
-      if (!response.ok) {
-        throw new AuthServiceUnavailableError();
-      }
-
-      const data: unknown = await response.json();
       if (data === null) {
         return null;
       }
 
-      const session = AuthSessionSchema.parse(data);
-      const token = response.headers.get('set-auth-jwt')?.trim();
-      if (!token) {
-        throw new AuthServiceUnavailableError();
-      }
+      const { session, token } = z
+        .object({ session: AuthSessionSchema, token: z.string().min(1) })
+        .parse(data);
 
       return {
         token,

@@ -1,4 +1,4 @@
-import { createRemoteJWKSet } from 'jose';
-import { env } from './env.js';
+import { KafkaSigningKeys } from '@event-sharing/messaging';
+import { serviceBus } from './service-bus.js';
 
-export const internalJwks = createRemoteJWKSet(new URL(env.AUTH_JWKS_URL));
+export const internalJwks = new KafkaSigningKeys(serviceBus).getKey;

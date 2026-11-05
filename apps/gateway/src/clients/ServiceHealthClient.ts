@@ -1,23 +1,27 @@
-import { HealthResponseSchema } from '@event-sharing/contracts';
+import {
+  HealthResponseSchema,
+  RPC_OPERATIONS,
+  type ServiceName,
+} from '@event-sharing/contracts';
+import { serviceBus } from '../config/service-bus.js';
 
 export class ServiceHealthClient {
   constructor(
     readonly service: string,
-    private readonly baseUrl: string,
+    private readonly target: ServiceName,
     private readonly timeoutMs = 2000,
   ) {}
 
   async check(): Promise<'ok' | 'unavailable'> {
     try {
-      const response = await fetch(new URL('/ready', this.baseUrl), {
-        signal: AbortSignal.timeout(this.timeoutMs),
-      });
-
-      if (!response.ok) {
-        return 'unavailable';
-      }
-
-      return HealthResponseSchema.parse(await response.json()).status;
+      const response = await serviceBus.call(
+        this.target,
+        RPC_OPERATIONS.readiness,
+        {},
+        undefined,
+        this.timeoutMs,
+      );
+      return HealthResponseSchema.parse(response).status;
     } catch {
       return 'unavailable';
     }

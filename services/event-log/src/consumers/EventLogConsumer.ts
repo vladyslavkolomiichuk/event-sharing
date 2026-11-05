@@ -1,3 +1,5 @@
+import { PrivacyEventGuard } from '@event-sharing/messaging';
+import { env } from '../config/env.js';
 import { EVENT_TOPICS } from '@event-sharing/contracts';
 import {
   EventCodec,
@@ -8,6 +10,7 @@ import type { Consumer } from 'kafkajs';
 import type { EventLogRepository } from '../repositories/EventLogRepository.js';
 
 export class EventLogConsumer {
+  private readonly privacy = new PrivacyEventGuard(env.DATABASE_URL);
   private readonly consumer: Consumer;
   private interval?: NodeJS.Timeout;
   private pending: Promise<void> | undefined;
@@ -22,6 +25,9 @@ export class EventLogConsumer {
       clientId: 'event-sharing-event-log',
       brokers,
     }).createConsumer('event-sharing-event-log-v1');
+    this.consumer.on(this.consumer.events.CRASH, ({ payload }) => {
+      if (!payload.restart) this.running = false;
+    });
     this.consumer.on(this.consumer.events.CRASH, () => {
       console.error('Event Log Kafka consumer stopped unexpectedly.');
     });
@@ -36,6 +42,7 @@ export class EventLogConsumer {
     if (this.interval) clearInterval(this.interval);
     await this.pending;
     await this.consumer.disconnect();
+    await this.privacy.close();
     this.running = false;
   }
 
@@ -62,15 +69,17 @@ export class EventLogConsumer {
     }
     await this.consumer.run({
       eachMessage: async ({ topic, partition, message }) => {
-        const event = EventCodec.decode(message.value, topic);
-        const result = await this.repository.record(
-          event,
-          topic,
-          partition,
-          message.offset,
-          this.retentionDays,
-        );
-        EventTrace.received('Event Log', topic, event, result);
+        const decoded = EventCodec.decode(message.value, topic);
+        await this.privacy.run(decoded, async (event) => {
+          const result = await this.repository.record(
+            event,
+            topic,
+            partition,
+            message.offset,
+            this.retentionDays,
+          );
+          EventTrace.received('Event Log', topic, event, result);
+        });
       },
     });
   }

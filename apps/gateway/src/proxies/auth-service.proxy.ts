@@ -6,7 +6,7 @@ export function createAuthProxy(baseUrl: string): RequestHandler {
   return createProxyMiddleware<Request, Response>({
     target: `${baseUrl.replace(/\/+$/, '')}/backend/auth`,
     changeOrigin: true,
-    proxyTimeout: 5000,
+    proxyTimeout: 35000,
     on: {
       proxyReq: (proxyRequest, request) => {
         proxyRequest.removeHeader('authorization');

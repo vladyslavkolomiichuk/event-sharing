@@ -1,6 +1,7 @@
 import { UsernameSchema } from '@event-sharing/contracts';
 import { z } from 'zod';
-import { env } from '../config/env.js';
+import { serviceBus } from '../config/service-bus.js';
+import { RPC_OPERATIONS } from '@event-sharing/contracts';
 import { InvitationError } from '../domain/errors/InvitationError.js';
 
 const TargetSchema = z.strictObject({
@@ -11,16 +12,13 @@ const TargetSchema = z.strictObject({
 
 export class UserDirectoryClient {
   async resolve(username: string, authorization: string) {
-    const response = await fetch(
-      `${env.USERS_SERVICE_URL}/api/users/invitation-target/${encodeURIComponent(username)}`,
-      { headers: { authorization }, signal: AbortSignal.timeout(5000) },
+    return TargetSchema.parse(
+      await serviceBus.call(
+        'users',
+        RPC_OPERATIONS.invitationTarget,
+        { username },
+        authorization,
+      ),
     );
-    if (!response.ok)
-      throw new InvitationError(
-        'This user cannot receive your invitation.',
-        'INVITATION_TARGET_UNAVAILABLE',
-        response.status === 404 ? 404 : 403,
-      );
-    return TargetSchema.parse(await response.json());
   }
 }

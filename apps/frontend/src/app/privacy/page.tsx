@@ -78,14 +78,17 @@ export default function PrivacyPolicyPage() {
           while the account and related activities need them. Encrypted database
           and file backups are stored separately on the same server. The backup
           process removes copies older than 30 days after a successful backup;
-          copies can remain longer while that process is stopped. Older
-          storage-only copies in the Docker backup volume do not yet have
-          automatic retention. Host application log retention is managed
+          copies can remain longer while that process is stopped. Storage-only
+          backups also expire after the configured retention period when their
+          backup worker runs. Host application log retention is managed
           separately and is not yet fixed by this project. You can download your
           data and submit an account deletion request in Privacy settings.
-          Requests are reviewed manually. Submitting a request does not itself
-          delete or anonymize data. For access, correction, or other requests,
-          contact the address above.
+          Confirmed deletion requests are processed automatically across
+          services. Sessions are revoked before erasure begins. Shared chat text
+          is retained without the author profile, and events with other
+          participants remain in their history. Export downloads expire after 24
+          hours. For access, correction, or other requests, contact the address
+          above.
         </p>
       </section>
       <section>

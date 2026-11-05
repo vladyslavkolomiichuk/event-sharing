@@ -8,12 +8,17 @@ import { z } from 'zod';
 const EnvSchema = DatabaseServiceEnvSchema.extend({
   PORT: PortSchema.default(8002),
   HOST: z.string().min(1).default('127.0.0.1'),
+  PRIVACY_SERVICE_KEYS: z
+    .string()
+    .transform((value) =>
+      z
+        .record(z.string(), z.string().regex(/^[a-f0-9]{64}$/i))
+        .parse(JSON.parse(value)),
+    ),
   BETTER_AUTH_SECRET: z.string().min(32),
   BETTER_AUTH_URL: z.url(),
   BETTER_AUTH_PUBLIC_URL: z.url(),
   FRONTEND_ORIGIN: z.url(),
-  EVENTS_SERVICE_URL: z.url().default('http://127.0.0.1:8001'),
-  MESSAGES_SERVICE_URL: z.url().default('http://127.0.0.1:8008'),
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
   GITHUB_CLIENT_ID: z.string().min(1).optional(),

@@ -1,3 +1,9 @@
+import { EVENT_ROUTES, type EventEnvelope } from '@event-sharing/contracts';
+import {
+  PrivacyEventGuard,
+  OrderedEventProcessor,
+} from '@event-sharing/messaging';
+import { env } from '../config/env.js';
 import { EVENT_TOPICS, EVENT_TYPES } from '@event-sharing/contracts';
 import {
   EventCodec,
@@ -23,6 +29,11 @@ const supported = new Set<string>([
 ]);
 
 export class ChatEventConsumer {
+  private readonly privacy = new PrivacyEventGuard(env.DATABASE_URL);
+  private readonly ordered = new OrderedEventProcessor(
+    env.DATABASE_URL,
+    (event) => this.apply(event),
+  );
   private readonly consumer: Consumer;
   private interval?: NodeJS.Timeout;
   private recoveryInterval?: NodeJS.Timeout;
@@ -38,9 +49,13 @@ export class ChatEventConsumer {
       clientId: 'event-sharing-messages',
       brokers,
     }).createConsumer('event-sharing-messages-v1');
+    this.consumer.on(this.consumer.events.CRASH, ({ payload }) => {
+      if (!payload.restart) this.running = false;
+    });
   }
 
   async start(): Promise<void> {
+    this.ordered.start();
     this.interval = setInterval(() => void this.connect(), 5000);
     void this.connect();
   }
@@ -51,6 +66,19 @@ export class ChatEventConsumer {
     await this.pending;
     await this.recovering;
     if (this.running) await this.consumer.disconnect();
+    await this.ordered.close();
+    await this.privacy.close();
+  }
+
+  private apply(event: EventEnvelope): Promise<unknown> {
+    const topic = EVENT_ROUTES[event.eventType].topic;
+    return this.privacy.run(event, async (event) => {
+      const result = supported.has(event.eventType)
+        ? await this.repository.apply(event)
+        : 'ignored';
+      EventTrace.received('Messages', topic, event, result);
+      return result;
+    });
   }
 
   private async connect(): Promise<void> {
@@ -72,20 +100,20 @@ export class ChatEventConsumer {
       await this.consumer.subscribe({ topic, fromBeginning: true });
     await this.consumer.run({
       eachMessage: async ({ topic, message }) => {
-        const event = EventCodec.decode(message.value, topic);
-        const result = supported.has(event.eventType)
-          ? await this.repository.apply(event)
-          : 'ignored';
-        EventTrace.received('Messages', topic, event, result);
+        const decoded = EventCodec.decode(message.value, topic);
+        await this.ordered.run(decoded);
       },
     });
+    if (this.recoveryInterval) clearInterval(this.recoveryInterval);
     this.recoveryInterval = setInterval(() => void this.recover(), 5000);
     void this.recover();
   }
 
   private async recover(): Promise<void> {
     if (this.recovering) return;
-    this.recovering = this.repository.recoverPending();
+    this.recovering = this.privacy.recover(() =>
+      this.repository.recoverPending(),
+    );
     try {
       await this.recovering;
     } catch (error) {

@@ -1,3 +1,5 @@
+import { serviceBus, privacyDatabase } from './config/service-bus.js';
+import { ServiceRequestHandler } from './services/ServiceRequestHandler.js';
 import { PostgresReadinessCheck } from '@event-sharing/common';
 import { REALTIME_SIGNAL_TYPES } from '@event-sharing/contracts';
 import { MailMessageCipher } from '@event-sharing/messaging';
@@ -14,12 +16,14 @@ import { NotificationEventService } from './services/NotificationEventService.js
 import { NotificationRealtimeServer } from './realtime/NotificationRealtimeServer.js';
 
 await connectDatabase();
+privacyDatabase.startCleanup();
 const realtime = new NotificationRealtimeServer();
 const changed = (userIds: string[]) =>
   realtime.publish(userIds, {
     type: REALTIME_SIGNAL_TYPES.notificationsChanged,
   });
 const repository = new EmailDeliveryRepository();
+serviceBus.start(new ServiceRequestHandler(changed).handle);
 const brokers = env.KAFKA_BROKERS?.split(',').map((broker) => broker.trim());
 const consumer = brokers ? new AuthMailConsumer(brokers, repository) : null;
 await consumer?.start();
@@ -68,6 +72,8 @@ realtime.attach(server);
 console.info(`Notifications listening on ${env.HOST}:${env.PORT}.`);
 
 async function shutdown(): Promise<void> {
+  await serviceBus.stop();
+  await privacyDatabase.close();
   realtime.close();
   server.close(async () => {
     await consumer?.stop();

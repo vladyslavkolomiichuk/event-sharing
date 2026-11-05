@@ -4,12 +4,31 @@ import {
   type ParticipationHistory,
 } from '@event-sharing/contracts';
 import { HistoryAccessClient } from '../clients/HistoryAccessClient.js';
-import { env } from '../config/env.js';
+import { EventDirectoryClient } from '../clients/EventDirectoryClient.js';
+import { ServiceRpcError } from '@event-sharing/messaging';
 import { prisma } from '../database/client.js';
 import { HistoryUnavailableError } from '../domain/errors/HistoryUnavailableError.js';
 
 export class ParticipationHistoryService {
   constructor(private readonly access = new HistoryAccessClient()) {}
+
+  async hide(
+    eventId: string,
+    userId: string,
+    authorization: string,
+  ): Promise<void> {
+    const event = await new EventDirectoryClient().get(eventId, authorization);
+    if (!['COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(event.status))
+      throw new ServiceRpcError(
+        'Only finished events can be hidden from history.',
+        'EVENT_NOT_FINISHED',
+        409,
+      );
+    await prisma.membership.updateMany({
+      where: { eventId, userId, status: { in: ['JOINED', 'CANCELLED'] } },
+      data: { hiddenAt: new Date() },
+    });
+  }
 
   async list(
     userId: string,
@@ -21,9 +40,10 @@ export class ParticipationHistoryService {
     const memberships = await prisma.membership.findMany({
       where: {
         userId,
-        status: 'JOINED',
+        hiddenAt: null,
+        status: { in: ['JOINED', 'CANCELLED'] },
         policy: {
-          status: 'CLOSED',
+          status: { in: ['CLOSED', 'CANCELLED'] },
           ...(userId === actorId ? {} : { visibility: 'PUBLIC' }),
         },
       },
@@ -33,19 +53,16 @@ export class ParticipationHistoryService {
     });
     const items = await Promise.all(
       memberships.slice(0, 20).map(async (membership) => {
-        const response = await fetch(
-          `${env.EVENTS_SERVICE_URL}/api/events/${membership.eventId}`,
-          {
-            headers: { authorization },
-            signal: AbortSignal.timeout(5000),
-          },
-        ).catch(() => {
-          throw new HistoryUnavailableError();
-        });
-        if (response.status === 404) return null;
-        if (!response.ok) throw new HistoryUnavailableError();
-        const event = EventDetailSchema.parse(await response.json());
-        if (!['COMPLETED', 'ARCHIVED'].includes(event.status)) return null;
+        const event = await new EventDirectoryClient()
+          .get(membership.eventId, authorization)
+          .catch((error: unknown) => {
+            if (error instanceof ServiceRpcError && error.statusCode === 404)
+              return null;
+            throw new HistoryUnavailableError();
+          });
+        if (!event) return null;
+        if (!['COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(event.status))
+          return null;
         if (userId !== actorId && event.visibility !== 'PUBLIC') return null;
         return {
           eventId: event.id,

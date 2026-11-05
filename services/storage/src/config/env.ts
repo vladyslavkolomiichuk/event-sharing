@@ -8,13 +8,17 @@ import { z } from 'zod';
 const schema = DatabaseServiceEnvSchema.extend({
   PORT: PortSchema.default(8009),
   HOST: z.string().min(1).default('127.0.0.1'),
-  AUTH_JWKS_URL: z.url(),
+  KAFKA_BROKERS: z.string().min(1).default('127.0.0.1:9092'),
   AUTH_JWT_ISSUER: z.url(),
   AUTH_JWT_AUDIENCE: z.string().min(1),
-  EVENTS_SERVICE_URL: z.url().default('http://127.0.0.1:8001'),
-  USERS_SERVICE_URL: z.url().default('http://127.0.0.1:8003'),
   STORAGE_PATH: z.string().min(1),
   STORAGE_BACKUP_PATH: z.string().min(1),
+  STORAGE_BACKUP_RETENTION_DAYS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(3650)
+    .default(30),
   STORAGE_MAX_FILE_BYTES: z.coerce
     .number()
     .int()

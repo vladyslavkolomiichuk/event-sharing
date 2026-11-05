@@ -9,7 +9,6 @@ const EnvSchema = DatabaseServiceEnvSchema.extend({
   PORT: PortSchema.default(8006),
   HOST: z.string().min(1).default('127.0.0.1'),
   KAFKA_BROKERS: z.string().min(1).optional(),
-  AUTH_JWKS_URL: z.url(),
   AUTH_JWT_ISSUER: z.url(),
   AUTH_JWT_AUDIENCE: z.string().min(1),
   MAIL_ENCRYPTION_KEY: z

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rename, rm, writeFile, readdir, lstat } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import pg from 'pg';
 import { env } from './config/env.js';
@@ -47,6 +47,16 @@ async function backup(): Promise<void> {
     );
     await archive(join(temporary, 'files.tar.gz'));
     await rename(temporary, destination);
+    const cutoff = Date.now() - env.STORAGE_BACKUP_RETENTION_DAYS * 86400000;
+    for (const name of await readdir(backupPath)) {
+      if (!/^backup-\d{4}-\d{2}-\d{2}T[\d.-]+Z-[0-9a-f-]{36}$/.test(name))
+        continue;
+      const path = resolve(backupPath, name);
+      if (relative(backupPath, path) !== name) continue;
+      const entry = await lstat(path);
+      if (entry.isDirectory() && entry.mtimeMs < cutoff)
+        await rm(path, { recursive: true });
+    }
     console.info(`Storage backup created: ${name}`);
   } catch (error) {
     await rm(temporary, { recursive: true, force: true });

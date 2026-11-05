@@ -1,3 +1,5 @@
+import { serviceBus, privacyDatabase } from './config/service-bus.js';
+import { ServiceRequestHandler } from './services/ServiceRequestHandler.js';
 import { PostgresReadinessCheck } from '@event-sharing/common';
 import { createApp } from './app.js';
 import { env } from './config/env.js';
@@ -7,6 +9,8 @@ import { FileStorageService } from './services/FileStorageService.js';
 const storage = new FileStorageService();
 await storage.initialize();
 await prisma.$connect();
+privacyDatabase.startCleanup();
+serviceBus.start(new ServiceRequestHandler().handle);
 const cleanup = setInterval(
   () =>
     void storage
@@ -21,6 +25,8 @@ const server = createApp(
   console.info(`Storage listening on ${env.HOST}:${env.PORT}.`),
 );
 async function shutdown() {
+  await serviceBus.stop();
+  await privacyDatabase.close();
   clearInterval(cleanup);
   await new Promise<void>((resolve) => server.close(() => resolve()));
   await prisma.$disconnect();

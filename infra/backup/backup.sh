@@ -60,13 +60,20 @@ backup() {
 
   pg_dumpall --no-password | encrypt "$temporary/databases.sql.gpg" || return 1
   tar -C /data/files -czf - . | encrypt "$temporary/files.tar.gz.gpg" || return 1
+  local configuration=(.env)
+  for service in auth users events participation messages notifications geo-search event-log storage; do
+    configuration+=("services/$service/.env")
+  done
+  configuration+=(apps/gateway/.env)
+  tar -C /configuration -czf - "${configuration[@]}" | encrypt "$temporary/configuration.tar.gz.gpg" || return 1
   decrypt "$temporary/databases.sql.gpg" >/dev/null || return 1
   decrypt "$temporary/files.tar.gz.gpg" | tar -tzf - >/dev/null || return 1
+  decrypt "$temporary/configuration.tar.gz.gpg" | tar -tzf - >/dev/null || return 1
   printf '\\q\n' >&"${STORAGE_LOCK[1]}" || return 1
   wait "$lock_pid" || return 1
   lock_pid=''
 
-  (cd "$temporary" && sha256sum databases.sql.gpg files.tar.gz.gpg > SHA256SUMS) || return 1
+  (cd "$temporary" && sha256sum databases.sql.gpg files.tar.gz.gpg configuration.tar.gz.gpg > SHA256SUMS) || return 1
   mv -- "$temporary" "/backups/$name" || return 1
   temporary=''
   find /backups -mindepth 1 -maxdepth 1 -type d -name 'backup-20*' \

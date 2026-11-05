@@ -1,13 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  DataExportResponseSchema,
-  type DataExportSource,
-  type UserProfilePrivate,
-} from '@event-sharing/contracts';
+import type { UserProfilePrivate } from '@event-sharing/contracts';
+import { PersonalDataActions } from './PersonalDataActions';
 import { usersClient } from '@/lib/api/UsersClient';
-import { authClient } from '@/lib/api/AuthClient';
 import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/feedback/Loading';
@@ -20,14 +16,6 @@ export function PrivacySettings() {
   const [preferences, setPreferences] = useState<Preferences | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [deletionRequestedAt, setDeletionRequestedAt] = useState<string | null>(
-    null,
-  );
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState('');
-  const [exportNotice, setExportNotice] = useState('');
-  const [requestingDeletion, setRequestingDeletion] = useState(false);
-
   useEffect(() => {
     void usersClient.me().then(
       (profile) => setPreferences(profile.preferences),
@@ -42,114 +30,6 @@ export function PrivacySettings() {
       },
     );
   }, []);
-
-  useEffect(() => {
-    void authClient.deletionRequest().then(
-      (request) => setDeletionRequestedAt(request.requestedAt ?? null),
-      () => show('Could not load deletion request status.', 'error'),
-    );
-  }, []);
-
-  async function downloadData() {
-    setExporting(true);
-    setExportError('');
-    setExportNotice('');
-    try {
-      async function fetchExport(sources?: DataExportSource[]) {
-        const query = sources
-          ? `?sources=${encodeURIComponent(sources.join(','))}`
-          : '';
-        const response = await fetch(`/backend/api/privacy/export${query}`, {
-          credentials: 'include',
-          cache: 'no-store',
-        });
-        if (response.status === 401 || response.status === 403)
-          throw new Error('Your session has expired. Sign in and try again.');
-        if (!response.ok)
-          throw new Error(
-            'Could not prepare your data export. Please try again.',
-          );
-        return DataExportResponseSchema.parse(await response.json());
-      }
-      const first = await fetchExport();
-      const data = { ...first.data };
-      let failed = first.failedSources;
-      for (let attempt = 0; attempt < 2 && failed.length; attempt++) {
-        await new Promise((resolve) => window.setTimeout(resolve, 500));
-        let retry: Awaited<ReturnType<typeof fetchExport>>;
-        try {
-          retry = await fetchExport(failed);
-        } catch (cause) {
-          if (
-            cause instanceof Error &&
-            cause.message.startsWith('Your session')
-          )
-            throw cause;
-          break;
-        }
-        if (retry.userId !== first.userId)
-          throw new Error(
-            'Your account changed. Please start the export again.',
-          );
-        Object.assign(data, retry.data);
-        failed = retry.failedSources;
-      }
-      const complete = failed.length === 0;
-      const payload = {
-        exportedAt: first.exportedAt,
-        completedAt: new Date().toISOString(),
-        userId: first.userId,
-        complete,
-        unavailableSources: failed,
-        data,
-      };
-      const url = URL.createObjectURL(
-        new Blob([JSON.stringify(payload, null, 2)], {
-          type: 'application/json',
-        }),
-      );
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = complete
-        ? 'event-sharing-data.json'
-        : 'event-sharing-data-partial.json';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      if (complete) show('Your data export is ready.', 'success');
-      else {
-        setExportNotice(
-          `This export is incomplete. Unavailable sources: ${failed.join(', ')}. Please try again later.`,
-        );
-        show('A partial data export was downloaded.', 'warning');
-      }
-    } catch (cause) {
-      setExportError(
-        cause instanceof Error ? cause.message : 'Data export failed.',
-      );
-    } finally {
-      setExporting(false);
-    }
-  }
-
-  async function requestDeletion() {
-    setRequestingDeletion(true);
-    try {
-      const request = await authClient.requestDeletion();
-      setDeletionRequestedAt(request.requestedAt);
-      show('Your deletion request was recorded.', 'success');
-    } catch (cause) {
-      show(
-        cause instanceof Error
-          ? cause.message
-          : 'Could not record your request.',
-        'error',
-      );
-    } finally {
-      setRequestingDeletion(false);
-    }
-  }
 
   async function save() {
     if (!preferences) return;
@@ -251,66 +131,7 @@ export function PrivacySettings() {
           {busy ? 'Saving…' : 'Save privacy settings'}
         </Button>
       </section>
-      <section className="space-y-4 rounded-xl border border-neutral-200 bg-white p-7">
-        <h2>Your data</h2>
-        <p className="text-sm text-neutral-600">
-          Download a JSON copy of your account, profile, events, participation,
-          messages, notifications, search preference, and activity records.
-        </p>
-        <Button
-          variant="outline"
-          disabled={exporting}
-          onClick={() => void downloadData()}
-        >
-          {exporting ? 'Preparing export…' : 'Download my data'}
-        </Button>
-        {exportError && (
-          <p
-            role="alert"
-            className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900"
-          >
-            {exportError}
-          </p>
-        )}
-        {exportNotice && (
-          <p
-            role="status"
-            className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
-          >
-            {exportNotice}
-          </p>
-        )}
-        <div className="space-y-3 border-t border-neutral-200 pt-5">
-          <h3>Account deletion</h3>
-          <p className="text-sm text-neutral-600">
-            Submit a request for manual review. Your account and data remain
-            active while it is pending. The request itself does not erase your
-            data. Cancel active events you organize before requesting deletion.
-            Use the contact address below to follow up.
-          </p>
-          {deletionRequestedAt ? (
-            <p className="text-sm">
-              Request pending since{' '}
-              {new Date(deletionRequestedAt).toLocaleDateString('en-US')}.
-            </p>
-          ) : (
-            <Button
-              variant="outline"
-              disabled={requestingDeletion}
-              onClick={() => void requestDeletion()}
-            >
-              {requestingDeletion ? 'Submitting…' : 'Request account deletion'}
-            </Button>
-          )}
-          <p className="text-sm text-neutral-600">
-            Questions about your data can be sent to{' '}
-            <a className="underline" href="mailto:vladkolomu@gmail.com">
-              vladkolomu@gmail.com
-            </a>
-            .
-          </p>
-        </div>
-      </section>
+      <PersonalDataActions />
     </div>
   );
 }

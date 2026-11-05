@@ -101,7 +101,6 @@ const authSettings = {
 const notificationsSettings = {
   HOST: '127.0.0.1',
   KAFKA_BROKERS: '127.0.0.1:9092',
-  AUTH_JWKS_URL: 'http://127.0.0.1:8002/backend/auth/jwks',
   AUTH_JWT_ISSUER: 'http://127.0.0.1:8000',
   AUTH_JWT_AUDIENCE: 'event-sharing-services',
   MAIL_ENCRYPTION_KEY: mailEncryptionKey,
@@ -109,7 +108,6 @@ const notificationsSettings = {
 
 const usersSettings = {
   HOST: '127.0.0.1',
-  AUTH_JWKS_URL: 'http://127.0.0.1:8002/backend/auth/jwks',
   AUTH_JWT_ISSUER: 'http://127.0.0.1:8000',
   AUTH_JWT_AUDIENCE: 'event-sharing-services',
   KAFKA_BROKERS: '127.0.0.1:9092',
@@ -117,7 +115,6 @@ const usersSettings = {
 
 const participationSettings = {
   HOST: '127.0.0.1',
-  AUTH_JWKS_URL: 'http://127.0.0.1:8002/backend/auth/jwks',
   AUTH_JWT_ISSUER: 'http://127.0.0.1:8000',
   AUTH_JWT_AUDIENCE: 'event-sharing-services',
   KAFKA_BROKERS: '127.0.0.1:9092',
@@ -125,7 +122,6 @@ const participationSettings = {
 
 const eventsSettings = {
   HOST: '127.0.0.1',
-  AUTH_JWKS_URL: 'http://127.0.0.1:8002/backend/auth/jwks',
   AUTH_JWT_ISSUER: 'http://127.0.0.1:8000',
   AUTH_JWT_AUDIENCE: 'event-sharing-services',
   KAFKA_BROKERS: '127.0.0.1:9092',
@@ -133,7 +129,6 @@ const eventsSettings = {
 
 const geoSearchSettings = {
   HOST: '127.0.0.1',
-  AUTH_JWKS_URL: 'http://127.0.0.1:8002/backend/auth/jwks',
   AUTH_JWT_ISSUER: 'http://127.0.0.1:8000',
   AUTH_JWT_AUDIENCE: 'event-sharing-services',
   KAFKA_BROKERS: '127.0.0.1:9092',
@@ -142,7 +137,6 @@ const geoSearchSettings = {
 const eventLogSettings = {
   HOST: '127.0.0.1',
   KAFKA_BROKERS: '127.0.0.1:9092',
-  AUTH_JWKS_URL: 'http://127.0.0.1:8002/backend/auth/jwks',
   AUTH_JWT_ISSUER: 'http://127.0.0.1:8000',
   AUTH_JWT_AUDIENCE: 'event-sharing-services',
   EVENT_LOG_RETENTION_DAYS: '365',
@@ -164,7 +158,6 @@ for (const [service, servicePort, database] of services) {
   if (service === 'storage')
     settings = {
       HOST: '127.0.0.1',
-      AUTH_JWKS_URL: 'http://127.0.0.1:8002/backend/auth/jwks',
       AUTH_JWT_ISSUER: 'http://127.0.0.1:8000',
       AUTH_JWT_AUDIENCE: 'event-sharing-services',
       EVENTS_SERVICE_URL: 'http://127.0.0.1:8001',
@@ -177,7 +170,6 @@ for (const [service, servicePort, database] of services) {
     settings = {
       HOST: '127.0.0.1',
       KAFKA_BROKERS: '127.0.0.1:9092',
-      AUTH_JWKS_URL: 'http://127.0.0.1:8002/backend/auth/jwks',
       AUTH_JWT_ISSUER: 'http://127.0.0.1:8000',
       AUTH_JWT_AUDIENCE: 'event-sharing-services',
     };
@@ -235,3 +227,5 @@ ensureEnvKeys(gatewayEnvPath, {
   MESSAGES_SERVICE_URL: 'http://127.0.0.1:8008',
   STORAGE_SERVICE_URL: 'http://127.0.0.1:8009',
 });
+
+await import('./setup-service-bus.js');

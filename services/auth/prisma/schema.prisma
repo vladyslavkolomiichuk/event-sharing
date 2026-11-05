@@ -103,6 +103,11 @@ model PrivacyDeletionJob {
   userId      String?               @db.Uuid
   createdAt   DateTime              @default(now()) @db.Timestamptz(3)
   completedAt DateTime?             @db.Timestamptz(3)
+  frozenAt    DateTime?             @db.Timestamptz(3)
+  confirmedAt DateTime?             @db.Timestamptz(3)
+  receiptHash String?               @unique
+  errorCode   String?
+  context     Json                 @default("{}")
   steps       PrivacyDeletionStep[]
 
   @@map("privacy_deletion_job")
@@ -140,6 +145,9 @@ model OrganizerRequest {
 }
 
 model OutboxEvent {
+  redacted Boolean @default(false)
+  ordered Boolean @default(false)
+  previousEventId String? @db.Uuid
   id          String    @id @default(uuid()) @db.Uuid
   position    BigInt    @unique @default(autoincrement())
   aggregateId String    @db.Uuid

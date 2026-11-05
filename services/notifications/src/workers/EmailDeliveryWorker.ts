@@ -1,9 +1,12 @@
+import { PrivacyEventGuard } from '@event-sharing/messaging';
+import { env } from '../config/env.js';
 import { NotificationRequestedPayloadSchema } from '@event-sharing/contracts';
 import { MailMessageCipher } from '@event-sharing/messaging';
 import type { SmtpEmailClient } from '../clients/SmtpEmailClient.js';
 import type { EmailDeliveryRepository } from '../repositories/EmailDeliveryRepository.js';
 
 export class EmailDeliveryWorker {
+  private readonly privacy = new PrivacyEventGuard(env.DATABASE_URL);
   private interval?: NodeJS.Timeout;
   private pending: Promise<void> | undefined;
 
@@ -21,11 +24,12 @@ export class EmailDeliveryWorker {
   async stop(): Promise<void> {
     if (this.interval) clearInterval(this.interval);
     await this.pending;
+    await this.privacy.close();
   }
 
   private async flush(): Promise<void> {
     if (this.pending) return;
-    this.pending = this.deliverDue();
+    this.pending = this.privacy.recover(() => this.deliverDue());
     try {
       await this.pending;
     } catch (error) {

@@ -60,6 +60,21 @@ export const auth = betterAuth({
       : {}),
   },
   databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => {
+          const deletion = await prisma.privacyDeletionJob.findFirst({
+            where: { userId: session.userId, frozenAt: { not: null } },
+            select: { requestId: true },
+          });
+          if (deletion)
+            throw new APIError('FORBIDDEN', {
+              message: 'Account deletion is in progress.',
+            });
+          return { data: session };
+        },
+      },
+    },
     user: {
       create: {
         before: async (user, context) => {

@@ -130,6 +130,22 @@ export function PublicProfile({ userId }: { userId: string }) {
     }
   }
 
+  async function hideHistory(eventId: string) {
+    try {
+      await participationClient.hideHistory(eventId);
+      setHistory((items) => items.filter((item) => item.eventId !== eventId));
+      show(
+        'Removed from your history. Other participants keep their history.',
+        'success',
+      );
+    } catch (error) {
+      show(
+        error instanceof Error ? error.message : 'Could not hide this event.',
+        'error',
+      );
+    }
+  }
+
   if (error)
     return (
       <div className="space-y-4">
@@ -226,6 +242,15 @@ export function PublicProfile({ userId }: { userId: string }) {
                 <span className="text-sm text-neutral-500">
                   Ended {new Date(item.endTime).toLocaleDateString('en-US')}
                 </span>
+                {user?.id === userId && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void hideHistory(item.eventId)}
+                  >
+                    Hide from my history
+                  </Button>
+                )}
               </li>
             ))}
           </ul>

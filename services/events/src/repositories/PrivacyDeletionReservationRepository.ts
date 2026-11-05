@@ -3,39 +3,6 @@ import { EventConflictError } from '../domain/errors/EventConflictError.js';
 import type { Prisma } from '../generated/prisma/client.js';
 
 export class PrivacyDeletionReservationRepository {
-  async reserve(userId: string, requestId: string): Promise<void> {
-    await prisma.$transaction(async (transaction) => {
-      await this.lockOrganizer(transaction, userId);
-      const existing = await transaction.privacyDeletionReservation.findUnique({
-        where: { userId },
-      });
-      if (existing) {
-        if (existing.requestId !== requestId)
-          throw new EventConflictError(
-            'DELETION_REQUEST_CONFLICT',
-            'Another deletion request is already being processed.',
-          );
-        return;
-      }
-      const active = await transaction.event.findFirst({
-        where: {
-          organizerId: userId,
-          status: { in: ['PUBLISHED', 'ONGOING'] },
-          endTime: { gt: new Date() },
-        },
-        select: { id: true },
-      });
-      if (active)
-        throw new EventConflictError(
-          'ACTIVE_EVENTS_BLOCK_DELETION',
-          'Cancel your active events before deleting your account.',
-        );
-      await transaction.privacyDeletionReservation.create({
-        data: { userId, requestId },
-      });
-    });
-  }
-
   async assertOrganizerAvailable(
     transaction: Prisma.TransactionClient,
     userId: string,

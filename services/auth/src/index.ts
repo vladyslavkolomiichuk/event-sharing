@@ -4,8 +4,18 @@ import { env } from './config/env.js';
 import { connectDatabase, disconnectDatabase } from './database/client.js';
 import { IdentityOutboxWorker } from './workers/IdentityOutboxWorker.js';
 import { AuthMailOutboxWorker } from './workers/AuthMailOutboxWorker.js';
+import { serviceBus, privacyDatabase } from './config/service-bus.js';
+import { ServiceRequestHandler } from './services/ServiceRequestHandler.js';
+import { PrivacyDeletionCoordinator } from './services/PrivacyDeletionCoordinator.js';
+import { PrivacyExportWorker } from './workers/PrivacyExportWorker.js';
 
 await connectDatabase();
+privacyDatabase.startCleanup();
+serviceBus.start(new ServiceRequestHandler().handle);
+const deletionCoordinator = new PrivacyDeletionCoordinator();
+deletionCoordinator.start();
+const exportWorker = new PrivacyExportWorker();
+exportWorker.start();
 
 const outboxWorker = env.KAFKA_BROKERS
   ? new IdentityOutboxWorker(
@@ -37,6 +47,10 @@ await new Promise<void>((resolve, reject) => {
 console.info(`Auth listening on ${env.HOST}:${env.PORT}.`);
 
 async function shutdown(): Promise<void> {
+  await deletionCoordinator.close();
+  await exportWorker.stop();
+  await serviceBus.stop();
+  await privacyDatabase.close();
   server.close(async () => {
     await outboxWorker?.stop();
     await mailOutboxWorker?.stop();
