@@ -112,6 +112,10 @@ export class ChatProjectionRepository {
     event: EventEnvelope,
   ): Promise<'processed' | 'duplicate' | 'ignored' | 'pending'> {
     const result = await prisma.$transaction(async (transaction) => {
+      if (event.producer === 'events' && isEventSnapshotType(event.eventType)) {
+        const snapshot = EventSnapshotPayloadSchema.parse(event.payload);
+        await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${`event-snapshot:${snapshot.id}`}, 0))`;
+      }
       if (
         event.producer === 'participation' &&
         isMembershipEventType(event.eventType)

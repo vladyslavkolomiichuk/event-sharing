@@ -70,6 +70,7 @@ export class SearchProjectionRepository {
   ): Promise<'processed' | 'duplicate' | 'ignored'> {
     const snapshot = EventSnapshotPayloadSchema.parse(event.payload);
     return prisma.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${`event-snapshot:${snapshot.id}`}, 0))`;
       const inbox = await transaction.inboxEvent.createMany({
         data: { id: event.eventId, eventType: event.eventType },
         skipDuplicates: true,
