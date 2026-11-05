@@ -57,3 +57,4 @@ export * from './participation/invitation.event.js';
 export * from './participation/participation-history.schema.js';
 export * from './storage/stored-file.schema.js';
 export * from './privacy/data-export.schema.js';
+export * from './privacy/privacy-command.schema.js';

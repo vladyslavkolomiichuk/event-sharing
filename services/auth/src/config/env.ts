@@ -13,6 +13,7 @@ const EnvSchema = DatabaseServiceEnvSchema.extend({
   BETTER_AUTH_PUBLIC_URL: z.url(),
   FRONTEND_ORIGIN: z.url(),
   EVENTS_SERVICE_URL: z.url().default('http://127.0.0.1:8001'),
+  MESSAGES_SERVICE_URL: z.url().default('http://127.0.0.1:8008'),
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
   GITHUB_CLIENT_ID: z.string().min(1).optional(),

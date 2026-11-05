@@ -5,6 +5,7 @@ import {
 } from '@event-sharing/contracts';
 import type { ReadinessCheck } from '@event-sharing/common';
 import { ChatController } from './controllers/ChatController.js';
+import { ChatPrivacyController } from './controllers/ChatPrivacyController.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFound } from './middleware/not-found.js';
 import { requireInternalJwt } from './middleware/require-internal-jwt.js';
@@ -19,6 +20,10 @@ export function createApp(
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json());
+  app.post(
+    '/internal/privacy/anonymize-chat',
+    new ChatPrivacyController().anonymize,
+  );
   app.use(
     '/api/messages',
     requireInternalJwt,
