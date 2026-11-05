@@ -1,0 +1,5 @@
+CREATE TABLE "privacy_deletion_reservation" (
+  "userId" UUID NOT NULL PRIMARY KEY,
+  "requestId" UUID NOT NULL UNIQUE,
+  "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

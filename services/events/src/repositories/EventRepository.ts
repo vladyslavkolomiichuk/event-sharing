@@ -22,6 +22,7 @@ import type { Event, Prisma } from '../generated/prisma/client.js';
 import type { EventWithCategory } from '../models/EventWithCategory.js';
 import type { EventListCursor } from '../lib/event-list-cursor.js';
 import { EventResponseFactory } from '../services/EventResponseFactory.js';
+import { PrivacyDeletionReservationRepository } from './PrivacyDeletionReservationRepository.js';
 
 export type PolicyResult = 'applied' | 'rejected' | 'duplicate' | 'ignored';
 
@@ -37,6 +38,7 @@ export class EventRepository {
   constructor(
     private readonly lifecycle = new EventLifecyclePolicy(),
     private readonly responses = new EventResponseFactory(),
+    private readonly deletions = new PrivacyDeletionReservationRepository(),
   ) {}
 
   findById(id: string): Promise<EventWithCategory | null> {
@@ -209,25 +211,28 @@ export class EventRepository {
         'The event must start in the future.',
       );
     }
-    return prisma.event.create({
-      data: {
-        organizerId,
-        categoryId: input.categoryId ?? null,
-        title: input.title,
-        description: input.description,
-        startTime: new Date(input.startTime),
-        endTime: new Date(input.endTime),
-        timeZone: input.timeZone,
-        locationAddress: input.location.address,
-        locationRegion: input.location.region ?? null,
-        latitude: input.location.latitude,
-        longitude: input.location.longitude,
-        locationVisibility: input.location.visibility,
-        participantLimit: input.participantLimit,
-        chatEnabled: input.chatEnabled,
-        visibility: input.visibility,
-      },
-      include: { category: true },
+    return prisma.$transaction(async (transaction) => {
+      await this.deletions.assertOrganizerAvailable(transaction, organizerId);
+      return transaction.event.create({
+        data: {
+          organizerId,
+          categoryId: input.categoryId ?? null,
+          title: input.title,
+          description: input.description,
+          startTime: new Date(input.startTime),
+          endTime: new Date(input.endTime),
+          timeZone: input.timeZone,
+          locationAddress: input.location.address,
+          locationRegion: input.location.region ?? null,
+          latitude: input.location.latitude,
+          longitude: input.location.longitude,
+          locationVisibility: input.location.visibility,
+          participantLimit: input.participantLimit,
+          chatEnabled: input.chatEnabled,
+          visibility: input.visibility,
+        },
+        include: { category: true },
+      });
     });
   }
 
@@ -394,6 +399,11 @@ export class EventRepository {
     return prisma.$transaction(async (transaction) => {
       const event = await this.lockEvent(transaction, id);
       this.lifecycle.assertRole(action, role, event.organizerId, actorId);
+      if (action === 'publish')
+        await this.deletions.assertOrganizerAvailable(
+          transaction,
+          event.organizerId,
+        );
       this.assertNoPending(event);
       this.lifecycle.assertTransition(action, event.status);
 

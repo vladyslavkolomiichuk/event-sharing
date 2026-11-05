@@ -100,6 +100,14 @@ model ParticipantAccess {
   @@map("participant_access")
 }
 
+model PrivacyDeletionReservation {
+  userId    String   @id @db.Uuid
+  requestId String   @unique @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("privacy_deletion_reservation")
+}
+
 model PendingMembershipEvent {
   id         String   @id @db.Uuid
   previousEventId String? @db.Uuid

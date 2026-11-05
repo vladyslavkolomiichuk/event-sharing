@@ -1,12 +1,15 @@
 import type { RequestHandler } from 'express';
-import { randomUUID } from 'node:crypto';
 import { prisma } from '../database/client.js';
 import { ForbiddenError } from '../domain/errors/ForbiddenError.js';
 import { ActiveEventsBlockDeletionError } from '../domain/errors/ActiveEventsBlockDeletionError.js';
 import { DeletionEligibilityClient } from '../clients/DeletionEligibilityClient.js';
+import { PrivacyDeletionRepository } from '../repositories/PrivacyDeletionRepository.js';
 
 export class PrivacyController {
-  constructor(private readonly eligibility = new DeletionEligibilityClient()) {}
+  constructor(
+    private readonly eligibility = new DeletionEligibilityClient(),
+    private readonly deletions = new PrivacyDeletionRepository(),
+  ) {}
   export: RequestHandler = async (request, response) => {
     const userId = request.authUser!.id;
     const user = await prisma.user.findUniqueOrThrow({
@@ -47,13 +50,7 @@ export class PrivacyController {
     const userId = request.authUser!.id;
     if (await this.eligibility.hasActiveEvents(request.authUser!.internalToken))
       throw new ActiveEventsBlockDeletionError();
-    await prisma.privacyRequest.createMany({
-      data: { id: randomUUID(), userId },
-      skipDuplicates: true,
-    });
-    const pending = await prisma.privacyRequest.findFirstOrThrow({
-      where: { userId, status: 'PENDING' },
-    });
+    const pending = await this.deletions.request(userId);
     response.status(202).json({
       id: pending.id,
       status: pending.status,
@@ -66,12 +63,24 @@ export class PrivacyController {
     const pending = await prisma.privacyRequest.findFirst({
       where: { userId, status: 'PENDING' },
     });
+    const job = pending
+      ? await prisma.privacyDeletionJob.findUnique({
+          where: { requestId: pending.id },
+          include: { steps: { select: { completedAt: true } } },
+        })
+      : null;
     response.set('cache-control', 'no-store').json(
       pending
         ? {
             id: pending.id,
             status: pending.status,
             requestedAt: pending.requestedAt,
+            progress: job
+              ? {
+                  completed: job.steps.filter((step) => step.completedAt).length,
+                  total: job.steps.length,
+                }
+              : null,
           }
         : { status: 'NONE' },
     );

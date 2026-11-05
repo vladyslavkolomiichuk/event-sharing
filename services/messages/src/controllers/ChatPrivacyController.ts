@@ -1,4 +1,7 @@
-import { PRIVACY_COMMAND_AUDIENCE } from '@event-sharing/contracts';
+import {
+  PRIVACY_COMMAND_AUDIENCES,
+  PRIVACY_COMMANDS,
+} from '@event-sharing/contracts';
 import { PrivacyCommandVerifier } from '@event-sharing/common';
 import type { RequestHandler } from 'express';
 import { env } from '../config/env.js';
@@ -11,7 +14,8 @@ export class ChatPrivacyController {
     private readonly verifier = new PrivacyCommandVerifier(
       internalJwks,
       env.AUTH_JWT_ISSUER,
-      PRIVACY_COMMAND_AUDIENCE,
+      PRIVACY_COMMAND_AUDIENCES.messages,
+      PRIVACY_COMMANDS.anonymizeChat,
     ),
     private readonly privacy = new ChatPrivacyRepository(),
   ) {}

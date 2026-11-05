@@ -9,6 +9,7 @@ export class PrivacyCommandVerifier {
     private readonly jwks: JWTVerifyGetKey,
     private readonly issuer: string,
     private readonly audience: string,
+    private readonly operation: PrivacyCommand['operation'],
   ) {}
 
   async verify(authorization?: string): Promise<PrivacyCommand | null> {
@@ -20,7 +21,8 @@ export class PrivacyCommandVerifier {
         audience: this.audience,
         maxTokenAge: '2 minutes',
       });
-      return PrivacyCommandSchema.parse(result.payload);
+      const command = PrivacyCommandSchema.parse(result.payload);
+      return command.operation === this.operation ? command : null;
     } catch {
       return null;
     }
