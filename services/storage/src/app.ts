@@ -18,6 +18,14 @@ export function createApp(
     limit: env.STORAGE_MAX_FILE_BYTES,
   });
   app.disable('x-powered-by');
+  app.get(
+    '/api/public/events/:eventId/avatar',
+    (_request, response, next) => {
+      response.set('Cache-Control', 'no-store');
+      next();
+    },
+    controller.getPublicEventAvatar,
+  );
   app.use(
     '/api/storage',
     (_request, response, next) => {

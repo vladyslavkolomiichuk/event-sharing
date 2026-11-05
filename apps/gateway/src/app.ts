@@ -27,6 +27,8 @@ export type GatewayAppDependencies = {
     messages: RequestHandler;
     eventLog: RequestHandler;
     storage: RequestHandler;
+    publicEvents: RequestHandler;
+    publicEventImages: RequestHandler;
   };
 };
 
@@ -66,6 +68,21 @@ export function createApp(dependencies: GatewayAppDependencies): Express {
     credentialRateLimiter.middleware(),
   );
   app.use('/auth', dependencies.authProxy);
+
+  const publicMapRateLimiter = new GatewayRateLimiter(60, 60_000);
+  const publicImageRateLimiter = new GatewayRateLimiter(300, 60_000);
+  app.use('/api/public/events', (request, response, next) => {
+    if (request.method !== 'GET') return next();
+    if (request.path === '/map')
+      return publicMapRateLimiter.middleware()(request, response, () =>
+        dependencies.serviceProxies.publicEvents(request, response, next),
+      );
+    if (/^\/[0-9a-f-]{36}\/avatar$/i.test(request.path))
+      return publicImageRateLimiter.middleware()(request, response, () =>
+        dependencies.serviceProxies.publicEventImages(request, response, next),
+      );
+    next();
+  });
 
   const authenticate = dependencies.authenticateBrowserSession;
   app.get(

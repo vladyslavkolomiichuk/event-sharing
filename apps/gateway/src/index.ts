@@ -71,6 +71,16 @@ const app = createApp({
       'Storage',
       45000,
     ).create(),
+    publicEvents: new ServiceProxy(
+      env.EVENTS_SERVICE_URL,
+      '/api/public/events',
+      'Events',
+    ).create(),
+    publicEventImages: new ServiceProxy(
+      env.STORAGE_SERVICE_URL,
+      '/api/public/events',
+      'Storage',
+    ).create(),
   },
 });
 

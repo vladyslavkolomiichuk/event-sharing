@@ -175,6 +175,13 @@ export class FileStorageService {
       throw new StorageError('The file was not found.', 'NOT_FOUND', 404);
     return file;
   }
+  async publicEventAvatar(eventId: string) {
+    await this.events.assertPublic(eventId);
+    const file = await this.files.eventImage(eventId, 'avatar');
+    if (!file)
+      throw new StorageError('The file was not found.', 'NOT_FOUND', 404);
+    return file;
+  }
   list(ownerId: string, cursor?: string) {
     return this.files.list(ownerId, cursor);
   }

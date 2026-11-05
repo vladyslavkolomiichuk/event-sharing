@@ -128,6 +128,12 @@ export class FileController {
     );
     this.send(response, file);
   };
+  getPublicEventAvatar: RequestHandler = async (request, response) => {
+    const file = await this.service.publicEventAvatar(
+      z.uuid().parse(request.params.eventId),
+    );
+    this.send(response, file);
+  };
   list: RequestHandler = async (request, response) => {
     const cursor = z.uuid().optional().parse(request.query.cursor);
     const page = await this.service.list(this.user(request).id, cursor);
