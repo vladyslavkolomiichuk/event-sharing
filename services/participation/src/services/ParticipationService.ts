@@ -7,6 +7,7 @@ import {
   type MembershipList,
   type UserRole,
 } from '@event-sharing/contracts';
+import { NotificationHttpClient } from '../clients/NotificationHttpClient.js';
 import { ForbiddenError } from '../domain/errors/ForbiddenError.js';
 import { PolicyNotFoundError } from '../domain/errors/PolicyNotFoundError.js';
 import type { Membership } from '../generated/prisma/client.js';
@@ -17,6 +18,7 @@ export class ParticipationService {
   constructor(
     private readonly policies: RegistrationPolicyRepository,
     private readonly participations: ParticipationRepository,
+    private readonly notifications = new NotificationHttpClient(),
   ) {}
 
   async availability(eventId: string): Promise<Availability> {
@@ -44,7 +46,10 @@ export class ParticipationService {
   }
 
   async join(eventId: string, userId: string): Promise<MembershipResponse> {
-    return this.toResponse(await this.participations.join(eventId, userId));
+    const membership = await this.participations.join(eventId, userId);
+    if (membership.lastMembershipEventId)
+      await this.notifications.notifyJoined(membership.lastMembershipEventId);
+    return this.toResponse(membership);
   }
 
   async leave(eventId: string, userId: string): Promise<MembershipResponse> {

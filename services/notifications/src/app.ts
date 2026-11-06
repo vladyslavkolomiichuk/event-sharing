@@ -1,5 +1,6 @@
 import express, { type Express } from 'express';
 import {
+  EventEnvelopeSchema,
   HealthResponseSchema,
   REALTIME_SIGNAL_TYPES,
 } from '@event-sharing/contracts';
@@ -11,6 +12,7 @@ import { notFound } from './middleware/not-found.js';
 import { requireInternalJwt } from './middleware/require-internal-jwt.js';
 import { notificationRoutes } from './routes/notification.routes.js';
 import { MessageService } from './services/MessageService.js';
+import { NotificationEventService } from './services/NotificationEventService.js';
 import { NotificationService } from './services/NotificationService.js';
 import { SystemMessageService } from './services/SystemMessageService.js';
 import type { NotificationRealtimeServer } from './realtime/NotificationRealtimeServer.js';
@@ -43,6 +45,15 @@ export function createApp(
       ),
     ),
   );
+
+  // Research control: same event handling as the Kafka consumer, called directly.
+  const events = new NotificationEventService(undefined, undefined, changed);
+  app.post('/internal/events', (request, response, next) => {
+    events
+      .apply(EventEnvelopeSchema.parse(request.body))
+      .then((result) => response.status(200).json({ result }))
+      .catch(next);
+  });
 
   app.get('/health', (_request, response) => {
     response

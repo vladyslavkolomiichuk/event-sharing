@@ -11,6 +11,7 @@ const EnvSchema = DatabaseServiceEnvSchema.extend({
   AUTH_JWT_ISSUER: z.url(),
   AUTH_JWT_AUDIENCE: z.string().min(1),
   KAFKA_BROKERS: z.string().min(1),
+  NOTIFICATIONS_SERVICE_URL: z.url(),
 });
 
 export const env = EnvSchema.parse({

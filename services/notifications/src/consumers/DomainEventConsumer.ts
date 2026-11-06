@@ -21,6 +21,8 @@ const topics = [
   EVENT_TOPICS.messages,
 ];
 
+// Research control: joins arrive over HTTP, so Kafka must not recover lost ones.
+const ignoredTypes = new Set<string>([EVENT_TYPES.userJoined]);
 const supportedTypes = new Set<string>([
   EVENT_TYPES.userRegistered,
   EVENT_TYPES.userRoleChanged,
@@ -85,7 +87,7 @@ export class DomainEventConsumer {
   private apply(event: EventEnvelope): Promise<unknown> {
     const topic = EVENT_ROUTES[event.eventType].topic;
     return this.privacy.run(event, async (event) => {
-      if (!supportedTypes.has(event.eventType)) {
+      if (!supportedTypes.has(event.eventType) || ignoredTypes.has(event.eventType)) {
         EventTrace.received('Notifications', topic, event, 'ignored');
         return;
       }

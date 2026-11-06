@@ -22,6 +22,7 @@ RUN DATABASE_URL=postgresql://build:build@localhost:5432/build \
   STORAGE_BACKUP_PATH=/data/backups \
   CLAMAV_HOST=localhost \
   CLAMAV_PORT=3310 \
+  NOTIFICATIONS_SERVICE_URL=http://localhost \
   PRIVACY_SERVICE_KEYS='{}' \
   SERVICE_BUS_KEYS=$(node -p "JSON.stringify(Object.fromEntries(['auth','events','participation','messages','notifications','users','storage','geo-search','event-log','gateway'].map((name) => [name, '0'.repeat(64)])))") \
   pnpm -r build
