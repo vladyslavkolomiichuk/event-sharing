@@ -30,9 +30,11 @@ const editable = ['DRAFT', 'REJECTED', 'APPROVED', 'PUBLISHED'];
 export function EventDetailView({
   id,
   section,
+  roomId,
 }: {
   id: string;
   section: EventSection;
+  roomId?: string;
 }) {
   const { user, loading: authLoading } = useAuth();
   const { unreadForEvent } = useChatUnread();
@@ -338,6 +340,7 @@ export function EventDetailView({
                 <EventChats
                   eventId={id}
                   eventTitle={event.title}
+                  initialRoomId={roomId}
                   canManage={groupManagementAvailable}
                   canArchive={isOwner}
                   readOnly={!['PUBLISHED', 'ONGOING'].includes(event.status)}

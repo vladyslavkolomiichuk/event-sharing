@@ -4,7 +4,10 @@ import { useEffect } from 'react';
 import { connectRealtime } from '@/lib/realtime/connectRealtime';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
-import { needsUsernameSelection } from '@event-sharing/contracts';
+import {
+  needsUsernameSelection,
+  RealtimeSignalSchema,
+} from '@event-sharing/contracts';
 
 export function MessagesRealtimeProvider({
   children,
@@ -21,16 +24,21 @@ export function MessagesRealtimeProvider({
       signalType: 'messages.changed',
       onConnected: () => window.dispatchEvent(new Event('messages:remote')),
       onSignal: (signal) => {
-        if (typeof signal.eventId !== 'string') return;
+        const parsed = RealtimeSignalSchema.safeParse(signal);
+        if (!parsed.success || parsed.data.type !== 'messages.changed') return;
+        const { eventId, roomId, message } = parsed.data;
         window.dispatchEvent(
           new CustomEvent('messages:remote', {
-            detail: {
-              eventId: signal.eventId,
-              roomId:
-                typeof signal.roomId === 'string' ? signal.roomId : undefined,
-            },
+            detail: { eventId, roomId },
           }),
         );
+        if (message && roomId) {
+          show(
+            `${message.roomName}\n${message.senderName}: ${message.body}`,
+            'info',
+            `/events/${eventId}?view=chats&room=${roomId}`,
+          );
+        }
       },
       onDisconnected: () =>
         show('Live chats are disconnected. Reconnecting…', 'warning'),

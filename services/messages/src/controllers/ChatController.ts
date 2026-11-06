@@ -3,6 +3,7 @@ import {
   CreateChatRoomSchema,
   MarkChatReadSchema,
   SendChatMessageSchema,
+  UpdateChatNotificationPreferenceSchema,
   UpdateChatRoomSchema,
 } from '@event-sharing/contracts';
 import type { RequestHandler } from 'express';
@@ -60,6 +61,22 @@ export class ChatController {
         user.id,
         user.role,
         input,
+        request.get('authorization') ?? '',
+      ),
+    );
+  };
+  updateNotificationPreference: RequestHandler = async (request, response) => {
+    const user = this.user(request);
+    const { enabled } = UpdateChatNotificationPreferenceSchema.parse(
+      request.body,
+    );
+    response.json(
+      await this.service.updateNotificationPreference(
+        z.uuid().parse(request.params.eventId),
+        z.uuid().parse(request.params.roomId),
+        user.id,
+        user.role,
+        enabled,
         request.get('authorization') ?? '',
       ),
     );

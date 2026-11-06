@@ -151,8 +151,19 @@ export class ChatRepository {
       },
       include: {
         _count: { select: { members: { where: { status: 'ACTIVE' } } } },
+        notificationPreferences: {
+          where: { userId },
+          select: { enabled: true },
+        },
       },
       orderBy: { createdAt: 'asc' },
+    });
+  }
+  setNotificationPreference(roomId: string, userId: string, enabled: boolean) {
+    return prisma.chatNotificationPreference.upsert({
+      where: { roomId_userId: { roomId, userId } },
+      create: { roomId, userId, enabled },
+      update: { enabled },
     });
   }
   latestMessage(roomId: string, visibleSince?: Date) {
@@ -545,7 +556,12 @@ export class ChatRepository {
       if (existing) {
         if (existing.roomId !== roomId || existing.body !== body)
           throw new MessageConflictError();
-        return { message: existing, created: false };
+        return {
+          message: existing,
+          created: false,
+          recipients: [],
+          toastRecipients: [],
+        };
       }
       const recent = await transaction.chatMessage.count({
         where: { senderId, createdAt: { gte: new Date(Date.now() - 60_000) } },
@@ -573,24 +589,40 @@ export class ChatRepository {
               })
             ).map((member) => member.userId)
           : eventMembers;
-      for (const recipientId of new Set([...recipients, event.organizerId])) {
-        if (recipientId === senderId) continue;
-        await transaction.outboxEvent.create({
-          data: {
-            aggregateId: eventId,
-            eventType: EVENT_TYPES.chatMessageCreated,
-            payload: ChatMessageCreatedPayloadSchema.parse({
-              eventId,
-              roomId,
-              roomName: room.name,
-              messageId: message.id,
-              senderId,
-              recipientId,
-            }),
-          },
-        });
-      }
-      return { message, created: true };
+      await transaction.outboxEvent.create({
+        data: {
+          aggregateId: roomId,
+          eventType: EVENT_TYPES.chatMessageCreated,
+          payload: ChatMessageCreatedPayloadSchema.parse({
+            eventId,
+            roomId,
+            roomName: room.name,
+            messageId: message.id,
+            senderId,
+          }),
+        },
+      });
+      const allRecipients = [
+        ...new Set([...recipients, event.organizerId, senderId]),
+      ];
+      const muted = await transaction.chatNotificationPreference.findMany({
+        where: {
+          roomId,
+          userId: { in: allRecipients },
+          enabled: false,
+        },
+        select: { userId: true },
+      });
+      const mutedIds = new Set(muted.map((preference) => preference.userId));
+      return {
+        message,
+        created: true,
+        recipients: allRecipients,
+        toastRecipients: allRecipients.filter(
+          (recipientId) =>
+            recipientId !== senderId && !mutedIds.has(recipientId),
+        ),
+      };
     });
   }
   userNames(ids: string[]) {

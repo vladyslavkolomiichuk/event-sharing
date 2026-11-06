@@ -9,6 +9,10 @@ export function chatRoutes(controller: ChatController): Router {
   router.get('/events/:eventId/rooms', controller.listRooms);
   router.post('/events/:eventId/rooms', controller.createRoom);
   router.patch('/events/:eventId/rooms/:roomId', controller.updateRoom);
+  router.patch(
+    '/events/:eventId/rooms/:roomId/notifications',
+    controller.updateNotificationPreference,
+  );
   router.get('/events/:eventId/rooms/:roomId/members', controller.listMembers);
   router.post('/events/:eventId/rooms/:roomId/members', controller.addMembers);
   router.delete(

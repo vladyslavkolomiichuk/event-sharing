@@ -4,6 +4,7 @@ import type {
   ChatRoom,
   ChatRoomMember,
   CreateChatRoom,
+  UpdateChatNotificationPreference,
   UpdateChatRoom,
 } from '@event-sharing/contracts';
 import { gateway } from './GatewayClient';
@@ -59,6 +60,16 @@ export class MessagesClient {
     return gateway.patch(
       `/api/messages/events/${eventId}/rooms/${roomId}/archive`,
       {},
+    );
+  }
+  updateRoomNotifications(
+    eventId: string,
+    roomId: string,
+    enabled: boolean,
+  ): Promise<UpdateChatNotificationPreference> {
+    return gateway.patch(
+      `/api/messages/events/${eventId}/rooms/${roomId}/notifications`,
+      { enabled },
     );
   }
   messages(

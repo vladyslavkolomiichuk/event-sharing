@@ -37,7 +37,6 @@ const supportedTypes = new Set<string>([
   EVENT_TYPES.userJoined,
   EVENT_TYPES.userLeft,
   EVENT_TYPES.chatMembershipChanged,
-  EVENT_TYPES.chatMessageCreated,
 ]);
 
 export class DomainEventConsumer {

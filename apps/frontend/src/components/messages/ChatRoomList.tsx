@@ -141,6 +141,7 @@ export function ChatRoomList({
                     : room.status === 'READ_ONLY'
                       ? ' (Read-only)'
                       : ''}
+                  {!room.notificationsEnabled ? ' (Muted)' : ''}
                 </span>
                 <span className="shrink-0 text-[11px] text-neutral-500">
                   {room.lastMessage

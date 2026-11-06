@@ -16,6 +16,7 @@ export const ChatRoomSchema = z.strictObject({
   memberCount: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
   archivedAt: z.iso.datetime().nullable(),
+  notificationsEnabled: z.boolean(),
   unreadCount: z.number().int().nonnegative(),
   lastMessage: z
     .strictObject({
@@ -59,6 +60,9 @@ export const SendChatMessageSchema = z.strictObject({
 export const MarkChatReadSchema = z.strictObject({
   messageId: z.uuid(),
 });
+export const UpdateChatNotificationPreferenceSchema = z.strictObject({
+  enabled: z.boolean(),
+});
 export const ChatOverviewSchema = z.strictObject({
   totalUnread: z.number().int().nonnegative(),
   events: z.array(
@@ -78,3 +82,6 @@ export type ChatRoomAccess = z.infer<typeof ChatRoomAccessSchema>;
 export type ChatRoomStatus = z.infer<typeof ChatRoomStatusSchema>;
 export type CreateChatRoom = z.infer<typeof CreateChatRoomSchema>;
 export type UpdateChatRoom = z.infer<typeof UpdateChatRoomSchema>;
+export type UpdateChatNotificationPreference = z.infer<
+  typeof UpdateChatNotificationPreferenceSchema
+>;

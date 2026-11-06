@@ -55,7 +55,6 @@ export const notificationPresentation: Record<
     badge: action,
   },
   CHAT_GROUP_CHANGED: { label: 'Chat group', tone: 'info', badge: info },
-  CHAT_MESSAGE: { label: 'Chat message', tone: 'info', badge: info },
   ORGANIZER_REQUEST: {
     label: 'Organizer request',
     tone: 'action_required',

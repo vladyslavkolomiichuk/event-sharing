@@ -9,7 +9,6 @@ import {
   UserRegisteredPayloadSchema,
   FriendEventPayloadSchema,
   ChatMembershipChangedPayloadSchema,
-  ChatMessageCreatedPayloadSchema,
   InvitationSentPayloadSchema,
   UserRoleChangedPayloadSchema,
   OrganizerRequestSubmittedPayloadSchema,
@@ -666,40 +665,6 @@ export class NotificationEventService {
                     : `/events/${data.eventId}?view=chats`,
                 senderId: data.actorId,
                 eventId: data.eventId,
-                sourceEventId: event.eventId,
-              },
-            ],
-            recipients,
-          );
-        }
-        return 'processed';
-      }
-      if (
-        event.producer === 'messages' &&
-        event.eventType === EVENT_TYPES.chatMessageCreated
-      ) {
-        const data = ChatMessageCreatedPayloadSchema.parse(event.payload);
-        const recipient = await this.projections.getUser(
-          transaction,
-          data.recipientId,
-        );
-        if (recipient?.notificationsEnabled !== false) {
-          const sender = await this.projections.getUser(
-            transaction,
-            data.senderId,
-          );
-          await this.createNotifications(
-            transaction,
-            [
-              {
-                recipientId: data.recipientId,
-                type: 'CHAT_MESSAGE',
-                title: `New message in ${data.roomName}`,
-                body: `${sender?.name ?? 'A member'} sent a message.`,
-                href: `/events/${data.eventId}?view=chats`,
-                senderId: data.senderId,
-                eventId: data.eventId,
-                messageId: data.messageId,
                 sourceEventId: event.eventId,
               },
             ],

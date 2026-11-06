@@ -9,14 +9,15 @@ export default async function EventPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; room?: string }>;
 }) {
   const { id } = await params;
-  const { view } = await searchParams;
+  const { view, room } = await searchParams;
   return (
     <RequireAuth>
       <EventDetailView
         id={id}
+        roomId={room}
         section={
           EVENT_SECTIONS.includes(view as EventSection)
             ? (view as EventSection)

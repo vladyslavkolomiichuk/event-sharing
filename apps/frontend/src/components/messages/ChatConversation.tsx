@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { ChatGroupSettings } from './ChatGroupSettings';
+import { useToast } from '@/contexts/ToastContext';
 
 export function ChatConversation({
   eventId,
@@ -33,11 +34,16 @@ export function ChatConversation({
   onArchive: (roomId: string) => Promise<void>;
   onBack: () => void;
 }) {
+  const { show } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [before, setBefore] = useState<string | null>(null);
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [notificationBusy, setNotificationBusy] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    room.notificationsEnabled,
+  );
   const [error, setError] = useState('');
   const [accessDenied, setAccessDenied] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -49,6 +55,10 @@ export function ChatConversation({
   const refreshIdRef = useRef(0);
   const activityRef = useRef(onActivity);
   activityRef.current = onActivity;
+
+  useEffect(() => {
+    setNotificationsEnabled(room.notificationsEnabled);
+  }, [room.id, room.notificationsEnabled]);
 
   function denyAccess() {
     refreshIdRef.current++;
@@ -247,9 +257,38 @@ export function ChatConversation({
     }
   }
 
+  async function toggleNotifications() {
+    const enabled = !notificationsEnabled;
+    setNotificationBusy(true);
+    setError('');
+    try {
+      const result = await messagesClient.updateRoomNotifications(
+        eventId,
+        room.id,
+        enabled,
+      );
+      setNotificationsEnabled(result.enabled);
+      activityRef.current();
+      show(
+        result.enabled
+          ? `Notifications enabled for ${room.name}.`
+          : `Notifications muted for ${room.name}.`,
+        'success',
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'Could not update chat notifications.',
+      );
+    } finally {
+      setNotificationBusy(false);
+    }
+  }
+
   return (
     <div className="flex min-h-[36rem] min-w-0 flex-1 flex-col bg-neutral-100 lg:h-[42rem]">
-      <div className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-white px-5 py-3">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
@@ -266,16 +305,32 @@ export function ChatConversation({
             <p className="truncate text-xs text-neutral-500">{eventTitle}</p>
           </div>
         </div>
-        {!accessDenied && canArchive && room.status !== 'ARCHIVED' && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={busy}
-            onClick={() => void onArchive(room.id)}
-          >
-            Archive room
-          </Button>
+        {!accessDenied && (
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              aria-pressed={!notificationsEnabled}
+              disabled={notificationBusy}
+              onClick={() => void toggleNotifications()}
+            >
+              {notificationsEnabled
+                ? 'Mute notifications'
+                : 'Enable notifications'}
+            </Button>
+            {canArchive && room.status !== 'ARCHIVED' && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void onArchive(room.id)}
+              >
+                Archive room
+              </Button>
+            )}
+          </div>
         )}
       </div>
       {!accessDenied &&

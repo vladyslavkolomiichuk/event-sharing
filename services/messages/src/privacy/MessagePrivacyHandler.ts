@@ -19,6 +19,11 @@ export class MessagePrivacyHandler extends ServicePrivacyHandler {
       query:
         'SELECT * FROM chat_read_state WHERE "userId" = $1 ORDER BY "roomId"',
     },
+    {
+      name: 'notificationPreferences',
+      query:
+        'SELECT * FROM chat_notification_preference WHERE "userId" = $1 ORDER BY "roomId"',
+    },
   ];
 
   protected async erase(tx: PoolClient, work: PrivacyWork) {
@@ -46,7 +51,11 @@ export class MessagePrivacyHandler extends ServicePrivacyHandler {
       'UPDATE event_projection SET "organizerId" = $2 WHERE "organizerId" = $1',
       [work.userId, ANONYMOUS_USER_ID],
     );
-    for (const table of ['chat_read_state', 'chat_room_member'])
+    for (const table of [
+      'chat_read_state',
+      'chat_room_member',
+      'chat_notification_preference',
+    ])
       await tx.query(
         `DELETE FROM ${table} WHERE "userId" = $1 OR "roomId" IN (SELECT id FROM chat_room WHERE "eventId" = ANY($2::uuid[]))`,
         [work.userId, work.removedEventIds],

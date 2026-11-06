@@ -24,11 +24,12 @@ export function createApp(
     requireInternalJwt,
     chatRoutes(
       new ChatController(
-        new ChatService(undefined, (userIds, eventId, roomId) =>
+        new ChatService(undefined, (userIds, eventId, roomId, message) =>
           realtime?.publish(userIds, {
             type: REALTIME_SIGNAL_TYPES.messagesChanged,
             eventId,
             roomId,
+            message,
           }),
         ),
       ),

@@ -6,7 +6,7 @@ export const ChatMessageCreatedPayloadSchema = z.strictObject({
   roomName: z.string(),
   messageId: z.uuid(),
   senderId: z.uuid(),
-  recipientId: z.uuid(),
+  recipientId: z.uuid().optional(),
 });
 
 export type ChatMessageCreatedPayload = z.infer<

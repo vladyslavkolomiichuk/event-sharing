@@ -3,6 +3,7 @@ import {
   ChatOverviewSchema,
   ChatRoomMemberSchema,
   ChatRoomSchema,
+  type ChatRealtimeMessage,
   type CreateChatRoom,
   type UpdateChatRoom,
   type UserRole,
@@ -22,6 +23,7 @@ export class ChatService {
       userIds: string[],
       eventId: string,
       roomId?: string,
+      message?: ChatRealtimeMessage,
     ) => void = () => {},
     private readonly participation = new ParticipationMemberClient(),
     private readonly events = new EventDirectoryClient(),
@@ -439,16 +441,52 @@ export class ChatService {
       access.joinedAt,
     );
     if (room.status !== 'ACTIVE') throw new ChatUnavailableError();
-    const { message, created } = await this.repository.send(
-      roomId,
-      eventId,
-      userId,
-      body,
-      clientMessageId,
-    );
-    if (created) await this.changed(eventId, roomId);
+    const { message, created, recipients, toastRecipients } =
+      await this.repository.send(
+        roomId,
+        eventId,
+        userId,
+        body,
+        clientMessageId,
+      );
     const user = (await this.repository.userNames([userId]))[0];
-    return this.messageResponse(message, user?.name ?? 'User');
+    const senderName = user?.name ?? 'User';
+    if (created) {
+      const toastRecipientIds = new Set(toastRecipients);
+      const silentRecipients = recipients.filter(
+        (recipientId) => !toastRecipientIds.has(recipientId),
+      );
+      this.onChanged(silentRecipients, eventId, roomId);
+      this.onChanged(toastRecipients, eventId, roomId, {
+        id: message.id,
+        roomName: room.name,
+        senderId: userId,
+        senderName,
+        body: message.body,
+      });
+    }
+    return this.messageResponse(message, senderName);
+  }
+
+  async updateNotificationPreference(
+    eventId: string,
+    roomId: string,
+    userId: string,
+    role: UserRole,
+    enabled: boolean,
+    authorization: string,
+  ) {
+    const access = await this.access(eventId, userId, role, authorization);
+    await this.roomAccess(
+      eventId,
+      roomId,
+      userId,
+      access.owner,
+      access.joinedAt,
+    );
+    await this.repository.setNotificationPreference(roomId, userId, enabled);
+    this.onChanged([userId], eventId, roomId);
+    return { enabled };
   }
 
   private async prepareMembers(
@@ -479,6 +517,7 @@ export class ChatService {
       createdAt: Date;
       archivedAt: Date | null;
       _count?: { members: number };
+      notificationPreferences?: { enabled: boolean }[];
     },
     unreadCount = 0,
     lastMessage: {
@@ -496,6 +535,7 @@ export class ChatService {
       memberCount: room._count?.members ?? 0,
       createdAt: room.createdAt.toISOString(),
       archivedAt: room.archivedAt?.toISOString() ?? null,
+      notificationsEnabled: room.notificationPreferences?.[0]?.enabled ?? true,
       unreadCount,
       lastMessage,
     });

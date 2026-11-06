@@ -96,10 +96,23 @@ model ChatRoom {
   messages   ChatMessage[]
   reads      ChatReadState[]
   members    ChatRoomMember[]
+  notificationPreferences ChatNotificationPreference[]
 
   @@unique([eventId, name])
   @@index([eventId, createdAt])
   @@map("chat_room")
+}
+
+model ChatNotificationPreference {
+  roomId    String   @db.Uuid
+  userId    String   @db.Uuid
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@index([userId])
+  @@map("chat_notification_preference")
 }
 
 model ChatRoomMember {
@@ -131,7 +144,7 @@ model ChatMessage {
   roomId    String   @db.Uuid
   eventId   String   @db.Uuid
   senderId  String?  @db.Uuid
-  clientMessageId String? @db.Uuid
+  clientMessageId String?  @db.Uuid
   body      String
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   room      ChatRoom @relation(fields: [roomId], references: [id])

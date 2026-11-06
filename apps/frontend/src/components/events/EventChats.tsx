@@ -14,12 +14,14 @@ import { invitationClient } from '@/lib/api/InvitationClient';
 export function EventChats({
   eventId,
   eventTitle,
+  initialRoomId,
   canManage,
   canArchive,
   readOnly,
 }: {
   eventId: string;
   eventTitle: string;
+  initialRoomId?: string;
   canManage: boolean;
   canArchive: boolean;
   readOnly: boolean;
@@ -34,6 +36,7 @@ export function EventChats({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktop, setDesktop] = useState(false);
   const roomsRequest = useRef(0);
+  const appliedRoomId = useRef('');
   const selectedRoom = rooms.find((room) => room.id === selectedId);
 
   useEffect(() => {
@@ -50,11 +53,22 @@ export function EventChats({
       const page = await messagesClient.rooms(eventId);
       if (roomsRequest.current !== currentRequest) return;
       setRooms(page.items);
-      setSelectedId((current) =>
-        page.items.some((room) => room.id === current)
+      const deepLinkedRoom =
+        initialRoomId &&
+        appliedRoomId.current !== initialRoomId &&
+        page.items.some((room) => room.id === initialRoomId)
+          ? initialRoomId
+          : '';
+      if (deepLinkedRoom) {
+        appliedRoomId.current = deepLinkedRoom;
+        setMobileOpen(true);
+      }
+      setSelectedId((current) => {
+        if (deepLinkedRoom) return deepLinkedRoom;
+        return page.items.some((room) => room.id === current)
           ? current
-          : (page.items[0]?.id ?? ''),
-      );
+          : (page.items[0]?.id ?? '');
+      });
       setLocked(false);
       setError('');
     } catch (cause) {
@@ -77,7 +91,7 @@ export function EventChats({
         cause instanceof Error ? cause.message : 'Could not load event chats.',
       );
     }
-  }, [eventId]);
+  }, [eventId, initialRoomId]);
 
   useEffect(() => {
     void refreshRooms();

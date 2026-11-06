@@ -52,7 +52,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ show }}>
       {children}
       <div
-        className="pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-[100] flex w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-3"
+        className="pointer-events-none fixed right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-[100] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3"
         aria-live="polite"
       >
         {items.map((item) => (
@@ -62,9 +62,19 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             className={`pointer-events-auto rounded-lg border p-4 shadow-lg ${colors[item.tone]}`}
           >
             <div className="flex items-start justify-between gap-4">
-              <p className="flex-1 text-center text-sm leading-6">
-                {item.message}
-              </p>
+              {item.href ? (
+                <Link
+                  href={item.href}
+                  className="flex-1 whitespace-pre-line text-left text-sm leading-6"
+                  onClick={() => dismiss(item.id)}
+                >
+                  {item.message}
+                </Link>
+              ) : (
+                <p className="flex-1 whitespace-pre-line text-left text-sm leading-6">
+                  {item.message}
+                </p>
+              )}
               <button
                 type="button"
                 aria-label="Dismiss message"
@@ -74,15 +84,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 Close
               </button>
             </div>
-            {item.href && (
-              <Link
-                href={item.href}
-                className="mt-2 inline-block text-sm font-semibold underline"
-                onClick={() => dismiss(item.id)}
-              >
-                Open
-              </Link>
-            )}
           </div>
         ))}
       </div>
