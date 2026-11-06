@@ -1,15 +1,18 @@
 // Runs named experiments on the isolated stack, then removes that stack.
 import { run as delivery } from './experiments/exp-01-delivery.js';
 import { run as failures } from './experiments/exp-02-failures.js';
-import { run as geoSearch } from './experiments/exp-03-geo-search.js';
+import { run as geoSearch, runApi } from './experiments/exp-03-geo-search.js';
 import { run as consistency } from './experiments/exp-04-consistency.js';
+import { run as lifecycle } from './experiments/exp-04-lifecycle.js';
 import { destroyStack } from './lib/stack.js';
 
 const EXPERIMENTS: Record<string, () => Promise<void>> = {
   'exp-01': delivery,
   'exp-02': failures,
   'exp-03': geoSearch,
+  'exp-03-api': runApi,
   'exp-04': consistency,
+  'exp-04-lifecycle': lifecycle,
 };
 
 const requested = process.argv.slice(2).filter((name) => name !== '--');

@@ -148,6 +148,35 @@ async function brokerOutage({ users, nextEvents }: Context) {
   });
 }
 
+// Kills the publisher mid-drain, when it may send an event again after restarting.
+async function publisherFailure({ users, nextEvents }: Context) {
+  const eventIds = await nextEvents();
+  const baseline = joinedNotifications();
+  const load = await runLoad(joinPairs(users, eventIds, BROKER_LOAD), {
+    vus: 20,
+  });
+  killService('participation');
+  const pendingAtFailure = pendingOutbox();
+  await sleep(5_000);
+  const restartedAt = Date.now();
+  startService('participation');
+  await waitForDelivery(baseline, eventIds);
+  const fullDeliverySeconds = seconds(restartedAt);
+  const stages = deliveryStages(eventIds);
+  return failureRow('publisher killed', {
+    N: BROKER_LOAD,
+    accepted: load.accepted,
+    failed: load.failed,
+    failedStatuses: load.failedStatuses,
+    committed: stages.expected,
+    delivered: stages.delivered,
+    lost: stages.lost,
+    duplicates: stages.duplicates,
+    pendingAtFailure,
+    fullDeliverySeconds,
+  });
+}
+
 function consumerLag(): number[] {
   return consumerGroups(CONSUMER_GROUP, ['--describe'])
     .split('\n')
@@ -202,7 +231,7 @@ async function repeatedDelivery() {
 }
 
 export async function run(): Promise<void> {
-  resetStack();
+  await resetStack();
   const staff = await seedStaff();
   const users = await seedUsers(USERS);
   const context: Context = {
@@ -224,5 +253,7 @@ export async function run(): Promise<void> {
   if (mode === 'http') return;
   await waitForQuietPipeline();
   add(await brokerOutage(context));
+  await waitForQuietPipeline();
+  add(await publisherFailure(context));
   add(await repeatedDelivery());
 }

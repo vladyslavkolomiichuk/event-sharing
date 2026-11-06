@@ -16,9 +16,21 @@ const WORK_DIR = resolve(RESEARCH_DIR, 'results/tmp');
 
 export type LoadRequest = {
   method: 'POST' | 'DELETE';
-  eventId: string;
+  path: string;
+  body?: string;
   cookie: string;
 };
+
+export const joinRequest = (
+  eventId: string,
+  cookie: string,
+  method: 'POST' | 'DELETE' = 'POST',
+): LoadRequest => ({
+  method,
+  path: `/api/participation/events/${eventId}/join`,
+  ...(method === 'POST' ? { body: '{}' } : {}),
+  cookie,
+});
 
 export type LoadSummary = {
   httpP50: number;
@@ -42,11 +54,12 @@ export function joinPairs(
 ): LoadRequest[] {
   if (size > users.length * eventIds.length)
     throw new Error('Not enough users and events for unique pairs.');
-  return Array.from({ length: size }, (_, index) => ({
-    method: 'POST' as const,
-    eventId: eventIds[index % eventIds.length]!,
-    cookie: users[Math.floor(index / eventIds.length)]!.cookie,
-  }));
+  return Array.from({ length: size }, (_, index) =>
+    joinRequest(
+      eventIds[index % eventIds.length]!,
+      users[Math.floor(index / eventIds.length)]!.cookie,
+    ),
+  );
 }
 
 function sampleResources() {

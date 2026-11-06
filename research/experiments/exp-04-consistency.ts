@@ -1,7 +1,7 @@
 // EXP-04: capacity invariants under concurrent joins and convergence of projections.
 import { seedEvents, seedStaff, seedUsers, type User } from '../lib/api.js';
 import { waitForQuietPipeline } from '../lib/delivery.js';
-import { runLoad, type LoadRequest } from '../lib/load.js';
+import { joinRequest, runLoad, type LoadRequest } from '../lib/load.js';
 import { round, saveTable, seededRandom } from '../lib/report.js';
 import { count, isFinal, resetStack, sql, waitUntil } from '../lib/stack.js';
 
@@ -21,7 +21,7 @@ const INVARIANT_VIOLATIONS = `
   HAVING p.occupied > p.capacity OR p.occupied <> count(m."userId")`;
 
 const joins = (users: User[], eventId: string): LoadRequest[] =>
-  users.map(({ cookie }) => ({ method: 'POST', eventId, cookie }));
+  users.map(({ cookie }) => joinRequest(eventId, cookie));
 
 const joinedCount = (eventId: string) =>
   count(
@@ -65,7 +65,7 @@ function projectionDifferences(eventIds: string[]): number {
 }
 
 export async function run(): Promise<void> {
-  resetStack();
+  await resetStack();
   const staff = await seedStaff();
   const users = await seedUsers(Math.max(...ATTEMPTS));
 
@@ -124,11 +124,12 @@ export async function run(): Promise<void> {
     items[Math.floor(random() * items.length)]!;
   const operations = Array.from(
     { length: RANDOM_OPERATIONS },
-    (): LoadRequest => ({
-      method: random() < 0.7 ? 'POST' : 'DELETE',
-      eventId: pick(eventIds),
-      cookie: pick(users).cookie,
-    }),
+    (): LoadRequest =>
+      joinRequest(
+        pick(eventIds),
+        pick(users).cookie,
+        random() < 0.7 ? 'POST' : 'DELETE',
+      ),
   );
   const load = await runLoad(operations, { vus: 20 });
   const initialDifferences = projectionDifferences(eventIds);

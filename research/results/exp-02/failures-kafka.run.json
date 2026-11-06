@@ -1,6 +1,7 @@
 {
   "profile": "pilot",
-  "finishedAt": "2026-11-06T14:44:25.080Z",
-  "commit": "e33c12f9986b37c0f8de7777f813a14e747da853",
-  "uncommittedFiles": 17
+  "mode": "kafka",
+  "finishedAt": "2026-11-06T16:47:27.630Z",
+  "commit": "266e86f041f7b0b056852f1ca450cdec2f7f699e",
+  "uncommittedFiles": 21
 }

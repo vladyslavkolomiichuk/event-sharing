@@ -12,7 +12,7 @@ First, build the project once:
 pnpm docker:up
 ```
 
-Run all experiments with small test sizes:
+Run all experiments with small test sizes (each run stops if a step fails):
 
 ```bash
 pnpm research
@@ -57,7 +57,7 @@ The test copy starts by itself and is deleted when the run ends.
 | Code | Question | Results |
 | --- | --- | --- |
 | EXP-01 | How fast does a user get a reply, and how long does the notification take? | `results/exp-01` |
-| EXP-02 | Are notifications lost or doubled when a service or Kafka stops? | `results/exp-02` |
+| EXP-02 | Are notifications lost or doubled when a service, the publisher, or Kafka stops? | `results/exp-02` |
 | EXP-03 | How much faster is map search with an index, and are the results correct? | `results/exp-03` |
 | EXP-04 | Can an event get too many participants? Do all services end up with the same data? | `results/exp-04` |
 

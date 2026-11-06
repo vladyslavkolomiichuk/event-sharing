@@ -28,7 +28,7 @@ async function measure(
   repeat: number,
   rate?: number,
 ) {
-  resetStack();
+  await resetStack();
   const staff = await seedStaff();
   const users = await seedUsers(USERS);
   const [warmUpEvent = ''] = await seedEvents(staff, 1, USERS);

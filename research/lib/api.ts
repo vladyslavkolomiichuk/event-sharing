@@ -98,9 +98,10 @@ export async function seedStaff(): Promise<Staff> {
 }
 
 // Runs the real lifecycle, so Participation learns about the event through Kafka.
-async function createOpenEvent(
+export async function createOpenEvent(
   { admin, organizer }: Staff,
   capacity: number,
+  overrides: Record<string, unknown> = {},
 ): Promise<string> {
   const created = await call(organizer, 'POST', '/api/events', {
     title: 'Research event',
@@ -116,6 +117,7 @@ async function createOpenEvent(
       visibility: 'PUBLIC',
     },
     participantLimit: capacity,
+    ...overrides,
   });
   if (created.status !== 201)
     throw new Error(`Create event: ${JSON.stringify(created.json)}`);

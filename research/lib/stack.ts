@@ -66,7 +66,7 @@ export function destroyStack(): void {
   spawnSync('docker', ['network', 'rm', PROXY_NETWORK], { stdio: 'ignore' });
 }
 
-export function resetStack(): void {
+export async function resetStack(): Promise<void> {
   destroyStack();
   execFileSync('docker', [
     'network',
@@ -76,6 +76,12 @@ export function resetStack(): void {
     PROXY_NETWORK,
   ]);
   compose(['up', '-d', '--no-build', '--wait', ...SERVICES]);
+  // Healthy only means the process runs, so wait for a real request through Gateway.
+  const ready = await waitUntil(async () => {
+    const response = await fetch(`${GATEWAY_URL}/auth/get-session`);
+    return response.status === 200;
+  }, 120_000);
+  if (!ready) throw new Error('Gateway is not answering requests.');
 }
 
 // SIGKILL is deliberate: the audit saw a process survive SIGTERM and keep consuming.

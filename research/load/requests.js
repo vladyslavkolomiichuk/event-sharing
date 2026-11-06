@@ -41,8 +41,8 @@ export default function () {
   const request = requests[index];
   const response = http.request(
     request.method,
-    `${__ENV.GATEWAY_URL}/api/participation/events/${request.eventId}/join`,
-    request.method === 'POST' ? '{}' : null,
+    `${__ENV.GATEWAY_URL}${request.path}`,
+    request.body ?? null,
     {
       headers: {
         cookie: request.cookie,

@@ -1,6 +1,8 @@
 // EXP-03: GiST against sequential scan on the query used by SearchRepository.
+import { call, seedUsers } from '../lib/api.js';
+import { runLoad, type LoadRequest } from '../lib/load.js';
 import { round, saveTable, seededRandom, stats } from '../lib/report.js';
-import { isFinal, resetStack, sql } from '../lib/stack.js';
+import { count, isFinal, resetStack, sql } from '../lib/stack.js';
 
 const DATABASE = 'geo_search_db';
 const SIZES = isFinal ? [10_000, 100_000, 500_000] : [10_000, 100_000];
@@ -196,7 +198,7 @@ const percent = (part: number, total: number) =>
   total === 0 ? 'n/a' : round((100 * part) / total, 3);
 
 export async function run(): Promise<void> {
-  resetStack();
+  await resetStack();
   const rows = [];
   for (const distribution of Object.keys(DISTRIBUTIONS)) {
     const origins = originsFor(distribution);
@@ -249,4 +251,56 @@ export async function run(): Promise<void> {
     }
   }
   saveTable('exp-03', 'geo-search', rows);
+}
+
+const API_EVENTS = isFinal ? 100_000 : 10_000;
+const API_REQUESTS = isFinal ? 5_000 : 1_000;
+const API_VUS = 20;
+
+// The same search through Gateway, with session check and search.performed event.
+export async function runApi(): Promise<void> {
+  await resetStack();
+  const users = await seedUsers(API_VUS);
+  for (const user of users)
+    await call(user, 'PUT', '/api/search/preference', { mode: 'CITY' });
+  const rows = [];
+  for (const distribution of Object.keys(DISTRIBUTIONS)) {
+    loadEvents(distribution, API_EVENTS);
+    const origins = originsFor(distribution);
+    for (const radius of RADII_KM) {
+      const requests = Array.from(
+        { length: API_REQUESTS },
+        (_, index): LoadRequest => ({
+          method: 'POST',
+          path: '/api/search/events',
+          body: JSON.stringify({
+            ...origins[index % origins.length],
+            radiusMeters: radius * 1000,
+            locationSource: 'CITY',
+            sort: 'distance',
+            limit: 20,
+          }),
+          cookie: users[index % users.length]!.cookie,
+        }),
+      );
+      const load = await runLoad(requests, { vus: API_VUS });
+      rows.push({
+        distribution,
+        events: API_EVENTS,
+        radiusKm: radius,
+        httpP50: round(load.httpP50),
+        httpP95: round(load.httpP95),
+        requestsPerSecond: round(load.requestsPerSecond),
+        accepted: load.accepted,
+        rejected: load.rejected,
+        failed: load.failed,
+        failedStatuses: load.failedStatuses,
+        pendingSearchEvents: count(
+          DATABASE,
+          'SELECT count(*) FROM outbox_event WHERE "publishedAt" IS NULL',
+        ),
+      });
+    }
+  }
+  saveTable('exp-03', 'geo-search-api', rows);
 }
