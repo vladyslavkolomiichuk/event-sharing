@@ -10,18 +10,12 @@
   "scripts": {
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm build && pnpm -r --if-present typecheck && tsc -p scripts/tsconfig.json --noEmit",
-    "dev:backend": "pnpm build && pnpm --parallel --filter \"./services/**\" --filter \"./apps/gateway\" dev",
-    "start:backend": "pnpm build && pnpm --parallel --filter \"./services/**\" --filter \"./apps/gateway\" start",
-    "dev:core": "pnpm build && pnpm --parallel --filter @event-sharing/auth --filter @event-sharing/gateway --filter @event-sharing/users --filter @event-sharing/events --filter @event-sharing/geo-search --filter @event-sharing/participation --filter @event-sharing/notifications --filter @event-sharing/messages --filter @event-sharing/event-log dev",
-    "start:core": "pnpm build && pnpm --parallel --filter @event-sharing/auth --filter @event-sharing/gateway --filter @event-sharing/users --filter @event-sharing/events --filter @event-sharing/geo-search --filter @event-sharing/participation --filter @event-sharing/notifications --filter @event-sharing/messages --filter @event-sharing/event-log start",
     "dev:frontend": "pnpm --filter @event-sharing/contracts build && pnpm --filter @event-sharing/frontend dev",
     "start:frontend": "pnpm --filter @event-sharing/contracts build && pnpm --filter @event-sharing/frontend start",
     "env:services": "tsx scripts/setup-service-envs.ts",
-    "storage:db:init": "pnpm --filter @event-sharing/storage db:init",
-    "kafka:topics": "tsx scripts/create-kafka-topics.ts",
     "server:status": "docker compose ps",
-    "infra:up": "docker compose up -d postgres kafka",
-    "infra:stop": "docker compose --profile tools stop"
+    "docker:up": "docker compose --profile tools --profile backup up -d --build",
+    "docker:stop": "docker compose --profile tools --profile backup stop"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

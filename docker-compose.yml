@@ -1,5 +1,58 @@
 name: event-sharing
 
+include:
+  - infra/docker/networks.yml
+
+x-app: &app
+  image: ${APP_IMAGE:-event-sharing-app}
+  build:
+    context: .
+    dockerfile: infra/docker/app.Dockerfile
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  stop_grace_period: 30s
+
+x-service: &service
+  <<: *app
+  command: sh -c 'node_modules/.bin/prisma migrate deploy && exec node dist/index.js'
+  healthcheck:
+    test: ['CMD', 'node', '/app/infra/docker/healthcheck.js']
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 30s
+  depends_on: &service-dependencies
+    db-init:
+      condition: service_completed_successfully
+    kafka-init:
+      condition: service_completed_successfully
+
+x-service-environment: &service-environment
+  HOME: /tmp
+  HOST: 0.0.0.0
+  KAFKA_BROKERS: kafka:19092
+
+x-storage-environment: &storage-environment
+  <<: *service-environment
+  DATABASE_URL: postgresql://storage_service:${STORAGE_DB_PASSWORD}@postgres:5432/storage_db
+  STORAGE_PATH: /data/files
+  STORAGE_BACKUP_PATH: /data/backups
+
+x-storage-tool: &storage-tool
+  <<: *app
+  working_dir: /app/services/storage
+  env_file: ./services/storage/.env
+  environment: *storage-environment
+  networks:
+    - storage-data
+
 services:
   postgres:
     image: postgis/postgis:18-3.6
@@ -8,8 +61,6 @@ services:
       POSTGRES_DB: postgres
       POSTGRES_USER: ${POSTGRES_USER:-event_sharing}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-    ports:
-      - '127.0.0.1:${POSTGRES_PORT:-5434}:5432'
     volumes:
       - postgres-data:/var/lib/postgresql
       - ./infra/postgres/init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql:ro
@@ -18,6 +69,292 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - setup
+      - backup-postgres
+      - pgadmin-postgres
+      - auth-data
+      - users-data
+      - events-data
+      - geo-search-data
+      - participation-data
+      - notifications-data
+      - messages-data
+      - event-log-data
+      - storage-data
+
+  db-init:
+    image: postgis/postgis:18-3.6
+    entrypoint: ['sh', '/isolate-databases.sh']
+    env_file: .env
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-event_sharing}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - ./infra/postgres/isolate-databases.sh:/isolate-databases.sh:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - setup
+
+  kafka:
+    image: apache/kafka:4.4.0
+    hostname: kafka
+    restart: unless-stopped
+    env_file: ./infra/kafka/kafka.env
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test:
+        [
+          'CMD',
+          '/opt/kafka/bin/kafka-broker-api-versions.sh',
+          '--bootstrap-server',
+          '127.0.0.1:9092',
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - setup
+      - gateway-kafka
+      - auth-data
+      - users-data
+      - events-data
+      - geo-search-data
+      - participation-data
+      - notifications-data
+      - messages-data
+      - event-log-data
+      - storage-data
+
+  kafka-init:
+    image: apache/kafka:4.4.0
+    entrypoint: ['sh', '/create-topics.sh']
+    volumes:
+      - ./infra/kafka/create-topics.sh:/create-topics.sh:ro
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - setup
+
+  gateway:
+    <<: *service
+    working_dir: /app/apps/gateway
+    command: node dist/index.js
+    env_file: ./apps/gateway/.env
+    environment:
+      <<: *service-environment
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://127.0.0.1:3001}
+      AUTH_SERVICE_URL: http://auth:8002
+      USERS_SERVICE_URL: http://users:8003
+      EVENTS_SERVICE_URL: http://events:8001
+      GEO_SEARCH_SERVICE_URL: http://geo-search:8004
+      PARTICIPATION_SERVICE_URL: http://participation:8005
+      NOTIFICATIONS_SERVICE_URL: http://notifications:8006
+      EVENT_LOG_SERVICE_URL: http://event-log:8007
+      MESSAGES_SERVICE_URL: http://messages:8008
+      STORAGE_SERVICE_URL: http://storage:8009
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - '127.0.0.1:${GATEWAY_PORT:-8000}:8000'
+    networks:
+      - public_proxy
+      - frontend-gateway
+      - gateway-kafka
+      - auth-gateway
+      - users-gateway
+      - events-gateway
+      - geo-search-gateway
+      - participation-gateway
+      - notifications-gateway
+      - messages-gateway
+      - event-log-gateway
+      - storage-gateway
+
+  frontend:
+    <<: *app
+    working_dir: /app/apps/frontend
+    command: node_modules/.bin/tsx src/server.ts
+    tmpfs:
+      - /tmp
+      - /app/apps/frontend/.next/cache:uid=1000,gid=1000
+    environment:
+      HOME: /tmp
+      HOST: 0.0.0.0
+      PORT: '3001'
+      GATEWAY_URL: http://gateway:8000
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://127.0.0.1:3001}
+      PHOTON_BASE_URL: ${PHOTON_BASE_URL:-https://photon.komoot.io}
+    depends_on:
+      gateway:
+        condition: service_started
+    ports:
+      - '127.0.0.1:${FRONTEND_PORT:-3001}:3001'
+    networks:
+      - public_proxy
+      - frontend-gateway
+
+  auth:
+    <<: *service
+    working_dir: /app/services/auth
+    env_file: ./services/auth/.env
+    environment:
+      <<: *service-environment
+      HOST: ${NETWORK_PREFIX:-10.77}.2.14
+      DATABASE_URL: postgresql://auth_service:${AUTH_DB_PASSWORD}@postgres:5432/auth_db
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://127.0.0.1:3001}
+      BETTER_AUTH_PUBLIC_URL: ${FRONTEND_ORIGIN:-http://127.0.0.1:3001}/backend/auth
+    networks:
+      auth-gateway:
+        ipv4_address: ${NETWORK_PREFIX:-10.77}.2.14
+      auth-data:
+      auth-internet:
+
+  users:
+    <<: *service
+    working_dir: /app/services/users
+    env_file: ./services/users/.env
+    environment:
+      <<: *service-environment
+      DATABASE_URL: postgresql://users_service:${USERS_DB_PASSWORD}@postgres:5432/users_db
+    networks:
+      - users-gateway
+      - users-data
+
+  events:
+    <<: *service
+    working_dir: /app/services/events
+    env_file: ./services/events/.env
+    environment:
+      <<: *service-environment
+      DATABASE_URL: postgresql://events_service:${EVENTS_DB_PASSWORD}@postgres:5432/events_db
+    networks:
+      - events-gateway
+      - events-data
+
+  geo-search:
+    <<: *service
+    working_dir: /app/services/geo-search
+    env_file: ./services/geo-search/.env
+    environment:
+      <<: *service-environment
+      HOST: ${NETWORK_PREFIX:-10.77}.2.62
+      DATABASE_URL: postgresql://geo_search_service:${GEO_SEARCH_DB_PASSWORD}@postgres:5432/geo_search_db
+    networks:
+      geo-search-gateway:
+        ipv4_address: ${NETWORK_PREFIX:-10.77}.2.62
+      geo-search-data:
+      geo-search-internet:
+
+  participation:
+    <<: *service
+    working_dir: /app/services/participation
+    env_file: ./services/participation/.env
+    environment:
+      <<: *service-environment
+      DATABASE_URL: postgresql://participation_service:${PARTICIPATION_DB_PASSWORD}@postgres:5432/participation_db
+    networks:
+      - participation-gateway
+      - participation-data
+
+  notifications:
+    <<: *service
+    working_dir: /app/services/notifications
+    env_file: ./services/notifications/.env
+    environment:
+      <<: *service-environment
+      HOST: ${NETWORK_PREFIX:-10.77}.2.94
+      DATABASE_URL: postgresql://notifications_service:${NOTIFICATIONS_DB_PASSWORD}@postgres:5432/notifications_db
+    networks:
+      notifications-gateway:
+        ipv4_address: ${NETWORK_PREFIX:-10.77}.2.94
+      notifications-data:
+      notifications-internet:
+
+  messages:
+    <<: *service
+    working_dir: /app/services/messages
+    env_file: ./services/messages/.env
+    environment:
+      <<: *service-environment
+      DATABASE_URL: postgresql://messages_service:${MESSAGES_DB_PASSWORD}@postgres:5432/messages_db
+    networks:
+      - messages-gateway
+      - messages-data
+
+  event-log:
+    <<: *service
+    working_dir: /app/services/event-log
+    env_file: ./services/event-log/.env
+    environment:
+      <<: *service-environment
+      DATABASE_URL: postgresql://event_log_service:${EVENT_LOG_DB_PASSWORD}@postgres:5432/event_log_db
+    networks:
+      - event-log-gateway
+      - event-log-data
+
+  storage:
+    <<: *service
+    working_dir: /app/services/storage
+    env_file: ./services/storage/.env
+    environment:
+      <<: *storage-environment
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: '3310'
+    volumes:
+      - storage-data:/data/files
+    depends_on:
+      <<: *service-dependencies
+      clamav:
+        condition: service_started
+    networks:
+      - storage-gateway
+      - storage-data
+      - storage-clamav
+
+  storage-backup:
+    <<: *storage-tool
+    command: node dist/backup.js
+    volumes:
+      - storage-data:/data/files:ro
+      - storage-backups:/data/backups
+    depends_on:
+      storage:
+        condition: service_started
+
+  storage-restore:
+    <<: *storage-tool
+    profiles: [storage-restore]
+    restart: 'no'
+    entrypoint: ['node', 'dist/restore.js']
+    volumes:
+      - storage-data:/data/files
+      - storage-backups:/data/backups:ro
+
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    environment:
+      CLAMD_CONF_TCPAddr: ${NETWORK_PREFIX:-10.77}.1.110
+    volumes:
+      - clamav-data:/var/lib/clamav
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          '[ "$$(echo PING | nc $$CLAMD_CONF_TCPAddr 3310)" = PONG ]',
+        ]
+    networks:
+      storage-clamav:
+        ipv4_address: ${NETWORK_PREFIX:-10.77}.1.110
+      clamav-internet:
 
   pgadmin:
     image: dpage/pgadmin4:9.18
@@ -35,111 +372,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-
-  kafka:
-    image: apache/kafka:4.4.0
-    hostname: kafka
-    restart: unless-stopped
-    environment:
-      CLUSTER_ID: CtSz26DYr6KPV2XuQqfvzg
-      KAFKA_NODE_ID: '1'
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENERS: CONTROLLER://:29093,INTERNAL://:19092,HOST://:9092
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:19092,HOST://127.0.0.1:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: '1'
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: '1'
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
-      KAFKA_NUM_PARTITIONS: '3'
-      KAFKA_LOG_RETENTION_HOURS: '720'
-      KAFKA_LOG_DIRS: /var/lib/kafka/data
-    ports:
-      - '127.0.0.1:9092:9092'
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    healthcheck:
-      test:
-        - CMD
-        - /opt/kafka/bin/kafka-broker-api-versions.sh
-        - --bootstrap-server
-        - 127.0.0.1:9092
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
-
-  clamav:
-    image: clamav/clamav:stable
-    profiles: [storage]
-    restart: unless-stopped
-    ports:
-      - '127.0.0.1:${CLAMAV_PORT:-3310}:3310'
-    volumes:
-      - clamav-data:/var/lib/clamav
-
-  storage:
-    image: event-sharing-storage
-    build:
-      context: .
-      dockerfile: services/storage/Dockerfile
-    profiles: [storage]
-    restart: unless-stopped
-    network_mode: host
-    env_file: ./services/storage/.env
-    environment:
-      HOST: 127.0.0.1
-      STORAGE_PATH: /data/files
-      STORAGE_BACKUP_PATH: /data/backups
-      CLAMAV_HOST: 127.0.0.1
-      CLAMAV_PORT: ${CLAMAV_PORT:-3310}
-    volumes:
-      - storage-data:/data/files
-    depends_on:
-      postgres:
-        condition: service_healthy
-      clamav:
-        condition: service_started
-
-  storage-backup:
-    image: event-sharing-storage
-    build:
-      context: .
-      dockerfile: services/storage/Dockerfile
-    profiles: [storage]
-    restart: unless-stopped
-    network_mode: host
-    env_file: ./services/storage/.env
-    environment:
-      STORAGE_PATH: /data/files
-      STORAGE_BACKUP_PATH: /data/backups
-    command: ['node', 'dist/backup.js']
-    volumes:
-      - storage-data:/data/files:ro
-      - storage-backups:/data/backups
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  storage-restore:
-    image: event-sharing-storage
-    build:
-      context: .
-      dockerfile: services/storage/Dockerfile
-    profiles: [storage-restore]
-    network_mode: host
-    env_file: ./services/storage/.env
-    environment:
-      STORAGE_PATH: /data/files
-      STORAGE_BACKUP_PATH: /data/backups
-    entrypoint: ['node', 'dist/restore.js']
-    volumes:
-      - storage-data:/data/files
-      - storage-backups:/data/backups:ro
+    networks:
+      - pgadmin-public
+      - pgadmin-postgres
 
   project-backup:
     image: postgis/postgis:18-3.6
@@ -162,6 +397,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - backup-postgres
 
 volumes:
   postgres-data:

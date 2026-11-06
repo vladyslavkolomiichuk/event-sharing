@@ -43,26 +43,22 @@ async function proxy(
     );
   }
 
-  if (!['GET', 'HEAD'].includes(request.method)) {
-    const browserOrigin = request.headers.get('origin');
-    const host = request.headers.get('host');
-    const requestOrigin = host
-      ? `${request.nextUrl.protocol}//${host}`
-      : request.nextUrl.origin;
-    if (browserOrigin !== requestOrigin) {
-      return NextResponse.json(
-        {
-          code: 'INVALID_ORIGIN',
-          message: 'Request origin does not match this site.',
-          details: [],
-        },
-        { status: 403 },
-      );
-    }
+  const trustedOrigin = process.env.FRONTEND_ORIGIN ?? 'http://127.0.0.1:3001';
+  if (
+    !['GET', 'HEAD'].includes(request.method) &&
+    request.headers.get('origin') !== trustedOrigin
+  ) {
+    return NextResponse.json(
+      {
+        code: 'INVALID_ORIGIN',
+        message: 'Request origin does not match this site.',
+        details: [],
+      },
+      { status: 403 },
+    );
   }
 
   const gatewayUrl = process.env.GATEWAY_URL ?? 'http://127.0.0.1:8000';
-  const trustedOrigin = process.env.FRONTEND_ORIGIN ?? 'http://127.0.0.1:3001';
   const target = new URL(
     `/${path.map(encodeURIComponent).join('/')}${request.nextUrl.search}`,
     gatewayUrl,
@@ -74,6 +70,7 @@ async function proxy(
     'cookie',
     'x-privacy-receipt',
     'x-request-id',
+    'x-forwarded-for',
   ]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);

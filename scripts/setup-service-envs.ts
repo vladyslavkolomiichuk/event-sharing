@@ -228,4 +228,17 @@ ensureEnvKeys(gatewayEnvPath, {
   STORAGE_SERVICE_URL: 'http://127.0.0.1:8009',
 });
 
+const databasePasswords = [
+  'AUTH',
+  'USERS',
+  'EVENTS',
+  'GEO_SEARCH',
+  'PARTICIPATION',
+  'NOTIFICATIONS',
+  'MESSAGES',
+  'EVENT_LOG',
+  'STORAGE',
+].map((name) => [`${name}_DB_PASSWORD`, randomBytes(24).toString('hex')]);
+ensureEnvKeys(rootEnvPath, Object.fromEntries(databasePasswords));
+
 await import('./setup-service-bus.js');

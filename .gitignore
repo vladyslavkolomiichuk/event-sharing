@@ -10,3 +10,4 @@ coverage/
 **/src/generated/
 services/storage/storage-data/
 services/storage/storage-backups/
+research/results/tmp/
