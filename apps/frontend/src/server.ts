@@ -3,7 +3,7 @@ import next from 'next';
 import { FrontendRealtimeProxy } from './realtime/FrontendRealtimeProxy.js';
 
 const dev = process.argv.includes('--dev');
-const hostname = '127.0.0.1';
+const hostname = process.env.HOST ?? '127.0.0.1';
 const port = Number(process.env.PORT ?? 3001);
 const app = next({ dev, hostname, port });
 await app.prepare();

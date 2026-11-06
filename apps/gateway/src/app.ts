@@ -34,6 +34,8 @@ export type GatewayAppDependencies = {
 export function createApp(dependencies: GatewayAppDependencies): Express {
   const app = express();
   app.disable('x-powered-by');
+  // Cloudflare adds the client, then Nginx adds its peer.
+  app.set('trust proxy', 2);
   app.use(assignRequestId);
   app.use(blockPublicAuthToken);
   app.use(

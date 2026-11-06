@@ -1,0 +1,45 @@
+# Explicit subnets, because Docker's default address pool is too small.
+x-private-network: &private-network
+  internal: true
+  driver_opts:
+    com.docker.network.bridge.inhibit_ipv4: 'true'
+
+networks:
+  public_proxy:
+    external: true
+    name: ${PROXY_NETWORK:-public_proxy}
+
+  # One container each, so they cannot reach one another.
+  pgadmin-public: { ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.0.32/28' }] } }
+  auth-internet: { ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.0.48/28' }] } }
+  geo-search-internet: { ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.0.64/28' }] } }
+  notifications-internet: { ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.0.80/28' }] } }
+  clamav-internet: { ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.0.96/28' }] } }
+
+  frontend-gateway: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.1.0/28' }] } }
+  gateway-kafka: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.1.16/28' }] } }
+  setup: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.1.32/28' }] } }
+  backup-postgres: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.1.48/28' }] } }
+  pgadmin-postgres: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.1.64/28' }] } }
+  storage-clamav: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.1.96/28' }] } }
+
+  auth-gateway: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.2.0/28' }] } }
+  users-gateway: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.2.16/28' }] } }
+  events-gateway: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.2.32/28' }] } }
+  geo-search-gateway: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.2.48/28' }] } }
+  participation-gateway: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.2.64/28' }] } }
+  notifications-gateway: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.2.80/28' }] } }
+  messages-gateway: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.2.96/28' }] } }
+  event-log-gateway: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.2.112/28' }] } }
+  storage-gateway: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.2.128/28' }] } }
+
+  # Each service shares these with PostgreSQL and Kafka only.
+  auth-data: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.3.0/28' }] } }
+  users-data: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.3.16/28' }] } }
+  events-data: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.3.32/28' }] } }
+  geo-search-data: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.3.48/28' }] } }
+  participation-data: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.3.64/28' }] } }
+  notifications-data: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.3.80/28' }] } }
+  messages-data: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.3.96/28' }] } }
+  event-log-data: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.3.112/28' }] } }
+  storage-data: { <<: *private-network, ipam: { config: [{ subnet: '${NETWORK_PREFIX:-10.77}.3.128/28' }] } }

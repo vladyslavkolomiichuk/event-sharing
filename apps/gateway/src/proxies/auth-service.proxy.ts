@@ -11,6 +11,7 @@ export function createAuthProxy(baseUrl: string): RequestHandler {
       proxyReq: (proxyRequest, request) => {
         proxyRequest.removeHeader('authorization');
         proxyRequest.removeHeader('x-internal-user-jwt');
+        proxyRequest.removeHeader('x-forwarded-for');
         proxyRequest.setHeader('x-request-id', request.requestId ?? '');
       },
       proxyRes: (proxyResponse) => {

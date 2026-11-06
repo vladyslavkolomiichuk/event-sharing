@@ -22,6 +22,7 @@ export class ServiceProxy {
           proxyRequest.removeHeader('x-internal-user-jwt');
           proxyRequest.removeHeader('x-user-id');
           proxyRequest.removeHeader('x-user-role');
+          proxyRequest.removeHeader('x-forwarded-for');
           proxyRequest.setHeader('x-request-id', request.requestId ?? '');
 
           if (request.internalUserJwt) {
