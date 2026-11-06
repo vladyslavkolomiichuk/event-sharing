@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { RESEARCH_DIR, ROOT, isFinal } from './stack.js';
+import { RESEARCH_DIR, ROOT, isFinal, mode } from './stack.js';
 
 type Row = Record<string, string | number | boolean>;
 
@@ -60,10 +60,11 @@ export function saveTable(experiment: string, name: string, rows: Row[]): void {
     ].join('\n') + '\n',
   );
   writeFileSync(
-    resolve(directory, 'run.json'),
+    resolve(directory, `${name}.run.json`),
     JSON.stringify(
       {
         profile: isFinal ? 'final' : 'pilot',
+        mode,
         finishedAt: new Date().toISOString(),
         commit: git('rev-parse', 'HEAD'),
         uncommittedFiles: git('status', '--short').split('\n').filter(Boolean)

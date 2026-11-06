@@ -67,19 +67,25 @@ def line_chart(series, xlabel, ylabel, path, **format_options):
 
 
 def exp_01():
-    # The control series has one size, so it stays in the table.
-    rows = [row for row in read_rows("exp-01", "delivery") if row["series"] == "saturated"]
-    if not rows:
+    # The rate-limited series has one size, so it stays in the table.
+    by_mode = {mode: [row for row in read_rows("exp-01", f"delivery-{mode}")
+                      if row["series"] == "saturated"]
+               for mode in ["kafka", "http"]}
+    modes = [(mode, rows) for mode, rows in by_mode.items() if rows]
+    if not modes:
         return
+    rows = by_mode["kafka"]
     line_chart(
-        [(name, rows, "N", column, {}) for name, column in
-         [("p50", "httpP50"), ("p95", "httpP95"), ("p99", "httpP99")]],
+        [(f"{mode}, {name}", part, "N", column, {"color": color, "linestyle": line})
+         for (mode, part), color in zip(modes, ["C0", "C1"])
+         for name, column, line in [("p50", "httpP50", "-"), ("p95", "httpP95", "--")]],
         "Joins, N", "HTTP response time, ms",
         RESULTS / "exp-01/http-latency.png", log_x=True,
     )
     line_chart(
-        [(name, rows, "N", column, {}) for name, column in
-         [("p50", "endToEndP50"), ("p95", "endToEndP95")]],
+        [(f"{mode}, {name}", part, "N", column, {"color": color, "linestyle": line})
+         for (mode, part), color in zip(modes, ["C0", "C1"])
+         for name, column, line in [("p50", "endToEndP50", "-"), ("p95", "endToEndP95", "--")]],
         "Joins, N", "Commit to stored notification, ms",
         RESULTS / "exp-01/end-to-end.png", log_x=True,
     )

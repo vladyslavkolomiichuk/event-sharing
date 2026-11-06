@@ -4,7 +4,7 @@ include:
   - infra/docker/networks.yml
 
 x-app: &app
-  image: event-sharing-app
+  image: ${APP_IMAGE:-event-sharing-app}
   build:
     context: .
     dockerfile: infra/docker/app.Dockerfile

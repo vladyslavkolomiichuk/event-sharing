@@ -30,6 +30,14 @@ Run the full sizes for the thesis:
 RESEARCH_PROFILE=final pnpm research
 ```
 
+Run the direct HTTP comparison for EXP-01 and EXP-02. Its image comes from the `research/http-baseline` branch:
+
+```bash
+git worktree add ../http-baseline research/http-baseline
+docker build -f ../http-baseline/infra/docker/app.Dockerfile -t event-sharing-app:http-baseline ../http-baseline
+RESEARCH_MODE=http pnpm research exp-01 exp-02
+```
+
 Check all allowed and forbidden event state changes:
 
 ```bash
@@ -77,6 +85,5 @@ Small test runs only show that the method works. Do not quote their numbers in t
 
 - The requests and the system run on the same computer, unless the load script moves to a second one.
 - Times in the database are exact to 1 ms.
-- EXP-01 tests only the current Kafka setup. Comparing it with direct HTTP needs a separate branch.
 - EXP-03 writes test events directly to the database, so it measures search without Kafka and the API.
 - Every logged-in request also checks the session through Kafka, and this time is included in the results.

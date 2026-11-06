@@ -20,6 +20,7 @@ import {
   count,
   isFinal,
   killService,
+  mode,
   resetStack,
   sleep,
   startService,
@@ -68,7 +69,8 @@ const failureRow = (
 const waitForDelivery = (baseline: number, eventIds: string[]) =>
   waitUntil(
     () => joinedNotifications() >= baseline + committedJoins(eventIds),
-    DELIVERY_TIMEOUT_MS,
+    // HTTP has no recovery path, so missing notifications stay missing.
+    mode === 'http' ? 30_000 : DELIVERY_TIMEOUT_MS,
   );
 
 async function consumerOutage({ users, nextEvents }: Context, size: number) {
@@ -212,12 +214,14 @@ export async function run(): Promise<void> {
   const rows: ReturnType<typeof failureRow>[] = [];
   const add = (row: ReturnType<typeof failureRow>) => {
     rows.push(row);
-    saveTable('exp-02', 'failures', rows);
+    saveTable('exp-02', `failures-${mode}`, rows);
   };
   for (const size of CONSUMER_OUTAGE_SIZES) {
     await waitForQuietPipeline();
     add(await consumerOutage(context, size));
   }
+  // Broker failure and repeated delivery apply only to the Kafka configuration.
+  if (mode === 'http') return;
   await waitForQuietPipeline();
   add(await brokerOutage(context));
   add(await repeatedDelivery());

@@ -1,0 +1,5 @@
+| mode | series | N | repeat | httpP50 | httpP95 | httpP99 | endToEndP50 | endToEndP95 | toPublishP50 | toConsumeP50 | toStoreP50 | accepted | failed | dropped | requestsPerSecond | notifications | lost | drainSeconds | cpuPercent | memoryMiB |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| http | saturated | 200 | 1 | 420.1 | 618.1 | 836 | 194 | 296 | 1763 | -1638 | 62 | 200 | 0 | 0 | 46.2 | 200 | 0 | 4.3 | 360.7 | 2048 |
+| http | saturated | 1000 | 1 | 426.7 | 637.1 | 765.7 | 165 | 295 | 3043 | -2949 | 48 | 1000 | 0 | 0 | 46.1 | 1000 | 0 | 21.6 | 381.6 | 2431 |
+| http | control | 600 | 1 | 57.2 | 116.5 | 346.5 | 21 | 51 | 631 | -620 | 7 | 601 | 0 | 0 | 20 | 600 | 0 | 30 | 282.2 | 2293 |

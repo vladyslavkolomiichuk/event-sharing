@@ -7,7 +7,7 @@ import {
 } from '../lib/delivery.js';
 import { joinPairs, runLoad } from '../lib/load.js';
 import { round, saveTable } from '../lib/report.js';
-import { isFinal, resetStack, waitUntil } from '../lib/stack.js';
+import { isFinal, mode, resetStack, waitUntil } from '../lib/stack.js';
 
 const SIZES = isFinal ? [1_000, 10_000, 50_000] : [200, 1_000];
 const REPEATS = isFinal ? 3 : 1;
@@ -18,6 +18,9 @@ const VUS = 20;
 const CONTROL_RATE = 20;
 const CONTROL_SIZE = isFinal ? 1_200 : 600;
 const WARM_UP = 50;
+
+// HTTP delivery skips these stages, and Kafka still publishes the event afterwards.
+const kafkaStage = (value: number) => (mode === 'kafka' ? value : 'n/a');
 
 async function measure(
   series: string,
@@ -40,12 +43,14 @@ async function measure(
   });
   const complete = await waitUntil(
     () => joinedNotifications() >= baseline + load.accepted,
-    1_800_000,
+    // HTTP has no recovery path, so missing notifications stay missing.
+    mode === 'http' ? 60_000 : 1_800_000,
     2_000,
   );
   const stages = deliveryStages(eventIds);
   console.info(`${series} N=${size} repeat=${repeat}: complete=${complete}`);
   return {
+    mode,
     series,
     N: size,
     repeat,
@@ -54,9 +59,9 @@ async function measure(
     httpP99: round(load.httpP99),
     endToEndP50: stages.endToEnd.p50,
     endToEndP95: stages.endToEnd.p95,
-    toPublishP50: stages.toPublish.p50,
-    toConsumeP50: stages.toConsume.p50,
-    toStoreP50: stages.toStore.p50,
+    toPublishP50: kafkaStage(stages.toPublish.p50),
+    toConsumeP50: kafkaStage(stages.toConsume.p50),
+    toStoreP50: kafkaStage(stages.toStore.p50),
     accepted: load.accepted,
     failed: load.failed,
     dropped: load.dropped,
@@ -76,5 +81,5 @@ export async function run(): Promise<void> {
       rows.push(await measure('saturated', size, repeat));
   for (let repeat = 1; repeat <= REPEATS; repeat += 1)
     rows.push(await measure('control', CONTROL_SIZE, repeat, CONTROL_RATE));
-  saveTable('exp-01', 'delivery', rows);
+  saveTable('exp-01', `delivery-${mode}`, rows);
 }

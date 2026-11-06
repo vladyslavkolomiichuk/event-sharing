@@ -8,6 +8,7 @@ export const GATEWAY_URL = 'http://127.0.0.1:18000';
 export const ORIGIN = 'http://research.local';
 export const PROXY_NETWORK = 'event-sharing-research-proxy';
 export const isFinal = process.env.RESEARCH_PROFILE === 'final';
+export const mode = process.env.RESEARCH_MODE === 'http' ? 'http' : 'kafka';
 
 // A separate project name keeps these volumes apart from the deployed data.
 const PROJECT = 'event-sharing-research';
@@ -28,6 +29,8 @@ const environment = {
   GATEWAY_PORT: '18000',
   FRONTEND_ORIGIN: ORIGIN,
   PROXY_NETWORK,
+  // The control runs its own image, built from the research/http-baseline branch.
+  ...(mode === 'http' ? { APP_IMAGE: 'event-sharing-app:http-baseline' } : {}),
 };
 
 export const sleep = (milliseconds: number) =>
@@ -44,6 +47,7 @@ export function compose(args: string[], input?: string): string {
       'docker-compose.yml',
       '-f',
       'research/compose.research.yaml',
+      ...(mode === 'http' ? ['-f', 'research/compose.http.yaml'] : []),
       ...args,
     ],
     {
