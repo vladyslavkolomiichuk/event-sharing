@@ -1,0 +1,3 @@
+| operations | accepted | rejected | failed | differencesAfterLoad | converged | convergenceSeconds | remainingDifferences | violations |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 300 | 221 | 79 | 0 | 147 | true | 1.03 | 0 | 0 |

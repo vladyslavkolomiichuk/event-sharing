@@ -1,0 +1,3 @@
+| requests | accepted | rejected | failed | memberships |
+| --- | --- | --- | --- | --- |
+| 100 | 100 | 0 | 0 | 1 |
