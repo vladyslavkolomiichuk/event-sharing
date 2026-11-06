@@ -147,12 +147,20 @@ export function EventDetailView({
     <div className="space-y-9">
       {error && <InlineFeedback message={error} tone="error" />}
       <div className="space-y-5 border-b border-neutral-200 pb-8">
-        <EventImage
-          key={`${id}-cover`}
-          eventId={id}
-          slot="cover"
-          className="h-40 w-full rounded-xl object-cover sm:h-64"
-        />
+        <div className="relative mb-10">
+          <EventImage
+            key={`${id}-cover`}
+            eventId={id}
+            slot="cover"
+            className="h-48 w-full rounded-2xl object-cover sm:h-72"
+          />
+          <EventImage
+            key={`${id}-avatar`}
+            eventId={id}
+            slot="avatar"
+            className="absolute -bottom-8 left-5 h-20 w-20 rounded-2xl border-4 border-white object-cover shadow-lg sm:h-24 sm:w-24"
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <EventStatusBadge status={event.status} />
           {['PUBLISHED', 'ONGOING'].includes(event.status) && (
@@ -161,15 +169,7 @@ export function EventDetailView({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-4">
-          <EventImage
-            key={`${id}-avatar`}
-            eventId={id}
-            slot="avatar"
-            className="h-16 w-16 shrink-0 rounded-xl object-cover"
-          />
-          <h1>{event.title}</h1>
-        </div>
+        <h1>{event.title}</h1>
         <p className="text-sm font-semibold text-neutral-600">
           Category: {event.categoryName || 'Uncategorized'}
         </p>

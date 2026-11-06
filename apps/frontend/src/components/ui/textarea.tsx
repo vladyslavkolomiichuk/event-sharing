@@ -51,7 +51,7 @@ function Textarea({
         data-slot="textarea"
         ref={inputRef}
         className={cn(
-          'min-h-28 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-black outline-none placeholder:text-neutral-500 focus:border-orange-700 aria-invalid:border-red-600 aria-invalid:bg-red-50/40 aria-invalid:focus:border-red-700 disabled:opacity-50',
+          'min-h-28 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-black outline-none placeholder:text-neutral-500 focus:border-[var(--accent-strong)] aria-invalid:border-red-600 aria-invalid:bg-red-50/40 aria-invalid:focus:border-red-700 disabled:opacity-50',
           className,
         )}
         aria-invalid={

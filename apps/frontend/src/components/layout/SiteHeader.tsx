@@ -83,7 +83,7 @@ function NavigationContent({ close }: { close?: () => void }) {
         onClick={close}
         className="px-3 py-2 text-lg font-semibold tracking-tight"
       >
-        Event Sharing<span className="ml-2 text-orange-700">/</span>
+        Event Sharing<span className="ml-2 text-[var(--accent-strong)]">/</span>
       </Link>
       <nav
         aria-label="Main navigation"
@@ -184,7 +184,8 @@ export function SiteHeader() {
       </aside>
       <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-4 py-3 lg:hidden">
         <Link href="/" className="text-base font-semibold tracking-tight">
-          Event Sharing<span className="ml-2 text-orange-700">/</span>
+          Event Sharing
+          <span className="ml-2 text-[var(--accent-strong)]">/</span>
         </Link>
         <Dialog.Root open={open} onOpenChange={setOpen}>
           <Dialog.Trigger asChild>

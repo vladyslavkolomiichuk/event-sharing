@@ -23,6 +23,8 @@ export type MapMarker = MapPoint & {
   count?: number;
   user?: boolean;
   draggable?: boolean;
+  kind?: 'search' | 'route';
+  avatarUrl?: string;
 };
 
 export function MapView({
@@ -40,6 +42,7 @@ export function MapView({
   onPopupRoute,
   onPopupClose,
   onViewportChange,
+  selectedMarkerId,
   className,
 }: {
   center: MapPoint;
@@ -61,6 +64,7 @@ export function MapView({
   onPopupRoute?: (id: string) => void;
   onPopupClose?: () => void;
   onViewportChange?: (point: MapPoint) => void;
+  selectedMarkerId?: string | null;
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -95,6 +99,7 @@ export function MapView({
         style: 'https://tiles.openfreemap.org/styles/positron',
         center: [center.longitude, center.latitude],
         zoom,
+        minZoom: -1,
       });
       map.addControl(
         new NavigationControl({ showCompass: false }),
@@ -182,13 +187,13 @@ export function MapView({
         id: 'search-radius-fill',
         type: 'fill',
         source: 'search-radius',
-        paint: { 'fill-color': '#c2410c', 'fill-opacity': 0.1 },
+        paint: { 'fill-color': '#f59c5a', 'fill-opacity': 0.13 },
       });
       map.addLayer({
         id: 'search-radius-outline',
         type: 'line',
         source: 'search-radius',
-        paint: { 'line-color': '#c2410c', 'line-width': 2 },
+        paint: { 'line-color': '#d86723', 'line-width': 2 },
       });
     }
   }, [
@@ -258,11 +263,25 @@ export function MapView({
         ? document.createElement('div')
         : document.createElement('button');
       if (!item.user) (element as HTMLButtonElement).type = 'button';
-      element.className = `event-map-marker${item.selected ? ' event-map-marker-selected' : ''}${item.approximate ? ' event-map-marker-approximate' : ''}${item.user ? ' event-map-marker-user' : ''}${item.draggable ? ' event-map-marker-draggable' : ''}`;
+      element.className = `event-map-marker${item.selected ? ' event-map-marker-selected' : ''}${item.approximate ? ' event-map-marker-approximate' : ''}${item.user ? ' event-map-marker-user' : ''}${item.draggable ? ' event-map-marker-draggable' : ''}${item.kind ? ` event-map-marker-${item.kind}` : ''}`;
       element.setAttribute('aria-label', item.label);
       element.title = item.label;
       if (item.count && item.count > 1)
         element.textContent = String(item.count);
+      else if (item.avatarUrl) {
+        const avatar = document.createElement('img');
+        avatar.src = item.avatarUrl;
+        avatar.alt = '';
+        avatar.loading = 'lazy';
+        avatar.className = 'event-map-marker-avatar';
+        avatar.onerror = () => avatar.remove();
+        element.appendChild(avatar);
+      } else if (item.kind === 'search' || item.kind === 'route') {
+        const symbol = document.createElement('span');
+        symbol.className = 'event-map-marker-symbol';
+        symbol.textContent = item.kind === 'search' ? '+' : '↗';
+        element.appendChild(symbol);
+      }
       if (!item.user)
         element.addEventListener('click', (event) => {
           event.stopPropagation();
@@ -287,6 +306,18 @@ export function MapView({
       return marker;
     });
   }, [markers, ready]);
+
+  useEffect(() => {
+    markerRef.current.forEach((marker, index) => {
+      const item = markers[index];
+      marker
+        .getElement()
+        .classList.toggle(
+          'event-map-marker-selected',
+          Boolean(item?.selected || item?.id === selectedMarkerId),
+        );
+    });
+  }, [markers, ready, selectedMarkerId]);
 
   useEffect(() => {
     const map = mapRef.current;

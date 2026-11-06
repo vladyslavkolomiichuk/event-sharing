@@ -27,6 +27,7 @@ import { ExploreRouteControls } from './ExploreRouteControls';
 import { useExploreRoute } from './useExploreRoute';
 import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/feedback/Loading';
+import { PublicLanding } from './PublicLanding';
 
 const worldCenter: MapPoint = { latitude: 20, longitude: 0 };
 
@@ -338,6 +339,7 @@ export function EventsExplore() {
         longitude: item.location.longitude!,
         selected: selectedId === item.id,
         approximate: item.location.visibility !== 'PUBLIC',
+        avatarUrl: `/backend/api/storage/events/${item.id}/avatar`,
       }));
     const privateRegions = new Map<string, number>();
     for (const item of items) {
@@ -381,6 +383,7 @@ export function EventsExplore() {
               label: 'Search center. Drag to move it.',
               ...anchor,
               draggable: true,
+              kind: 'search' as const,
             },
           ]
         : []),
@@ -394,6 +397,7 @@ export function EventsExplore() {
               label: 'Route start. Drag to move it.',
               ...routePlanner.origin,
               draggable: true,
+              kind: 'route' as const,
             },
           ]
         : []),
@@ -404,6 +408,7 @@ export function EventsExplore() {
               label: `Destination: ${routePlanner.destination.title}`,
               ...routePlanner.destination.point,
               selected: true,
+              avatarUrl: `/backend/api/storage/events/${routePlanner.destination.id}/avatar`,
             },
           ]
         : []),
@@ -468,8 +473,6 @@ export function EventsExplore() {
     locationSelected.current = true;
     setAnchor(point);
     setAnchorSource(source);
-    setUserLocation(null);
-    setAccuracy(null);
     setPlaceQuery(label);
     setAnchorLabel(label);
     setCenter(point);
@@ -504,8 +507,6 @@ export function EventsExplore() {
     locationSelected.current = true;
     setAnchor(point);
     setAnchorSource('MAP');
-    setUserLocation(null);
-    setAccuracy(null);
     setPlaceQuery('');
     setAnchorLabel('');
     if (!preserveView) {
@@ -646,26 +647,7 @@ export function EventsExplore() {
   );
 
   if (authLoading) return <Loading />;
-  if (!user)
-    return (
-      <div className="events-explore-fullscreen relative h-[calc(100dvh-61px)] overflow-hidden lg:h-dvh">
-        <MapView
-          center={worldCenter}
-          zoom={2}
-          markers={[]}
-          className="absolute inset-0 h-full w-full rounded-none border-0"
-        />
-        <div className="absolute left-3 top-3 z-20 w-[min(390px,calc(100%-24px))] rounded-xl border border-neutral-200 bg-white/95 p-5 shadow-lg">
-          <h1>Explore events</h1>
-          <p className="mt-2 text-sm text-neutral-600">
-            Sign in to search events, use your location, and plan a route.
-          </p>
-          <Button asChild className="mt-4">
-            <Link href="/sign-in">Sign in</Link>
-          </Button>
-        </div>
-      </div>
-    );
+  if (!user) return <PublicLanding />;
 
   const searchProps = {
     view,

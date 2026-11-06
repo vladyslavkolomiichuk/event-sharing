@@ -44,7 +44,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     success: 'border-green-200 bg-green-50 text-green-950',
     warning: 'border-amber-200 bg-amber-50 text-amber-950',
     error: 'border-red-200 bg-red-50 text-red-950',
-    action_required: 'border-orange-800 bg-orange-700 text-white',
+    action_required:
+      'border-[var(--accent-strong)] bg-[var(--accent)] text-[var(--accent-ink)]',
   };
 
   return (
