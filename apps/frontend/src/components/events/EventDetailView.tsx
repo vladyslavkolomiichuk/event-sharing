@@ -89,6 +89,9 @@ export function EventDetailView({
     }, 3000);
     return () => clearInterval(timer);
   }, [event?.pendingStatus, id]);
+  useEffect(() => {
+    if (event) document.title = `${event.title} | Event Sharing`;
+  }, [event?.title]);
   if (authLoading || loading) return <Loading label="Loading event…" />;
   if (error && !event)
     return (
@@ -207,9 +210,7 @@ export function EventDetailView({
                   <h2 className="mb-6">Details</h2>
                   <dl className="grid gap-6 sm:grid-cols-2">
                     <div>
-                      <dt className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                        Starts
-                      </dt>
+                      <dt className="text-sm text-neutral-500">Starts</dt>
                       <dd className="mt-2">
                         {new Date(event.startTime).toLocaleString('en-US', {
                           dateStyle: 'full',
@@ -219,9 +220,7 @@ export function EventDetailView({
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                        Ends
-                      </dt>
+                      <dt className="text-sm text-neutral-500">Ends</dt>
                       <dd className="mt-2">
                         {new Date(event.endTime).toLocaleString('en-US', {
                           dateStyle: 'full',
@@ -231,23 +230,17 @@ export function EventDetailView({
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                        Region
-                      </dt>
+                      <dt className="text-sm text-neutral-500">Region</dt>
                       <dd className="mt-2">
                         {event.location.region || 'Not specified'}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                        Time zone
-                      </dt>
+                      <dt className="text-sm text-neutral-500">Time zone</dt>
                       <dd className="mt-2">{event.timeZone}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                        Venue
-                      </dt>
+                      <dt className="text-sm text-neutral-500">Venue</dt>
                       <dd className="mt-2">
                         {event.location.address ||
                           'Exact venue is shared with registered participants.'}

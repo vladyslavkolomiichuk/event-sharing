@@ -166,7 +166,7 @@ export function PublicProfile({ userId }: { userId: string }) {
             size="lg"
           />
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
+            <p className="text-sm font-medium text-neutral-500">
               Public profile
             </p>
             <h1>{profile.name}</h1>
@@ -277,8 +277,8 @@ export function PublicProfile({ userId }: { userId: string }) {
           </p>
         ) : null}
         {cursor && (
-          <Button variant="outline" disabled={loadingMore} onClick={loadMore}>
-            {loadingMore ? 'Loading…' : 'Load more'}
+          <Button variant="outline" onClick={loadMore} loading={loadingMore}>
+            Load more
           </Button>
         )}
         {eventsError && <Notice message={eventsError} tone="error" />}

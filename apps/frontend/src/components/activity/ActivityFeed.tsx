@@ -38,7 +38,7 @@ export function ActivityFeed({
                 dateTime={item.occurredAt}
                 className="text-xs text-neutral-600"
               >
-                {new Date(item.occurredAt).toLocaleString()}
+                {new Date(item.occurredAt).toLocaleString('en-US')}
               </time>
             </div>
             <p className="text-xs text-neutral-500">
@@ -84,10 +84,10 @@ export function ActivityFeed({
           type="button"
           variant="outline"
           className="mt-4 w-full"
-          disabled={loading}
           onClick={onLoadMore}
+          loading={loading}
         >
-          {loading ? 'Loading…' : 'Load more'}
+          Load more
         </Button>
       )}
     </section>

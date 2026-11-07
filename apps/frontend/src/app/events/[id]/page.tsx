@@ -1,9 +1,12 @@
+import type { Metadata } from 'next';
 import { RequireAuth } from '@/components/auth/RequireAuth';
 import { EventDetailView } from '@/components/events/EventDetailView';
 import {
   EVENT_SECTIONS,
   type EventSection,
 } from '@/components/events/EventNavigation';
+export const metadata: Metadata = { title: 'Event' };
+
 export default async function EventPage({
   params,
   searchParams,

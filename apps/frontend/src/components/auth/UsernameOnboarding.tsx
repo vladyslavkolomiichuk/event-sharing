@@ -74,7 +74,7 @@ export function UsernameOnboarding() {
   return (
     <section className="mx-auto max-w-lg space-y-6 py-10">
       <div className="space-y-3">
-        <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
+        <p className="text-sm font-medium text-neutral-500">
           Complete your account
         </p>
         <h1>Choose a username</h1>
@@ -129,8 +129,8 @@ export function UsernameOnboarding() {
             {error}
           </p>
         )}
-        <Button className="w-full" disabled={busy}>
-          {busy ? 'Saving…' : 'Continue'}
+        <Button className="w-full" loading={busy}>
+          Continue
         </Button>
       </form>
       <Button variant="ghost" onClick={() => void signOut()}>

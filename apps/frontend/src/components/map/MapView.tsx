@@ -149,7 +149,6 @@ export function MapView({
     mapRef.current.flyTo({
       center: [center.longitude, center.latitude],
       zoom,
-      essential: true,
     });
   }, [center.latitude, center.longitude, zoom]);
 

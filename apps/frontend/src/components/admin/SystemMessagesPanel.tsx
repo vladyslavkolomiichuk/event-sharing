@@ -148,7 +148,7 @@ export function SystemMessagesPanel() {
             <option value="ADMIN">Administrators</option>
           </select>
         </div>
-        <Button disabled={busy}>{busy ? 'Saving…' : 'Publish message'}</Button>
+        <Button loading={busy}>Publish message</Button>
       </form>
       <div className="space-y-3">
         {items.map((item) => (

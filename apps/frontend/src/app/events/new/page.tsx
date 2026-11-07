@@ -1,5 +1,8 @@
+import type { Metadata } from 'next';
 import { RequireAuth } from '@/components/auth/RequireAuth';
 import { EventForm } from '@/components/events/EventForm';
+export const metadata: Metadata = { title: 'Create event' };
+
 export default async function NewEventPage({
   searchParams,
 }: {
@@ -10,7 +13,7 @@ export default async function NewEventPage({
     <RequireAuth role="ORGANIZER">
       <div className="space-y-8">
         <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
+          <p className="text-sm font-medium text-neutral-500">
             Organizer workspace
           </p>
           <h1>{from ? 'Create the next event' : 'Create an event'}</h1>

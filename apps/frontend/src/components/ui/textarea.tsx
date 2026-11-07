@@ -14,6 +14,7 @@ function Textarea({
   onChange,
   onBlur,
   onInvalid,
+  onKeyDown,
   'aria-describedby': describedBy,
   'aria-invalid': externalInvalid,
   ...props
@@ -51,7 +52,7 @@ function Textarea({
         data-slot="textarea"
         ref={inputRef}
         className={cn(
-          'min-h-28 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-black outline-none placeholder:text-neutral-500 focus:border-[var(--accent-strong)] aria-invalid:border-red-600 aria-invalid:bg-red-50/40 aria-invalid:focus:border-red-700 disabled:opacity-50',
+          'min-h-28 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-base text-black sm:text-sm outline-none placeholder:text-neutral-500 focus:border-[var(--accent-strong)] aria-invalid:border-red-600 aria-invalid:bg-red-50/40 aria-invalid:focus:border-red-700 disabled:opacity-50',
           className,
         )}
         aria-invalid={
@@ -72,6 +73,14 @@ function Textarea({
           setInteracted(true);
           check(event.currentTarget);
           onBlur?.(event);
+        }}
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          if (event.defaultPrevented) return;
+          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+            event.preventDefault();
+            event.currentTarget.form?.requestSubmit();
+          }
         }}
         onInvalid={(event) => {
           event.preventDefault();

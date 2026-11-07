@@ -146,9 +146,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   return (
     <div className="mx-auto max-w-md py-10">
       <div className="mb-10 space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
-          Your account
-        </p>
+        <p className="text-sm font-medium text-neutral-500">Your account</p>
         <h1>{mode === 'sign-in' ? 'Welcome back.' : 'Create your account.'}</h1>
         <p className="text-neutral-600">
           {mode === 'sign-in'
@@ -254,12 +252,8 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           )}
         </div>
         {error && <InlineFeedback message={error} tone="error" />}
-        <Button className="w-full" disabled={busy}>
-          {busy
-            ? 'Please wait…'
-            : mode === 'sign-in'
-              ? 'Sign in'
-              : 'Create account'}
+        <Button className="w-full" loading={busy}>
+          {mode === 'sign-in' ? 'Sign in' : 'Create account'}
         </Button>
       </form>
       <div className="mt-5 space-y-3 rounded-xl border border-neutral-200 bg-white p-7">

@@ -113,6 +113,10 @@ export function ChatGroupSettings({
   }
 
   async function remove(userId: string) {
+    if (
+      !window.confirm('Remove this member? They lose access to group history.')
+    )
+      return;
     setBusy(true);
     try {
       await messagesClient.removeMember(eventId, room.id, userId);
@@ -144,7 +148,7 @@ export function ChatGroupSettings({
         <select
           value={access}
           onChange={(event) => setAccess(event.target.value as ChatRoomAccess)}
-          className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+          className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2"
         >
           <option value="SELECTED_MEMBERS">Selected members only</option>
           <option value="ALL_PARTICIPANTS">All event participants</option>

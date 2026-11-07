@@ -82,10 +82,10 @@ export function EventList({
       {cursor && (
         <Button
           variant="outline"
-          disabled={loading}
           onClick={() => void load(cursor)}
+          loading={loading}
         >
-          {loading ? 'Loading…' : 'Load more'}
+          Load more
         </Button>
       )}
     </div>

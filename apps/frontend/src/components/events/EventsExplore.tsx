@@ -711,9 +711,7 @@ export function EventsExplore() {
     <div className="events-explore-fullscreen flex h-[calc(100dvh-61px)] flex-col gap-2 overflow-hidden p-3 lg:h-dvh">
       <header className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">
-            Discover
-          </p>
+          <p className="text-xs font-medium text-neutral-500">Discover</p>
           <h1>Explore events</h1>
         </div>
         <div className="flex items-center gap-2">

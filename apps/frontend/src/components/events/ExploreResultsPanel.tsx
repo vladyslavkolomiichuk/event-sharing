@@ -86,10 +86,10 @@ export function ExploreResultsPanel({
             type="button"
             variant="outline"
             className="mt-3 w-full"
-            disabled={loading}
             onClick={() => onLoadMore(cursor)}
+            loading={loading}
           >
-            {loading ? 'Loading…' : 'Load more'}
+            Load more
           </Button>
         )}
       </div>

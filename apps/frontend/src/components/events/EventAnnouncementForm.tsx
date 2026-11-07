@@ -47,9 +47,7 @@ export function EventAnnouncementForm({ eventId }: { eventId: string }) {
           validate={(value) => (value.trim() ? '' : 'Enter an announcement.')}
           rows={4}
         />
-        <Button disabled={busy || !body.trim()}>
-          {busy ? 'Sending…' : 'Send announcement'}
-        </Button>
+        <Button loading={busy}>Send announcement</Button>
       </form>
       {error && <Notice message={error} tone="error" />}
       {success && <Notice message={success} tone="success" />}

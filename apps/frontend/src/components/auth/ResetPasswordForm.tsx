@@ -95,7 +95,7 @@ export function ResetPasswordForm({
             />
           </div>
           {error && <InlineFeedback message={error} tone="error" />}
-          <Button disabled={busy}>{busy ? 'Saving…' : 'Reset password'}</Button>
+          <Button loading={busy}>Reset password</Button>
         </form>
       )}
       {done && (

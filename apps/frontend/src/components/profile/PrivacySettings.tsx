@@ -127,8 +127,8 @@ export function PrivacySettings() {
           profile. Profile visibility does not change these field settings. Only
           completed public events can appear in other users' history view.
         </p>
-        <Button disabled={busy} onClick={() => void save()}>
-          {busy ? 'Saving…' : 'Save privacy settings'}
+        <Button onClick={() => void save()} loading={busy}>
+          Save privacy settings
         </Button>
       </section>
       <PersonalDataActions />

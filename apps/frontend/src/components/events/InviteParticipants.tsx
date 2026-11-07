@@ -108,9 +108,10 @@ export function InviteParticipants({
         Invitations require confirmation. Draft event invitations are delivered
         when registration opens.
       </p>
-      <div className="flex gap-2" role="tablist" aria-label="Find invitees">
+      <div className="flex gap-2" role="group" aria-label="Find invitees">
         <Button
           type="button"
+          aria-pressed={tab === 'search'}
           variant={tab === 'search' ? 'default' : 'outline'}
           onClick={() => {
             setTab('search');
@@ -121,6 +122,7 @@ export function InviteParticipants({
         </Button>
         <Button
           type="button"
+          aria-pressed={tab === 'friends'}
           variant={tab === 'friends' ? 'default' : 'outline'}
           onClick={() => {
             setTab('friends');
@@ -183,10 +185,10 @@ export function InviteParticipants({
           type="button"
           variant="outline"
           size="sm"
-          disabled={friends.loadingMore}
           onClick={() => void friends.loadMore()}
+          loading={friends.loadingMore}
         >
-          {friends.loadingMore ? 'Loading…' : 'Load more friends'}
+          Load more friends
         </Button>
       )}
       {selected.length > 0 && (
@@ -196,8 +198,8 @@ export function InviteParticipants({
             {selected.map((person) => `@${person.username}`).join(', ')}
           </p>
           {eventId && (
-            <Button disabled={busy} onClick={() => void send()}>
-              {busy ? 'Sending…' : 'Send invitations'}
+            <Button onClick={() => void send()} loading={busy}>
+              Send invitations
             </Button>
           )}
         </div>
@@ -227,7 +229,8 @@ export function InviteParticipants({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() =>
+                  onClick={() => {
+                    if (!window.confirm('Revoke this invitation?')) return;
                     void invitationClient
                       .revoke(invite.id)
                       .then(refreshOutgoing)
@@ -237,8 +240,8 @@ export function InviteParticipants({
                             ? cause.message
                             : 'Could not revoke invitation.',
                         ),
-                      )
-                  }
+                      );
+                  }}
                 >
                   Revoke
                 </Button>

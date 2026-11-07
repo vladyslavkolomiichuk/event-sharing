@@ -77,8 +77,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               )}
               <button
                 type="button"
-                aria-label="Dismiss message"
-                className="text-xs font-semibold underline"
+                aria-label="Close message"
+                className="min-h-6 min-w-6 text-xs font-semibold underline"
                 onClick={() => dismiss(item.id)}
               >
                 Close

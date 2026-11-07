@@ -386,10 +386,10 @@ export function FriendsWorkspace({
                 friendPage?.nextPage !== undefined && (
                   <Button
                     variant="outline"
-                    disabled={friends.loadingMore}
                     onClick={() => void friends.loadMore()}
+                    loading={friends.loadingMore}
                   >
-                    {friends.loadingMore ? 'Loading…' : 'Load more friends'}
+                    Load more friends
                   </Button>
                 )}
             </div>
@@ -424,10 +424,10 @@ export function FriendsWorkspace({
             list?.nextPage !== undefined && (
               <Button
                 variant="outline"
-                disabled={loadingMore}
                 onClick={() => void moreLists()}
+                loading={loadingMore}
               >
-                {loadingMore ? 'Loading…' : 'Load more friends'}
+                Load more friends
               </Button>
             )}
         </div>

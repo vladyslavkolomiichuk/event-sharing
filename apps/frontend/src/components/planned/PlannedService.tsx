@@ -18,9 +18,7 @@ export function PlannedService({
   return (
     <div className="space-y-9">
       <div className="max-w-3xl space-y-4">
-        <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
-          {eyebrow}
-        </p>
+        <p className="text-sm font-medium text-neutral-500">{eyebrow}</p>
         <h1>{title}</h1>
         <p className="text-lg leading-8 text-neutral-600">{description}</p>
       </div>

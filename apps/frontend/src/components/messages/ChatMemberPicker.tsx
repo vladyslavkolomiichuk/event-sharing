@@ -50,10 +50,11 @@ export function ChatMemberPicker({
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
+      <div className="flex gap-2" role="group" aria-label="Find members">
         <Button
           type="button"
           size="sm"
+          aria-pressed={tab === 'search'}
           variant={tab === 'search' ? 'default' : 'outline'}
           onClick={() => setTab('search')}
         >
@@ -62,6 +63,7 @@ export function ChatMemberPicker({
         <Button
           type="button"
           size="sm"
+          aria-pressed={tab === 'friends'}
           variant={tab === 'friends' ? 'default' : 'outline'}
           onClick={() => setTab('friends')}
         >
@@ -121,10 +123,10 @@ export function ChatMemberPicker({
           type="button"
           variant="outline"
           size="sm"
-          disabled={friends.loadingMore}
           onClick={() => void friends.loadMore()}
+          loading={friends.loadingMore}
         >
-          {friends.loadingMore ? 'Loading…' : 'Load more friends'}
+          Load more friends
         </Button>
       )}
       {selected.length > 0 && (

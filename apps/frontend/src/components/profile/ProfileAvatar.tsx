@@ -19,7 +19,8 @@ export function ProfileAvatar({
     <img
       src={avatarUrl}
       alt={`${name}'s avatar`}
-      className={`${dimension} rounded-full border border-neutral-200 object-cover`}
+      loading="lazy"
+      className={`${dimension} shrink-0 rounded-full border border-neutral-200 object-cover`}
       onError={() => setFailed(true)}
     />
   ) : (

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { SiteFooter } from '@/components/layout/SiteFooter';
@@ -13,9 +13,11 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Event Sharing',
+  title: { default: 'Event Sharing', template: '%s | Event Sharing' },
   description: 'Find, organize, and join events.',
 };
+
+export const viewport: Viewport = { themeColor: '#fafafa' };
 
 export default function RootLayout({
   children,
@@ -23,6 +25,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <a
+          href="#main-content"
+          className="sr-only rounded-md bg-white px-4 py-2 text-sm font-semibold shadow-lg focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[110]"
+        >
+          Skip to content
+        </a>
         <ToastProvider>
           <AuthProvider>
             <SearchPreferenceProvider>
@@ -33,7 +41,11 @@ export default function RootLayout({
                     <div className="min-h-screen lg:flex">
                       <SiteHeader />
                       <div className="flex min-w-0 flex-1 flex-col">
-                        <main className="mx-auto w-full max-w-[1680px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+                        <main
+                          id="main-content"
+                          tabIndex={-1}
+                          className="mx-auto w-full max-w-[1680px] flex-1 px-4 py-6 focus:outline-none sm:px-6 lg:px-8"
+                        >
                           <OnboardingGate>{children}</OnboardingGate>
                         </main>
                         <SiteFooter />

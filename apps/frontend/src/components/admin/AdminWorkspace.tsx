@@ -229,10 +229,10 @@ export function AdminWorkspace({
                     className={
                       service.status === 'ok'
                         ? 'border-green-300 bg-green-50 text-green-900'
-                        : 'border-red-300 bg-red-50 text-red-900'
+                        : 'border-red-300 bg-red-50 capitalize text-red-900'
                     }
                   >
-                    {service.status}
+                    {service.status === 'ok' ? 'OK' : service.status}
                   </Badge>
                 </div>
               ))}

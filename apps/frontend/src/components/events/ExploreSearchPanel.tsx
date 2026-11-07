@@ -428,7 +428,7 @@ export function ExploreSearchPanel(props: ExploreSearchProps) {
         >
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
-            <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl">
+            <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto overscroll-contain rounded-t-xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl">
               <Dialog.Title className="mb-4 text-lg font-semibold">
                 {open === 'search' ? 'Search events' : 'Search filters'}
               </Dialog.Title>

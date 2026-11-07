@@ -26,7 +26,7 @@ export function ExploreEventItem({
         className="block rounded-t-xl p-3 focus-visible:outline-2 focus-visible:outline-orange-700"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          <span className="text-sm text-neutral-500">
             {new Date(event.startTime).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
@@ -47,7 +47,7 @@ export function ExploreEventItem({
           />
           <h3 className="line-clamp-2">{event.title}</h3>
         </div>
-        <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+        <p className="mt-2 text-sm text-neutral-500">
           {event.categoryName || 'Uncategorized'}
         </p>
         <p className="mt-1 line-clamp-2 text-sm leading-5 text-neutral-600">

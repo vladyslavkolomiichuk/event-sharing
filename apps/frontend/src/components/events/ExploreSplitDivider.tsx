@@ -23,7 +23,7 @@ export function ExploreSplitDivider({
       aria-valuemax={max}
       aria-valuenow={Math.round(width)}
       tabIndex={0}
-      className="group flex w-3 shrink-0 cursor-col-resize touch-none items-center justify-center focus-visible:outline-2 focus-visible:outline-black"
+      className="group relative flex w-3 shrink-0 before:absolute before:inset-y-0 before:-inset-x-1.5 before:content-[''] cursor-col-resize touch-none items-center justify-center focus-visible:outline-2 focus-visible:outline-black"
       onPointerDown={(event) => {
         start.current = { x: event.clientX, width };
         event.currentTarget.setPointerCapture(event.pointerId);

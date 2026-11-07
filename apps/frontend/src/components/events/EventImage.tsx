@@ -36,6 +36,7 @@ export function EventImage({
           : `/backend/api/storage/events/${eventId}/${slot}`
       }
       alt=""
+      decoding="async"
       loading={slot === 'cover' ? 'eager' : 'lazy'}
       className={className}
       onError={() => setUnavailable(true)}

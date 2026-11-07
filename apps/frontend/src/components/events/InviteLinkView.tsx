@@ -76,8 +76,8 @@ export function InviteLinkView({ token }: { token: string }) {
         This private invitation expires{' '}
         {new Date(preview.expiresAt).toLocaleString('en-US')}.
       </p>
-      <Button disabled={busy} onClick={() => void accept()}>
-        {busy ? 'Joining…' : 'Accept invitation'}
+      <Button onClick={() => void accept()} loading={busy}>
+        Accept invitation
       </Button>
     </section>
   );

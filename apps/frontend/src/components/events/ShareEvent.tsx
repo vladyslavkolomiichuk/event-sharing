@@ -111,6 +111,8 @@ export function ShareEvent({
   }
 
   async function revoke(id: string) {
+    if (!window.confirm('Revoke this invitation link? It will stop working.'))
+      return;
     try {
       await invitationClient.revokeLink(event.id, id);
       setLinks(await invitationClient.links(event.id));

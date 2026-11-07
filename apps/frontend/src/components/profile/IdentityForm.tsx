@@ -146,7 +146,7 @@ export function IdentityForm() {
         )}
       </div>
       {formError && <InlineFeedback message={formError} tone="error" />}
-      <Button disabled={busy}>{busy ? 'Saving…' : 'Save identity'}</Button>
+      <Button loading={busy}>Save identity</Button>
     </form>
   );
 }

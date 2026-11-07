@@ -137,8 +137,11 @@ export function AccountSecurity() {
           {emailSuccess && (
             <InlineFeedback message={emailSuccess} tone="success" />
           )}
-          <Button disabled={emailCapability !== 'available' || emailBusy}>
-            {emailBusy ? 'Sending…' : 'Send confirmation email'}
+          <Button
+            disabled={emailCapability !== 'available' || emailBusy}
+            loading={emailBusy}
+          >
+            Send confirmation email
           </Button>
         </form>
         <form
@@ -196,9 +199,7 @@ export function AccountSecurity() {
           {passwordSuccess && (
             <InlineFeedback message={passwordSuccess} tone="success" />
           )}
-          <Button disabled={passwordBusy}>
-            {passwordBusy ? 'Saving…' : 'Change password'}
-          </Button>
+          <Button loading={passwordBusy}>Change password</Button>
         </form>
       </div>
     </section>

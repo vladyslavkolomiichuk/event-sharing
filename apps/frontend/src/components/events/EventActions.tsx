@@ -80,6 +80,7 @@ export function EventActions({
   });
 
   async function run(action: EventAction, requiresReason?: boolean) {
+    if (action === 'archive' && !window.confirm('Archive this event?')) return;
     if (requiresReason && selected !== action) {
       setSelected(action);
       setReasonAttempted(false);

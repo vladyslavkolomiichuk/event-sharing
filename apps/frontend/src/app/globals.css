@@ -7,58 +7,89 @@
   --accent-ink: #78350f;
   --accent-soft: #fff0e2;
 }
-* {
-  box-sizing: border-box;
+
+/* Base layer defaults, so utilities can override them. */
+@layer base {
+  html {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgb(180 83 19 / 15%);
+  }
+  body {
+    margin: 0;
+    background: #fafafa;
+    color: #111;
+    font-family: Arial, Helvetica, sans-serif;
+    overflow-wrap: break-word;
+  }
+  h1,
+  h2,
+  h3 {
+    font-weight: 600;
+    scroll-margin-top: 1.5rem;
+  }
+  h1,
+  h2 {
+    text-wrap: balance;
+  }
+  h1 {
+    font-size: clamp(1.875rem, 3.2vw, 2.5rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+  h2 {
+    font-size: clamp(1.25rem, 2vw, 1.5rem);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  h3 {
+    font-size: 1.125rem;
+    line-height: 1.3;
+  }
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+  select {
+    min-height: 2.5rem;
+    border: 1px solid #d4d4d4;
+    border-radius: 0.375rem;
+    background-color: white;
+    color: #111;
+    padding: 0 0.75rem;
+    /* iOS zooms the page on focus below 16px. */
+    font-size: 1rem;
+  }
+  label {
+    display: block;
+    margin-bottom: 0.45rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  ::selection {
+    background: #fed7aa;
+  }
+  @media (min-width: 40rem) {
+    select {
+      font-size: 0.875rem;
+    }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      transition-duration: 0s !important;
+    }
+  }
 }
-html {
-  scroll-behavior: smooth;
-}
-body {
-  margin: 0;
-  background: #fafafa;
-  color: #111;
-  font-family: Arial, Helvetica, sans-serif;
-}
-h1,
-h2,
-h3 {
-  letter-spacing: -0.04em;
-}
-h1 {
-  font-size: clamp(2.3rem, 5vw, 4.5rem);
-  line-height: 1.02;
-  font-weight: 600;
-}
-h2 {
-  font-size: clamp(1.6rem, 3vw, 2.35rem);
-  line-height: 1.1;
-  font-weight: 600;
-}
-h3 {
-  font-size: 1.15rem;
-  line-height: 1.3;
-  font-weight: 600;
-}
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-select {
-  min-height: 2.5rem;
-  border: 1px solid #d4d4d4;
-  border-radius: 0.375rem;
-  background: white;
-  padding: 0 0.75rem;
-  font-size: 0.875rem;
-}
-label {
-  display: block;
-  margin-bottom: 0.45rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
+
+/* Unlayered, so an outline-none utility cannot remove the focus ring. */
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
@@ -66,9 +97,6 @@ select:focus-visible,
 textarea:focus-visible {
   outline: 2px solid var(--accent-strong);
   outline-offset: 2px;
-}
-::selection {
-  background: #fed7aa;
 }
 
 main:has(.events-explore-fullscreen) {
@@ -177,28 +205,7 @@ main:has(.events-explore-fullscreen) + footer {
   font-size: 18px;
   font-weight: 700;
 }
-.event-image-cover-fallback {
-  background:
-    radial-gradient(
-      circle at 82% 20%,
-      rgb(255 255 255 / 60%) 0 9%,
-      transparent 9.5%
-    ),
-    radial-gradient(
-      circle at 15% 95%,
-      rgb(251 146 60 / 35%) 0 25%,
-      transparent 25.5%
-    ),
-    linear-gradient(120deg, #fff0e1, #ffc998 55%, #f5a56a);
-}
+.event-image-cover-fallback,
 .event-image-avatar-fallback {
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, #ffe6cf, #f5ae77);
-  color: var(--accent-ink);
-}
-.event-image-avatar-fallback::after {
-  content: '✦';
-  font-size: 1.45rem;
-  line-height: 1;
+  background: var(--accent-soft);
 }

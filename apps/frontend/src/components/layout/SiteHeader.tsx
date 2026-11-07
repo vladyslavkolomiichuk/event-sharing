@@ -87,7 +87,7 @@ function NavigationContent({ close }: { close?: () => void }) {
       </Link>
       <nav
         aria-label="Main navigation"
-        className="mt-6 flex-1 space-y-1 overflow-y-auto"
+        className="mt-6 flex-1 space-y-1 overflow-y-auto overscroll-contain"
       >
         {navigationLink('/', 'Explore')}
         {profileReady && (
@@ -96,7 +96,7 @@ function NavigationContent({ close }: { close?: () => void }) {
               .slice(1)
               .map((link) => navigationLink(link.href, link.label))}
             <div className="mt-5 border-t border-neutral-200 pt-4">
-              <p className="px-3 pb-2 text-xs font-bold uppercase tracking-widest text-neutral-500">
+              <p className="px-3 pb-2 text-sm font-medium text-neutral-500">
                 Messages
               </p>
               <div
@@ -113,7 +113,7 @@ function NavigationContent({ close }: { close?: () => void }) {
               </div>
             </div>
             <div className="mt-5 border-t border-neutral-200 pt-4">
-              <p className="px-3 pb-2 text-xs font-bold uppercase tracking-widest text-neutral-500">
+              <p className="px-3 pb-2 text-sm font-medium text-neutral-500">
                 Account
               </p>
               {accountLinks.map((link) =>
@@ -124,7 +124,7 @@ function NavigationContent({ close }: { close?: () => void }) {
         )}
         {profileReady && user.role === 'ADMIN' && (
           <div className="mt-5 border-t border-neutral-200 pt-4">
-            <p className="px-3 pb-2 text-xs font-bold uppercase tracking-widest text-neutral-500">
+            <p className="px-3 pb-2 text-sm font-medium text-neutral-500">
               Administration
             </p>
             {navigationLink('/admin', 'Admin workspace')}
@@ -189,7 +189,7 @@ export function SiteHeader() {
         </Link>
         <Dialog.Root open={open} onOpenChange={setOpen}>
           <Dialog.Trigger asChild>
-            <Button variant="outline" size="sm" aria-label="Open navigation">
+            <Button variant="outline" size="sm">
               Menu
             </Button>
           </Dialog.Trigger>

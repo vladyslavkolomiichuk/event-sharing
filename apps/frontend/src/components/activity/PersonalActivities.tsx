@@ -226,10 +226,10 @@ export function PersonalActivities() {
           <Button
             type="button"
             variant="outline"
-            disabled={loading}
             onClick={() => void load(true)}
+            loading={loading}
           >
-            {loading ? 'Loading…' : 'Load more'}
+            Load more
           </Button>
         )}
         {error && (

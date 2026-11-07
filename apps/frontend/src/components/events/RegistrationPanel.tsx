@@ -60,6 +60,8 @@ export function RegistrationPanel({
   }, [eventId, userId, revision]);
 
   async function change() {
+    if (joined && !window.confirm('Leave this event? Its places may fill up.'))
+      return;
     setBusy(true);
     setError('');
     setNotice('');
@@ -105,8 +107,9 @@ export function RegistrationPanel({
                     availability.available === 0))
               }
               variant={joined ? 'outline' : 'default'}
+              loading={busy}
             >
-              {busy ? 'Updating…' : joined ? 'Leave event' : 'Join event'}
+              {joined ? 'Leave event' : 'Join event'}
             </Button>
           )}
         </>

@@ -93,8 +93,11 @@ export function ForgotPasswordForm() {
           />
         )}
         {error && <InlineFeedback message={error} tone="error" />}
-        <Button disabled={capability !== 'available' || busy || sent}>
-          {busy ? 'Sending…' : 'Send reset link'}
+        <Button
+          disabled={capability !== 'available' || busy || sent}
+          loading={busy}
+        >
+          Send reset link
         </Button>
       </form>
       <Link href="/sign-in" className="text-sm font-semibold underline">

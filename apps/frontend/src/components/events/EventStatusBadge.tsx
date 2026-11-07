@@ -15,6 +15,8 @@ const colors: Record<EventStatus, string> = {
 
 export function EventStatusBadge({ status }: { status: EventStatus }) {
   return (
-    <Badge className={colors[status]}>{status.replaceAll('_', ' ')}</Badge>
+    <Badge className={colors[status]}>
+      {status.charAt(0) + status.slice(1).toLowerCase()}
+    </Badge>
   );
 }

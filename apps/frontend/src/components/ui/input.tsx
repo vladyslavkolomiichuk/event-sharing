@@ -53,7 +53,7 @@ function Input({
         ref={inputRef}
         type={type}
         className={cn(
-          'h-10 w-full rounded-md border border-neutral-300 bg-white px-3 text-sm text-black outline-none placeholder:text-neutral-500 focus:border-[var(--accent-strong)] aria-invalid:border-red-600 aria-invalid:bg-red-50/40 aria-invalid:focus:border-red-700 disabled:opacity-50',
+          'h-10 w-full rounded-md border border-neutral-300 bg-white px-3 text-base text-black file:mr-3 file:font-semibold sm:text-sm [&[type=file]]:py-2 outline-none placeholder:text-neutral-500 focus:border-[var(--accent-strong)] aria-invalid:border-red-600 aria-invalid:bg-red-50/40 aria-invalid:focus:border-red-700 disabled:opacity-50',
           className,
         )}
         aria-invalid={

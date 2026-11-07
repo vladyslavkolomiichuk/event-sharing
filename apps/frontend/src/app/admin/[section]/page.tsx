@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { RequireAuth } from '@/components/auth/RequireAuth';
 import {
@@ -14,6 +15,24 @@ const sections: AdminSection[] = [
   'system-messages',
 ];
 
+const titles: Record<string, string> = {
+  moderation: 'Moderation',
+  'role-requests': 'Role requests',
+  'user-roles': 'User roles',
+  categories: 'Categories',
+  'privacy-requests': 'Privacy requests',
+  'system-messages': 'System messages',
+};
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ section: string }>;
+}): Promise<Metadata> {
+  const { section } = await params;
+  return { title: titles[section] };
+}
+
 export default async function AdminSectionPage({
   params,
 }: {
@@ -25,9 +44,7 @@ export default async function AdminSectionPage({
     <RequireAuth role="ADMIN">
       <div className="space-y-8">
         <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
-            Administration
-          </p>
+          <p className="text-sm font-medium text-neutral-500">Administration</p>
           <h1>Admin workspace</h1>
         </div>
         <AdminWorkspace section={section as AdminSection} />

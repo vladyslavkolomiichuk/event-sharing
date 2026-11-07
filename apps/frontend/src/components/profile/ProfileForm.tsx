@@ -15,10 +15,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { PlaceAutocomplete } from '@/components/map/PlaceAutocomplete';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
 import { ProfileAvatar } from './ProfileAvatar';
 import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 
 export function ProfileForm() {
+  const [dirty, setDirty] = useState(false);
+  useUnsavedChanges(dirty);
   const { user } = useAuth();
   const { show } = useToast();
   const [profile, setProfile] = useState<UserProfilePrivate | null>(null);
@@ -75,6 +78,7 @@ export function ProfileForm() {
         city: city.trim() || null,
       });
       setProfile(await usersClient.update(input));
+      setDirty(false);
       show('Profile saved.', 'success');
     } catch (cause) {
       setSaveError(
@@ -109,7 +113,7 @@ export function ProfileForm() {
   }
 
   async function removeAvatar() {
-    if (!profile) return;
+    if (!profile || !window.confirm('Remove your avatar?')) return;
     setAvatarBusy(true);
     setSaveError('');
     try {
@@ -135,7 +139,11 @@ export function ProfileForm() {
       </div>
     );
   return (
-    <form onSubmit={submit} className="max-w-3xl space-y-6">
+    <form
+      onSubmit={submit}
+      onChangeCapture={() => setDirty(true)}
+      className="max-w-3xl space-y-6"
+    >
       <div className="space-y-6 rounded-xl border border-neutral-200 bg-white p-7">
         <h2>Profile details</h2>
         <div>
@@ -185,8 +193,9 @@ export function ProfileForm() {
               variant="outline"
               disabled={!avatarFile || avatarBusy}
               onClick={() => void uploadAvatar()}
+              loading={avatarBusy}
             >
-              {avatarBusy ? 'Saving…' : 'Upload'}
+              Upload
             </Button>
             {profile.avatarUrl && (
               <Button
@@ -253,7 +262,7 @@ export function ProfileForm() {
       </div>
       <div className="space-y-3">
         {saveError && <InlineFeedback message={saveError} tone="error" />}
-        <Button disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</Button>
+        <Button loading={busy}>Save profile</Button>
       </div>
     </form>
   );

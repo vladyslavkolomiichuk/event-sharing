@@ -23,7 +23,7 @@ export function ConsumerProgress({ data }: { data: EventLogAnalytics }) {
               {topic.replace('event-sharing.', '').replace('.v1', '')}
             </span>
             <time dateTime={date.toISOString()} className="text-neutral-600">
-              {date.toLocaleString()}
+              {date.toLocaleString('en-US')}
             </time>
           </div>
         ))}

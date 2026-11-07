@@ -426,7 +426,11 @@ export function ChatConversation({
                 setBody(event.target.value);
               }}
               onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
+                if (
+                  event.key === 'Enter' &&
+                  !event.shiftKey &&
+                  !event.nativeEvent.isComposing
+                ) {
                   event.preventDefault();
                   formRef.current?.requestSubmit();
                 }
@@ -438,7 +442,7 @@ export function ChatConversation({
               className="max-h-32 min-h-11 flex-1 resize-none border-0 bg-white"
             />
           </div>
-          <Button disabled={busy || !body.trim()}>Send</Button>
+          <Button loading={busy}>Send</Button>
         </form>
       )}
       {error && <InlineFeedback message={error} tone="error" />}

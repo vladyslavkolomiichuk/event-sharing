@@ -101,7 +101,7 @@ export function ChatRoomList({
               onChange={(event) =>
                 setAccess(event.target.value as ChatRoomAccess)
               }
-              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2"
             >
               <option value="SELECTED_MEMBERS">Selected members only</option>
               <option value="ALL_PARTICIPANTS">All participants</option>
@@ -109,7 +109,7 @@ export function ChatRoomList({
             {access === 'SELECTED_MEMBERS' && (
               <ChatMemberPicker selected={members} onChange={setMembers} />
             )}
-            <Button disabled={busy || !name.trim()} size="sm">
+            <Button loading={busy} size="sm">
               Create
             </Button>
           </form>

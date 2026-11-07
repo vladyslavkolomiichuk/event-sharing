@@ -75,13 +75,13 @@ export function PublicLanding() {
 
   return (
     <div className="public-landing space-y-8 pb-10">
-      <section className="relative overflow-hidden rounded-3xl border border-orange-200 bg-[linear-gradient(120deg,#fff1e3_0%,#ffcfaa_55%,#fff8f1_100%)] px-6 py-10 sm:px-10 sm:py-14">
-        <div className="relative z-10 max-w-3xl space-y-5">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--accent-ink)]">
+      <section className="rounded-2xl border border-orange-200 bg-[var(--accent-soft)] px-6 py-10 sm:px-10 sm:py-14">
+        <div className="max-w-3xl space-y-5">
+          <p className="text-sm font-medium text-[var(--accent-ink)]">
             Find your people, wherever you are
           </p>
-          <h1 className="max-w-2xl text-[#41291b]">
-            Good things happen when people meet.
+          <h1 className="max-w-2xl text-[clamp(2.3rem,5vw,4.5rem)] leading-[1.02] tracking-[-0.03em] text-[#41291b]">
+            Good things happen when people meet
           </h1>
           <p className="max-w-2xl text-lg leading-7 text-[#654838]">
             Event Sharing helps you discover local gatherings, join the ones you
@@ -98,10 +98,6 @@ export function PublicLanding() {
             </Button>
           </div>
         </div>
-        <div
-          aria-hidden="true"
-          className="absolute -bottom-32 -right-24 h-80 w-80 rounded-full border-[44px] border-white/35"
-        />
       </section>
 
       <section className="grid gap-4 sm:grid-cols-3" aria-label="How it works">
@@ -129,7 +125,7 @@ export function PublicLanding() {
             <span className="text-sm font-bold text-[var(--accent-ink)]">
               {number}
             </span>
-            <h2 className="mt-3 text-xl">{title}</h2>
+            <h2 className="mt-3">{title}</h2>
             <p className="mt-2 text-sm leading-6 text-neutral-600">
               {description}
             </p>
@@ -140,7 +136,7 @@ export function PublicLanding() {
       <section aria-labelledby="world-events-title" className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--accent-ink)]">
+            <p className="text-sm font-medium text-[var(--accent-ink)]">
               Explore the world
             </p>
             <h2 id="world-events-title" className="mt-1">
@@ -151,8 +147,8 @@ export function PublicLanding() {
               keep this first look approximate.
             </p>
           </div>
-          <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-sm font-semibold text-[var(--accent-ink)]">
-            {events.length} events shown
+          <span className="text-sm tabular-nums text-neutral-600">
+            {events.length} {events.length === 1 ? 'event' : 'events'} shown
           </span>
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -181,7 +177,7 @@ export function PublicLanding() {
               Show world
             </Button>
             {selected && (
-              <div className="absolute bottom-4 left-4 right-4 z-10 rounded-xl border border-orange-200 bg-white/95 p-4 shadow-lg backdrop-blur sm:right-auto sm:w-80">
+              <div className="absolute bottom-4 left-4 right-4 z-10 rounded-xl border border-orange-200 bg-white p-4 shadow-lg sm:right-auto sm:w-80">
                 <div className="flex items-center gap-3">
                   <EventImage
                     eventId={selected.id}

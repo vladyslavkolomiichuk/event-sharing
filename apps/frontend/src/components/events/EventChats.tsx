@@ -144,6 +144,10 @@ export function EventChats({
   }
 
   async function archiveRoom(roomId: string): Promise<void> {
+    if (
+      !window.confirm('Archive this chat room? Nobody can send messages to it.')
+    )
+      return;
     setBusy(true);
     setError('');
     setNotice('');

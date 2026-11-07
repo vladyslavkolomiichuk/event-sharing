@@ -1,4 +1,7 @@
+import type { Metadata } from 'next';
 import { InviteLinkView } from '@/components/events/InviteLinkView';
+
+export const metadata: Metadata = { title: 'Invitation' };
 
 export default async function InvitePage({
   params,

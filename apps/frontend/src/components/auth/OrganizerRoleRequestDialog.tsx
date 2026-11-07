@@ -109,9 +109,7 @@ export function OrganizerRoleRequestDialog() {
                   placeholder="Describe the events you plan to organize"
                 />
               </div>
-              <Button disabled={busy}>
-                {busy ? 'Submitting…' : 'Submit request'}
-              </Button>
+              <Button loading={busy}>Submit request</Button>
             </form>
           )}
           <Dialog.Close asChild>

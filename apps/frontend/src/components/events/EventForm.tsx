@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import Link from 'next/link';
+import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
 import { useRouter } from 'next/navigation';
 import {
   CreateEventSchema,
@@ -60,6 +62,8 @@ export function EventForm({
   const [validationAttempted, setValidationAttempted] = useState<
     Record<number, boolean>
   >({});
+  const [dirty, setDirty] = useState(false);
+  useUnsavedChanges(dirty);
   const submitLock = useRef(false);
   const stepContent = useRef<HTMLDivElement>(null);
   const stepVisited = useRef(false);
@@ -383,6 +387,7 @@ export function EventForm({
         });
         await eventsClient.update(eventId, patch);
         await saveImages(eventId);
+        setDirty(false);
         router.push(`/events/${eventId}`);
       } else {
         const created = await eventsClient.create(
@@ -425,6 +430,7 @@ export function EventForm({
             }
           }
         }
+        setDirty(false);
         router.push(`/events/${created.id}`);
       }
       router.refresh();
@@ -462,8 +468,8 @@ export function EventForm({
           message={error || 'You cannot create a new event from this one.'}
           tone="error"
         />
-        <Button variant="outline" onClick={() => router.push('/my-events')}>
-          Back to my events
+        <Button asChild variant="outline">
+          <Link href="/my-events">Back to my events</Link>
         </Button>
       </div>
     );
@@ -476,11 +482,8 @@ export function EventForm({
     return (
       <div className="space-y-4">
         <Notice message="You cannot edit this event." tone="error" />
-        <Button
-          variant="outline"
-          onClick={() => router.push(`/events/${eventId}`)}
-        >
-          Back to event
+        <Button asChild variant="outline">
+          <Link href={`/events/${eventId}`}>Back to event</Link>
         </Button>
       </div>
     );
@@ -491,8 +494,10 @@ export function EventForm({
           message="This event has ended. Create a new draft from its details to run it again."
           tone="info"
         />
-        <Button onClick={() => router.push(`/events/new?from=${existing.id}`)}>
-          Create next event
+        <Button asChild>
+          <Link href={`/events/new?from=${existing.id}`}>
+            Create next event
+          </Link>
         </Button>
       </div>
     );
@@ -519,7 +524,11 @@ export function EventForm({
           if (!busy) goToStep(next);
         }}
       />
-      <div ref={stepContent} className="min-w-0 space-y-5">
+      <div
+        ref={stepContent}
+        className="min-w-0 space-y-5"
+        onChangeCapture={() => setDirty(true)}
+      >
         <p className="text-sm text-neutral-500">
           Step {step + 1} of {EVENT_FORM_STEPS.length}
         </p>
@@ -1121,8 +1130,9 @@ export function EventForm({
               type="button"
               onClick={() => void submit()}
               disabled={busy || Boolean(existing?.pendingStatus)}
+              loading={busy}
             >
-              {busy ? 'Saving…' : eventId ? 'Save changes' : 'Create draft'}
+              {eventId ? 'Save changes' : 'Create draft'}
             </Button>
           )}
         </div>

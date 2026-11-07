@@ -159,6 +159,7 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
   }
 
   async function remove(item: InAppNotification) {
+    if (!window.confirm('Delete this notification?')) return;
     setBusy(true);
     try {
       await notificationsClient.remove(item.id);

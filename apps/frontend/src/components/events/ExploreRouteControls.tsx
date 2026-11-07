@@ -100,8 +100,9 @@ export function ExploreRouteControls({
           className="col-span-2"
           disabled={!eventTitle || !origin || loading}
           onClick={onBuild}
+          loading={loading}
         >
-          {loading ? 'Building…' : 'Build route'}
+          Build route
         </Button>
       </div>
       {origin && (
