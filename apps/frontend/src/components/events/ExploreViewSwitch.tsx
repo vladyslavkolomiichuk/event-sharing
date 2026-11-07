@@ -24,7 +24,7 @@ export function ExploreViewSwitch({
           disabled={option === 'split' && !splitAvailable}
           aria-pressed={view === option}
           onClick={() => onChange(option)}
-          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm capitalize disabled:hidden ${view === option ? 'bg-[var(--accent)] font-semibold text-[var(--accent-ink)]' : 'text-neutral-600 hover:bg-neutral-100'}`}
+          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm capitalize pointer-coarse:min-h-11 disabled:hidden ${view === option ? 'bg-[var(--accent)] font-semibold text-[var(--accent-ink)]' : 'text-neutral-600 hover:bg-neutral-100'}`}
         >
           <svg
             aria-hidden="true"

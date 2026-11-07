@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { UnreadCountBadge } from './UnreadCountBadge';
+import { formatDateTime } from '@/lib/format-date';
 
 export function ChatsOverview() {
   const { events, totalUnread, loading, error, refresh } = useChatUnread();
@@ -49,7 +50,7 @@ export function ChatsOverview() {
                 </span>
                 <span className="mt-1 block text-xs text-neutral-500">
                   {event.lastMessageAt
-                    ? `Last activity ${new Date(event.lastMessageAt).toLocaleString('en-US')}`
+                    ? `Last activity ${formatDateTime(event.lastMessageAt)}`
                     : 'No messages yet'}
                 </span>
               </span>

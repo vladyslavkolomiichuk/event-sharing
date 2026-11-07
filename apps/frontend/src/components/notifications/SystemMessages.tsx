@@ -6,6 +6,7 @@ import type { SystemMessage } from '@event-sharing/contracts';
 import { notificationsClient } from '@/lib/api/NotificationsClient';
 import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
+import { formatDateTime } from '@/lib/format-date';
 
 export function SystemMessages() {
   const { show } = useToast();
@@ -17,7 +18,7 @@ export function SystemMessages() {
   const load = useCallback(
     async (next?: string) => {
       const current = ++requestId.current;
-      setLoading(true);
+      if (next) setLoading(true);
       setFailed(false);
       try {
         const page = await notificationsClient.systemMessages(next);
@@ -72,12 +73,12 @@ export function SystemMessages() {
             {item.body}
           </p>
           <p className="text-xs text-neutral-500">
-            {new Date(item.createdAt).toLocaleString('en-US')}
+            {formatDateTime(item.createdAt)}
           </p>
         </article>
       ))}
       {!items.length && loading && (
-        <TextSkeleton label="Loading system messages" lines={3} />
+        <TextSkeleton label="Loading system messages" lines={1} />
       )}
       {!items.length && !loading && (
         <p className="text-sm text-neutral-600">

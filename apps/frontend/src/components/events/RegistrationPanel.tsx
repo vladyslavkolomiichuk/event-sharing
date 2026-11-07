@@ -88,7 +88,7 @@ export function RegistrationPanel({
 
   return (
     <div className="space-y-4">
-      <h3>Registration</h3>
+      <h2 className="text-lg">Registration</h2>
       {availability ? (
         <>
           <p className="text-sm text-neutral-600">

@@ -6,6 +6,7 @@ import type {
 } from '@event-sharing/contracts';
 import { Button } from '@/components/ui/button';
 import { UserProfileLink } from '@/components/profile/UserProfileLink';
+import { formatDateTime } from '@/lib/format-date';
 
 export function ActivityFeed({
   items,
@@ -41,7 +42,7 @@ export function ActivityFeed({
                 dateTime={item.occurredAt}
                 className="text-xs text-neutral-600"
               >
-                {new Date(item.occurredAt).toLocaleString('en-US')}
+                {formatDateTime(item.occurredAt)}
               </time>
             </div>
             <p className="text-xs text-neutral-500">

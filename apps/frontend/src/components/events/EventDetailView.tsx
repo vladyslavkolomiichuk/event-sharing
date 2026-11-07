@@ -24,6 +24,8 @@ import { ShareEvent } from './ShareEvent';
 import { InviteParticipants } from './InviteParticipants';
 import { EventRoutePlanner } from './EventRoutePlanner';
 import { EventImage } from './EventImage';
+import { EventNextStep } from './EventNextStep';
+import { timeZoneLabel } from '@/lib/event-time';
 
 const editable = ['DRAFT', 'REJECTED', 'APPROVED', 'PUBLISHED'];
 
@@ -42,6 +44,7 @@ export function EventDetailView({
   const [organizer, setOrganizer] = useState<UserProfilePublic | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [unavailable, setUnavailable] = useState(false);
 
   async function load() {
     try {
@@ -51,6 +54,7 @@ export function EventDetailView({
         await usersClient.get(details.organizerId).catch(() => null),
       );
       setError('');
+      setUnavailable(false);
     } catch (cause) {
       if (
         cause instanceof ApiError &&
@@ -58,6 +62,7 @@ export function EventDetailView({
       ) {
         setEvent(null);
         setOrganizer(null);
+        setUnavailable(true);
       }
       setError(
         cause instanceof Error ? cause.message : 'Could not load event.',
@@ -97,9 +102,15 @@ export function EventDetailView({
     return (
       <div className="space-y-4">
         <InlineFeedback message={error} tone="error" />
-        <Button variant="outline" onClick={() => void load()}>
-          Retry
-        </Button>
+        {unavailable ? (
+          <Button asChild variant="outline">
+            <Link href="/events">Back to events</Link>
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={() => void load()}>
+            Retry
+          </Button>
+        )}
       </div>
     );
   if (!event || !user)
@@ -157,7 +168,7 @@ export function EventDetailView({
             key={`${id}-cover`}
             eventId={id}
             slot="cover"
-            className="h-48 w-full rounded-2xl object-cover sm:h-72"
+            className="h-36 w-full rounded-2xl object-cover sm:h-56"
           />
           <EventImage
             key={`${id}-avatar`}
@@ -189,6 +200,9 @@ export function EventDetailView({
           </Button>
         )}
       </div>
+      {canManage && section !== 'settings' && (
+        <EventNextStep event={event} isAdmin={user.role === 'ADMIN'} />
+      )}
       <div className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
         <EventNavigation
           eventId={id}
@@ -237,7 +251,7 @@ export function EventDetailView({
                     </div>
                     <div>
                       <dt className="text-sm text-neutral-500">Time zone</dt>
-                      <dd className="mt-2">{event.timeZone}</dd>
+                      <dd className="mt-2">{timeZoneLabel(event.timeZone)}</dd>
                     </div>
                     <div>
                       <dt className="text-sm text-neutral-500">Venue</dt>
@@ -269,7 +283,7 @@ export function EventDetailView({
                 </section>
                 <ShareEvent event={event} isOwner={isOwner} />
               </div>
-              <aside className="space-y-7">
+              <div className="order-first space-y-7 lg:order-none">
                 <section className="rounded-xl border border-neutral-200 bg-white p-7">
                   <RegistrationPanel
                     eventId={id}
@@ -280,7 +294,7 @@ export function EventDetailView({
                   />
                 </section>
                 <section className="rounded-xl border border-neutral-200 bg-white p-7">
-                  <h3 className="mb-3">Organizer</h3>
+                  <h2 className="mb-3 text-lg">Organizer</h2>
                   <UserProfileLink
                     userId={event.organizerId}
                     profile={organizer}
@@ -296,7 +310,7 @@ export function EventDetailView({
                     Cancellation: {event.cancellationReason}
                   </p>
                 )}
-              </aside>
+              </div>
             </div>
           )}
           {section === 'route' && routeAvailable && (

@@ -8,7 +8,9 @@ import {
   type PersonalInvite,
 } from '@/lib/api/InvitationClient';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/feedback/Notice';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
+import { formatDate } from '@/lib/format-date';
+import { sentenceCase } from '@/lib/utils';
 
 export function InvitationsWorkspace() {
   const [items, setItems] = useState<PersonalInvite[]>([]);
@@ -51,7 +53,7 @@ export function InvitationsWorkspace() {
   return (
     <div className="space-y-6">
       <h1>Event invitations</h1>
-      {error && <Notice message={error} tone="error" />}
+      {error && <InlineFeedback message={error} tone="error" />}
       {!loaded && (
         <RowsSkeleton label="Loading invitations" rows={3} action framed />
       )}
@@ -68,8 +70,8 @@ export function InvitationsWorkspace() {
           >
             <h2>{invite.title ?? 'Event'}</h2>
             <p className="text-sm text-neutral-600">
-              {invite.status} · Expires{' '}
-              {new Date(invite.expiresAt).toLocaleDateString('en-US')}
+              {sentenceCase(invite.status)} · Expires{' '}
+              {formatDate(invite.expiresAt)}
             </p>
             <div className="flex flex-wrap gap-2">
               {invite.status === 'PENDING' && (

@@ -6,6 +6,7 @@ import { invitationClient, type InviteLink } from '@/lib/api/InvitationClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InlineFeedback } from '@/components/feedback/InlineFeedback';
+import { formatDate } from '@/lib/format-date';
 
 export function ShareEvent({
   event,
@@ -197,7 +198,7 @@ export function ShareEvent({
                       : 'Active'}{' '}
                   · {link.uses ?? 0}
                   {link.maxUses === null ? '' : ` / ${link.maxUses}`} uses ·
-                  Expires {new Date(link.expiresAt).toLocaleDateString('en-US')}
+                  Expires {formatDate(link.expiresAt)}
                 </span>
                 {!link.revokedAt && (
                   <Button

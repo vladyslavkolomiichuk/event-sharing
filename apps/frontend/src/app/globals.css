@@ -4,7 +4,7 @@
   color-scheme: light;
   --accent: #f2a56c;
   --accent-strong: #b45313;
-  --accent-ink: #78350f;
+  --accent-ink: #72320e;
   --accent-soft: #fff0e2;
 }
 
@@ -73,6 +73,11 @@
   @media (min-width: 40rem) {
     select {
       font-size: 0.875rem;
+    }
+  }
+  @media (pointer: coarse) {
+    select {
+      min-height: 2.75rem;
     }
   }
   @media (prefers-reduced-motion: no-preference) {

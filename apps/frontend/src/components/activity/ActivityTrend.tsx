@@ -20,7 +20,7 @@ export function ActivityTrend({ data }: { data: EventLogAnalytics }) {
         <h2 className="text-xl font-semibold">Daily activity</h2>
         <span className="text-xs text-neutral-500">Kafka domain events</span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0}>
         <div
           className="flex h-36 min-w-[540px] items-end gap-1 border-b border-neutral-300"
           role="img"

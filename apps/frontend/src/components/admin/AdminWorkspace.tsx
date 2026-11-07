@@ -169,7 +169,6 @@ export function AdminWorkspace({
             ['categories', 'Categories'],
             ['privacy-requests', 'Privacy requests'],
             ['system-messages', 'System messages'],
-            ['danger-zone', 'Danger Zone'],
           ] as const
         ).map(([key, label]) => {
           const count =
@@ -183,7 +182,7 @@ export function AdminWorkspace({
               key={key}
               href={key === 'overview' ? '/admin' : `/admin/${key}`}
               aria-current={section === key ? 'page' : undefined}
-              className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 ${key === 'danger-zone' ? 'text-red-700 hover:bg-red-50' : 'hover:bg-orange-50'} ${section === key ? (key === 'danger-zone' ? 'bg-red-50 font-semibold' : 'bg-orange-50 font-semibold text-orange-800') : ''}`}
+              className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 pointer-coarse:min-h-11 hover:bg-orange-50 ${section === key ? 'bg-orange-50 font-semibold text-orange-800' : ''}`}
             >
               {label}
               {count !== null && <Badge>{count}</Badge>}

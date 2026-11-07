@@ -161,7 +161,7 @@ export function PersonalActivities() {
               key={option.value}
               type="button"
               aria-current={category === option.value ? 'page' : undefined}
-              className={`shrink-0 rounded-lg px-3 py-2 text-left transition-colors hover:bg-orange-50 focus-visible:outline-2 focus-visible:outline-orange-700 ${category === option.value ? 'bg-orange-50 font-semibold text-orange-800' : 'text-neutral-600'}`}
+              className={`pointer-coarse:min-h-11 shrink-0 rounded-lg px-3 py-2 text-left transition-colors hover:bg-orange-50 focus-visible:outline-2 focus-visible:outline-orange-700 ${category === option.value ? 'bg-orange-50 font-semibold text-orange-800' : 'text-neutral-600'}`}
               onClick={() => setCategory(option.value)}
             >
               {option.label}
@@ -169,6 +169,7 @@ export function PersonalActivities() {
           ))}
       </nav>
       <section aria-label="Your event activities" className="min-w-0 space-y-5">
+        <h2 className="sr-only">Your events</h2>
         <div className="flex flex-wrap items-end gap-3 rounded-xl border border-neutral-200 bg-white p-4">
           <div className="min-w-[min(100%,16rem)] flex-1">
             <label htmlFor="activity-search">Search loaded events</label>

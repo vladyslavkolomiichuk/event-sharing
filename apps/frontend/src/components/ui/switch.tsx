@@ -10,7 +10,7 @@ export function Switch({
   return (
     <SwitchPrimitive.Root
       className={cn(
-        'inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-neutral-400 bg-neutral-200 transition-colors data-[state=checked]:border-[var(--accent-strong)] data-[state=checked]:bg-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50',
+        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full before:absolute before:inset-x-0 before:-inset-y-2.5 before:content-[''] border border-neutral-400 bg-neutral-200 transition-colors data-[state=checked]:border-[var(--accent-strong)] data-[state=checked]:bg-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}

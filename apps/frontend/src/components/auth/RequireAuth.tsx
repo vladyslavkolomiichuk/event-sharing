@@ -23,7 +23,11 @@ export function RequireAuth({
           Your account is required for this page.
         </p>
         <Button asChild>
-          <Link href="/sign-in">Sign in</Link>
+          <Link
+            href={`/sign-in?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+          >
+            Sign in
+          </Link>
         </Button>
       </div>
     );

@@ -65,7 +65,7 @@ export function ExploreEventItem({
         <div className="flex gap-3">
           <button
             type="button"
-            className="font-semibold text-orange-800 underline"
+            className="inline-flex min-h-6 items-center font-semibold text-orange-800 underline pointer-coarse:min-h-11"
             onClick={onSelect}
           >
             Show on map
@@ -73,7 +73,7 @@ export function ExploreEventItem({
           {onRoute && (
             <button
               type="button"
-              className="font-semibold text-orange-800 underline"
+              className="inline-flex min-h-6 items-center font-semibold text-orange-800 underline pointer-coarse:min-h-11"
               onClick={onRoute}
             >
               Plan route

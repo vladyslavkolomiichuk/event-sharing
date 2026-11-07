@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { EventCard } from './EventCard';
 import { Button } from '@/components/ui/button';
 import { EventCardsSkeleton } from '@/components/feedback/Skeletons';
-import { Notice } from '@/components/feedback/Notice';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 
 export function EventList({
   mine = false,
@@ -67,7 +67,15 @@ export function EventList({
 
   return (
     <div className="space-y-6">
-      {error && <Notice message={error} tone="error" />}
+      <h2 className="sr-only">Events</h2>
+      {error && (
+        <div className="space-y-3">
+          <InlineFeedback message={error} tone="error" />
+          <Button variant="outline" onClick={() => void load()}>
+            Retry
+          </Button>
+        </div>
+      )}
       {loading && items.length === 0 ? (
         skeleton
       ) : items.length === 0 && !error ? (

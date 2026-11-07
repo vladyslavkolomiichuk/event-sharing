@@ -1,7 +1,7 @@
 'use client';
 
 import * as Dialog from '@radix-ui/react-dialog';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { EventSearchQuery } from '@event-sharing/contracts';
 import type { Category } from '@/lib/api/EventsClient';
 import type { MapPoint } from '@/components/map/MapView';
@@ -65,8 +65,10 @@ export function ExploreSearchPanel(props: ExploreSearchProps) {
     props.text || filterCount || props.sort !== 'start_time',
   );
 
-  useEffect(() => {
+  // Measure before paint, or phones first draw the desktop layout.
+  useLayoutEffect(() => {
     if (!root.current) return;
+    setWidth(root.current.getBoundingClientRect().width);
     const observer = new ResizeObserver(([entry]) =>
       setWidth(entry.contentRect.width),
     );
@@ -320,7 +322,7 @@ export function ExploreSearchPanel(props: ExploreSearchProps) {
   );
   const locationPanel = (
     <div className="space-y-3">
-      <div className="grid grid-cols-[90px_minmax(0,1fr)] gap-3">
+      <div className="grid grid-cols-[104px_minmax(0,1fr)] gap-3">
         {location}
       </div>
       {locationActions}
@@ -428,7 +430,15 @@ export function ExploreSearchPanel(props: ExploreSearchProps) {
         >
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
-            <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto overscroll-contain rounded-t-xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl">
+            <Dialog.Content
+              onOpenAutoFocus={(event) => {
+                // A focused field opens the phone keyboard over the filters.
+                if (open !== 'filters') return;
+                event.preventDefault();
+                (event.currentTarget as HTMLElement).focus();
+              }}
+              className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto overscroll-contain rounded-t-xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl"
+            >
               <Dialog.Title className="mb-4 text-lg font-semibold">
                 {open === 'search' ? 'Search events' : 'Search filters'}
               </Dialog.Title>
@@ -436,11 +446,13 @@ export function ExploreSearchPanel(props: ExploreSearchProps) {
                 Choose search options and close this panel to return to results.
               </Dialog.Description>
               {panelContent}
-              <Dialog.Close asChild>
-                <Button type="button" variant="outline" className="mt-4 w-full">
-                  Done
-                </Button>
-              </Dialog.Close>
+              <div className="sticky -bottom-5 -mx-5 mt-4 bg-white px-5 pb-5 pt-2">
+                <Dialog.Close asChild>
+                  <Button type="button" variant="outline" className="w-full">
+                    Done
+                  </Button>
+                </Dialog.Close>
+              </div>
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>

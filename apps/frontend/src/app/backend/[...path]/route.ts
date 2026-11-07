@@ -68,7 +68,13 @@ async function proxy(
     gatewayUrl,
   );
   const headers = new Headers();
-  for (const name of ['accept', 'content-type', 'cookie', 'x-request-id']) {
+  for (const name of [
+    'accept',
+    'content-type',
+    'cookie',
+    'x-privacy-receipt',
+    'x-request-id',
+  ]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }

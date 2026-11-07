@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { notificationPresentation } from './notificationPresentation';
 import { notificationLink } from './notificationLink';
+import { formatDateTime } from '@/lib/format-date';
 
 export function NotificationItem({
   item,
@@ -37,8 +38,8 @@ export function NotificationItem({
         </div>
         <h3 className="mt-2 font-semibold">{item.title}</h3>
         <p className="mt-2 text-sm text-neutral-700">{item.body}</p>
-        <p className="mt-2 text-xs text-neutral-500">
-          {new Date(item.createdAt).toLocaleString('en-US')}
+        <p className="mt-2 text-xs text-neutral-600">
+          {formatDateTime(item.createdAt)}
         </p>
         <span className="mt-3 inline-block text-sm font-semibold underline">
           Open notification

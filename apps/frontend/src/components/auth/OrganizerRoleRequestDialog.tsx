@@ -34,7 +34,8 @@ export function OrganizerRoleRequestDialog() {
   }
 
   useEffect(() => {
-    void openDialog(true);
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('requestAccess')) void openDialog(true);
   }, []);
 
   async function submit(event: FormEvent) {

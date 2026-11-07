@@ -3,11 +3,25 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { eventsClient } from '@/lib/api/EventsClient';
 import { invitationClient } from '@/lib/api/InvitationClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { CardSkeleton } from '@/components/feedback/Skeletons';
 import { Notice } from '@/components/feedback/Notice';
+import { formatDateTime } from '@/lib/format-date';
+
+// Event access follows the accepted invitation asynchronously.
+async function waitForEventAccess(eventId: string): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    try {
+      await eventsClient.get(eventId);
+      return;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+}
 
 export function InviteLinkView({ token }: { token: string }) {
   const router = useRouter();
@@ -38,6 +52,7 @@ export function InviteLinkView({ token }: { token: string }) {
     setBusy(true);
     try {
       await invitationClient.acceptLink(token);
+      if (preview) await waitForEventAccess(preview.eventId);
       router.push(`/events/${preview?.eventId}`);
     } catch (cause) {
       setError(
@@ -75,8 +90,7 @@ export function InviteLinkView({ token }: { token: string }) {
     <section className="max-w-xl space-y-5 rounded-xl border border-neutral-200 bg-white p-7">
       <h1>{preview.title}</h1>
       <p>
-        This private invitation expires{' '}
-        {new Date(preview.expiresAt).toLocaleString('en-US')}.
+        This private invitation expires {formatDateTime(preview.expiresAt)}.
       </p>
       <Button onClick={() => void accept()} loading={busy}>
         Accept invitation

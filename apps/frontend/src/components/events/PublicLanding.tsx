@@ -216,7 +216,7 @@ export function PublicLanding() {
               </div>
             )}
           </div>
-          <aside
+          <section
             className="min-h-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white lg:h-[560px]"
             aria-label="Events on the map"
           >
@@ -236,7 +236,8 @@ export function PublicLanding() {
               )}
               {!loading && !error && !events.length && (
                 <p className="p-3 text-sm text-neutral-600">
-                  No public events are available yet.
+                  No events with a public location yet. Sign in to search all
+                  public events.
                 </p>
               )}
               {events.map((event) => (
@@ -265,7 +266,7 @@ export function PublicLanding() {
                 </button>
               ))}
             </div>
-          </aside>
+          </section>
         </div>
       </section>
     </div>

@@ -48,28 +48,23 @@ function NavigationContent({ close }: { close?: () => void }) {
     }
   }
 
-  function navigationLink(href: string, label: string, dangerous = false) {
+  function navigationLink(href: string, label: string) {
     const active =
       href === '/'
         ? pathname === '/' || pathname === '/events'
         : href === '/profile'
           ? pathname === '/profile'
           : pathname === href || pathname.startsWith(`${href}/`);
-    const color = dangerous
-      ? 'text-red-700 hover:bg-red-50 hover:text-red-800'
-      : 'text-neutral-600 hover:bg-neutral-100 hover:text-black';
     const selected = active
-      ? dangerous
-        ? 'bg-red-50 font-semibold'
-        : 'bg-orange-50 font-semibold text-orange-800'
-      : '';
+      ? 'bg-orange-50 font-semibold text-orange-800'
+      : 'text-neutral-600 hover:bg-neutral-100 hover:text-black';
     return (
       <Link
         key={href}
         href={href}
         onClick={close}
         aria-current={active ? 'page' : undefined}
-        className={`block rounded-lg px-3 py-2 text-sm transition-colors ${color} ${selected}`}
+        className={`block rounded-lg px-3 py-2 text-sm transition-colors pointer-coarse:py-3 ${selected}`}
       >
         {label}
       </Link>
@@ -81,7 +76,7 @@ function NavigationContent({ close }: { close?: () => void }) {
       <Link
         href="/"
         onClick={close}
-        className="px-3 py-2 text-lg font-semibold tracking-tight"
+        className="inline-flex items-center px-3 py-2 text-lg font-semibold tracking-tight pointer-coarse:min-h-11"
       >
         Event Sharing<span className="ml-2 text-[var(--accent-strong)]">/</span>
       </Link>
@@ -129,9 +124,6 @@ function NavigationContent({ close }: { close?: () => void }) {
             </p>
             {navigationLink('/admin', 'Admin workspace')}
             {navigationLink('/activity', 'Activity')}
-            <div className="mt-3 border-t border-red-100 pt-3">
-              {navigationLink('/admin/danger-zone', 'Danger Zone', true)}
-            </div>
           </div>
         )}
       </nav>
@@ -183,7 +175,10 @@ export function SiteHeader() {
         <NavigationContent />
       </aside>
       <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-4 py-3 lg:hidden">
-        <Link href="/" className="text-base font-semibold tracking-tight">
+        <Link
+          href="/"
+          className="inline-flex items-center text-base font-semibold tracking-tight pointer-coarse:min-h-11"
+        >
           Event Sharing
           <span className="ml-2 text-[var(--accent-strong)]">/</span>
         </Link>

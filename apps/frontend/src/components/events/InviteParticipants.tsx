@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/feedback/Notice';
 import { ProfileAvatar } from '@/components/profile/ProfileAvatar';
+import { sentenceCase } from '@/lib/utils';
 
 type Person = Pick<FriendPerson, 'userId' | 'username' | 'name' | 'avatarUrl'>;
 
@@ -89,7 +90,7 @@ export function InviteParticipants({
         selected.map((person) => person.username),
       );
       setMessage(
-        `${result.sent.length} invitation(s) saved. ${result.skipped} skipped.`,
+        `${result.sent.length} ${result.sent.length === 1 ? 'invitation' : 'invitations'} sent.${result.skipped ? ` ${result.skipped} skipped.` : ''}`,
       );
       setSelected([]);
       onSelectionChange?.([]);
@@ -228,7 +229,8 @@ export function InviteParticipants({
               className="flex flex-wrap items-center gap-3 border-t py-2 text-sm"
             >
               <span>
-                {names[invite.recipientId] ?? 'User'} · {invite.status}
+                {names[invite.recipientId] ?? 'User'} ·{' '}
+                {sentenceCase(invite.status)}
               </span>
               {invite.status === 'PENDING' && (
                 <Button

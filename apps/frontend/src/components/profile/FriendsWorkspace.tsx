@@ -13,7 +13,7 @@ import { usersClient, type UserSearchResult } from '@/lib/api/UsersClient';
 import { ProfileAvatar } from './ProfileAvatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Notice } from '@/components/feedback/Notice';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 
 export type FriendsSection =
   'friends' | 'find' | 'received' | 'sent' | 'blocked';
@@ -151,7 +151,10 @@ export function FriendsWorkspace({
   return (
     <div className="space-y-7">
       <h1>Friends</h1>
-      <Link className="text-sm font-medium underline" href="/invitations">
+      <Link
+        className="inline-flex items-center text-sm font-medium underline pointer-coarse:min-h-11"
+        href="/invitations"
+      >
         Event invitations
       </Link>
       <div className="grid gap-7 lg:grid-cols-[13rem_minmax(0,1fr)]">
@@ -166,7 +169,7 @@ export function FriendsWorkspace({
                 item.key === 'friends' ? '/friends' : `/friends/${item.key}`
               }
               aria-current={section === item.key ? 'page' : undefined}
-              className={`shrink-0 rounded-lg px-3 py-2 hover:bg-orange-50 ${section === item.key ? 'bg-orange-50 font-semibold text-orange-800' : 'text-neutral-600'}`}
+              className={`inline-flex items-center pointer-coarse:min-h-11 shrink-0 rounded-lg px-3 py-2 hover:bg-orange-50 ${section === item.key ? 'bg-orange-50 font-semibold text-orange-800' : 'text-neutral-600'}`}
             >
               {item.label}
             </Link>
@@ -230,7 +233,7 @@ export function FriendsWorkspace({
             </section>
           )}
           {(error || friends.error) && (
-            <Notice message={error || friends.error} tone="error" />
+            <InlineFeedback message={error || friends.error} tone="error" />
           )}
           {section === 'received' && (
             <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
@@ -385,9 +388,14 @@ export function FriendsWorkspace({
                     size="sm"
                     variant="outline"
                     disabled={busy}
-                    onClick={() =>
-                      void act(() => friendsClient.block(person.username))
-                    }
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Block @${person.username}? This also removes them from your friends.`,
+                        )
+                      )
+                        void act(() => friendsClient.block(person.username));
+                    }}
                   >
                     Block
                   </Button>

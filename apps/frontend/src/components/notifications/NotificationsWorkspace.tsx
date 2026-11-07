@@ -37,35 +37,41 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
   const [busy, setBusy] = useState(false);
   const firstPageRequest = useRef(0);
 
-  const loadFirst = useCallback(async () => {
-    const currentRequest = ++firstPageRequest.current;
-    setLoading(true);
-    setFailed(false);
-    setItems([]);
-    setCursor(null);
-    try {
-      const page = await notificationsClient.list(undefined, filter);
-      if (firstPageRequest.current !== currentRequest) return;
-      setItems(page.items);
-      setCursor(page.nextCursor);
-      setUnread(page.unreadCount);
-    } catch (cause) {
-      if (firstPageRequest.current !== currentRequest) return;
-      setFailed(true);
-      show(
-        cause instanceof Error
-          ? cause.message
-          : 'Could not load notifications.',
-        'error',
-      );
-    } finally {
-      if (firstPageRequest.current === currentRequest) setLoading(false);
-    }
-  }, [filter, show]);
+  const loadFirst = useCallback(
+    async (background = false) => {
+      const currentRequest = ++firstPageRequest.current;
+      // Background refreshes keep the list on screen.
+      if (!background) {
+        setLoading(true);
+        setItems([]);
+        setCursor(null);
+      }
+      setFailed(false);
+      try {
+        const page = await notificationsClient.list(undefined, filter);
+        if (firstPageRequest.current !== currentRequest) return;
+        setItems(page.items);
+        setCursor(page.nextCursor);
+        setUnread(page.unreadCount);
+      } catch (cause) {
+        if (firstPageRequest.current !== currentRequest) return;
+        setFailed(true);
+        show(
+          cause instanceof Error
+            ? cause.message
+            : 'Could not load notifications.',
+          'error',
+        );
+      } finally {
+        if (firstPageRequest.current === currentRequest) setLoading(false);
+      }
+    },
+    [filter, show],
+  );
 
   useEffect(() => {
     void loadFirst();
-    const refresh = () => void loadFirst();
+    const refresh = () => void loadFirst(true);
     window.addEventListener('notifications:remote', refresh);
     return () => {
       firstPageRequest.current++;
@@ -188,6 +194,7 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
         </div>
         <Button
           variant="outline"
+          className="shrink-0"
           disabled={busy || unread === 0}
           onClick={() => void markAll()}
         >

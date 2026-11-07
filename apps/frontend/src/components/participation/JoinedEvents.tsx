@@ -8,8 +8,9 @@ import { eventsClient } from '@/lib/api/EventsClient';
 import { Button } from '@/components/ui/button';
 import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Notice } from '@/components/feedback/Notice';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { EventUnreadBadge } from '@/components/messages/EventUnreadBadge';
+import { formatDate } from '@/lib/format-date';
 
 export function JoinedEvents() {
   const [items, setItems] = useState<Membership[]>([]);
@@ -77,7 +78,7 @@ export function JoinedEvents() {
                   <EventUnreadBadge eventId={item.eventId} />
                 </div>
                 <p className="mt-1 text-sm text-neutral-500">
-                  Joined {new Date(item.joinedAt).toLocaleDateString('en-US')}
+                  Joined {formatDate(item.joinedAt)}
                 </p>
               </div>
               <Button asChild variant="outline" size="sm">
@@ -100,7 +101,7 @@ export function JoinedEvents() {
           Load more
         </Button>
       )}
-      {error && <Notice message={error} tone="error" />}
+      {error && <InlineFeedback message={error} tone="error" />}
     </div>
   );
 }

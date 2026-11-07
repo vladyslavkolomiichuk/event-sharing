@@ -1,4 +1,5 @@
 import type { EventLogAnalytics } from '@event-sharing/contracts';
+import { formatDateTime } from '@/lib/format-date';
 
 export function ConsumerProgress({ data }: { data: EventLogAnalytics }) {
   const topics = new Map<string, Date>();
@@ -23,7 +24,7 @@ export function ConsumerProgress({ data }: { data: EventLogAnalytics }) {
               {topic.replace('event-sharing.', '').replace('.v1', '')}
             </span>
             <time dateTime={date.toISOString()} className="text-neutral-600">
-              {date.toLocaleString('en-US')}
+              {formatDateTime(date)}
             </time>
           </div>
         ))}

@@ -25,6 +25,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [returnQuery, setReturnQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [social, setSocial] = useState<Record<SocialProvider, boolean>>({
     google: false,
@@ -85,6 +86,13 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       window.clearTimeout(timer);
     };
   }, [mode, username]);
+
+  useEffect(() => {
+    const returnTo = new URLSearchParams(window.location.search).get(
+      'returnTo',
+    );
+    if (returnTo) setReturnQuery(`?returnTo=${encodeURIComponent(returnTo)}`);
+  }, []);
 
   async function startSocial(provider: SocialProvider) {
     setBusy(true);
@@ -296,7 +304,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         {mode === 'sign-in' ? 'New here?' : 'Already have an account?'}{' '}
         <Link
           className="font-semibold text-black underline"
-          href={mode === 'sign-in' ? '/sign-up' : '/sign-in'}
+          href={`${mode === 'sign-in' ? '/sign-up' : '/sign-in'}${returnQuery}`}
         >
           {mode === 'sign-in' ? 'Create an account' : 'Sign in'}
         </Link>

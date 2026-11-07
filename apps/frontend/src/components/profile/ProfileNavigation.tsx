@@ -24,7 +24,7 @@ export function ProfileNavigation() {
           key={section.href}
           href={section.href}
           aria-current={pathname === section.href ? 'page' : undefined}
-          className={`shrink-0 rounded-lg px-3 py-2 hover:bg-orange-50 ${pathname === section.href ? 'bg-orange-50 font-semibold text-orange-800' : ''}`}
+          className={`inline-flex items-center pointer-coarse:min-h-11 shrink-0 rounded-lg px-3 py-2 hover:bg-orange-50 ${pathname === section.href ? 'bg-orange-50 font-semibold text-orange-800' : ''}`}
         >
           {section.label}
         </Link>

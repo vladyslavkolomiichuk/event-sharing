@@ -103,14 +103,14 @@ export function ExplorePageSkeleton() {
       label="Loading events"
       className="events-explore-fullscreen flex h-[calc(100dvh-61px)] flex-col gap-2 overflow-hidden p-3 lg:h-dvh"
     >
-      <div className="flex min-h-14 shrink-0 items-center justify-between gap-2">
+      <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2">
         <div className="space-y-2">
           <Skeleton className="h-3 w-16" />
           <Skeleton className="h-6 w-40" />
         </div>
-        <Skeleton className="h-8 w-28" />
+        <Skeleton className="h-[42px] w-72 max-w-full pointer-coarse:h-[54px]" />
       </div>
-      <Skeleton className="h-24 shrink-0 rounded-xl" />
+      <Skeleton className="h-[50px] shrink-0 rounded-lg pointer-coarse:h-[62px]" />
       <div className="flex min-h-0 flex-1 gap-3">
         <div className="grid min-w-0 flex-1 content-start gap-2 overflow-hidden md:max-w-md">
           {repeat(3).map((key) => (
@@ -276,7 +276,7 @@ export function EventDetailSkeleton() {
     <LoadingRegion label="Loading event" className="space-y-9">
       <div className="space-y-5 border-b border-neutral-200 pb-8">
         <div className="relative mb-10">
-          <Skeleton className="h-48 w-full rounded-2xl sm:h-72" />
+          <Skeleton className="h-36 w-full rounded-2xl sm:h-56" />
           <Skeleton className="absolute -bottom-8 left-5 h-20 w-20 rounded-2xl border-4 border-white sm:h-24 sm:w-24" />
         </div>
         <Skeleton className="h-6 w-24 rounded-full" />

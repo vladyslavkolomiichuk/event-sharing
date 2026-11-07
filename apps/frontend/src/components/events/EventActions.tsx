@@ -116,10 +116,10 @@ export function EventActions({
   if (!available.length) return null;
   return (
     <div className="space-y-5">
-      <h3>Manage event</h3>
+      <h2>Manage event</h2>
       {event.pendingStatus && (
         <InlineFeedback
-          message={`Processing ${event.pendingStatus.replaceAll('_', ' ').toLowerCase()}. This page will update when the policy is confirmed.`}
+          message="This change is being applied. The page updates when it finishes."
           tone="warning"
         />
       )}

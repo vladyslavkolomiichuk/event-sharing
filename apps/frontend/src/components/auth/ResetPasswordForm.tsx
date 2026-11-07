@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { authClient } from '@/lib/api/AuthClient';
+import { ApiError } from '@/lib/api/GatewayClient';
 import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,9 +36,12 @@ export function ResetPasswordForm({
       setPassword('');
       setConfirmation('');
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : 'Could not reset password.',
-      );
+      if (cause instanceof ApiError && cause.code === 'INVALID_TOKEN')
+        setError('This reset link is invalid or expired. Request a new one.');
+      else
+        setError(
+          cause instanceof Error ? cause.message : 'Could not reset password.',
+        );
     } finally {
       setBusy(false);
     }

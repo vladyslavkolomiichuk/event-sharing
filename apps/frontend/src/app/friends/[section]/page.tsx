@@ -21,7 +21,7 @@ export async function generateMetadata({
   params: Promise<{ section: string }>;
 }): Promise<Metadata> {
   const { section } = await params;
-  return { title: titles[section] };
+  return { title: titles[section] ?? 'Page not found' };
 }
 
 export default async function FriendsSectionPage({

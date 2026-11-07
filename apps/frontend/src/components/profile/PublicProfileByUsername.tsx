@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usersClient } from '@/lib/api/UsersClient';
 import { ProfileSkeleton } from '@/components/feedback/Skeletons';
-import { Notice } from '@/components/feedback/Notice';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { PublicProfile } from './PublicProfile';
 
 export function PublicProfileByUsername({ username }: { username: string }) {
@@ -23,7 +23,7 @@ export function PublicProfileByUsername({ username }: { username: string }) {
       );
   }, [username]);
 
-  if (error) return <Notice message={error} tone="error" />;
+  if (error) return <InlineFeedback message={error} tone="error" />;
   if (!userId) return <ProfileSkeleton />;
   return <PublicProfile userId={userId} />;
 }

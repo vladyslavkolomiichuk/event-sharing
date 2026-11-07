@@ -22,6 +22,8 @@ import {
 } from '@/components/feedback/Skeletons';
 import { Notice } from '@/components/feedback/Notice';
 import { ProfileAvatar } from './ProfileAvatar';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
+import { formatDate } from '@/lib/format-date';
 
 export function PublicProfile({ userId }: { userId: string }) {
   const { user } = useAuth();
@@ -152,7 +154,7 @@ export function PublicProfile({ userId }: { userId: string }) {
   if (error)
     return (
       <div className="space-y-4">
-        <Notice message={error} tone="error" />
+        <InlineFeedback message={error} tone="error" />
         <Button variant="outline" onClick={() => window.location.reload()}>
           Retry
         </Button>
@@ -243,7 +245,7 @@ export function PublicProfile({ userId }: { userId: string }) {
                   {item.title}
                 </Link>
                 <span className="text-sm text-neutral-500">
-                  Ended {new Date(item.endTime).toLocaleDateString('en-US')}
+                  Ended {formatDate(item.endTime)}
                 </span>
                 {user?.id === userId && (
                   <Button

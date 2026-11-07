@@ -7,7 +7,8 @@ import { participationClient } from '@/lib/api/ParticipationClient';
 import { usersClient } from '@/lib/api/UsersClient';
 import { UserProfileLink } from '@/components/profile/UserProfileLink';
 import { Button } from '@/components/ui/button';
-import { Notice } from '@/components/feedback/Notice';
+import { InlineFeedback } from '@/components/feedback/InlineFeedback';
+import { formatDate } from '@/lib/format-date';
 
 export function ParticipantsList({ eventId }: { eventId: string }) {
   const [items, setItems] = useState<Membership[]>([]);
@@ -70,7 +71,7 @@ export function ParticipantsList({ eventId }: { eventId: string }) {
                 profile={profiles[item.userId] ?? null}
               />
               <span className="text-neutral-500">
-                Joined {new Date(item.joinedAt).toLocaleDateString('en-US')}
+                Joined {formatDate(item.joinedAt)}
               </span>
             </li>
           ))}
@@ -85,7 +86,7 @@ export function ParticipantsList({ eventId }: { eventId: string }) {
           Load more
         </Button>
       )}
-      {error && <Notice message={error} tone="error" />}
+      {error && <InlineFeedback message={error} tone="error" />}
     </div>
   );
 }

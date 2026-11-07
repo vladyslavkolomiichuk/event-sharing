@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { authClient } from '@/lib/api/AuthClient';
 import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
+import { formatDate } from '@/lib/format-date';
 
 type PrivacyRequest = Awaited<
   ReturnType<typeof authClient.pendingDeletionRequests>
@@ -63,8 +64,7 @@ export function PrivacyRequests() {
               <strong>{request.user.name}</strong> (@{request.user.username})
               <span className="block">{request.user.email}</span>
               <span className="text-neutral-500">
-                Requested{' '}
-                {new Date(request.requestedAt).toLocaleDateString('en-US')}
+                Requested {formatDate(request.requestedAt)}
               </span>
             </li>
           ))}

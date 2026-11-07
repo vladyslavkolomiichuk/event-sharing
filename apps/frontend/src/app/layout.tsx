@@ -38,13 +38,13 @@ export default function RootLayout({
               <NotificationsRealtimeProvider>
                 <MessagesRealtimeProvider>
                   <ChatUnreadProvider>
-                    <div className="min-h-screen lg:flex">
+                    <div className="flex min-h-screen flex-col lg:flex-row">
                       <SiteHeader />
                       <div className="flex min-w-0 flex-1 flex-col">
                         <main
                           id="main-content"
                           tabIndex={-1}
-                          className="mx-auto w-full max-w-[1680px] flex-1 px-4 py-6 focus:outline-none sm:px-6 lg:px-8"
+                          className="mx-auto min-h-[calc(100dvh-61px)] w-full max-w-[1680px] flex-1 px-4 py-6 lg:min-h-0 focus:outline-none sm:px-6 lg:px-8"
                         >
                           <OnboardingGate>{children}</OnboardingGate>
                         </main>

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { nativeFieldError } from '@/lib/form-validation';
+import { focusIfFirstInvalid, nativeFieldError } from '@/lib/form-validation';
 
 type TextareaProps = React.ComponentProps<'textarea'> & {
   validate?: (value: string, element: HTMLTextAreaElement) => string;
@@ -86,6 +86,7 @@ function Textarea({
           event.preventDefault();
           setInteracted(true);
           check(event.currentTarget);
+          focusIfFirstInvalid(event.currentTarget);
           onInvalid?.(event);
         }}
         {...props}

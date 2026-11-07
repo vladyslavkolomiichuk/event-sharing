@@ -8,6 +8,7 @@ import { authClient } from '@/lib/api/AuthClient';
 import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { formatDateTime } from '@/lib/format-date';
 
 export function OrganizerRequestsPanel({
   onCountChange,
@@ -118,7 +119,7 @@ export function OrganizerRequestsPanel({
                   {request.requester.name} @{request.requester.username}
                 </Link>
                 <span className="text-xs text-neutral-500">
-                  {new Date(request.requestedAt).toLocaleString('en-US')}
+                  {formatDateTime(request.requestedAt)}
                 </span>
               </div>
               <p className="whitespace-pre-wrap text-sm text-neutral-700">

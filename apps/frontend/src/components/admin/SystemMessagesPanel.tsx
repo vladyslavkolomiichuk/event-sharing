@@ -17,6 +17,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { formatDateTime } from '@/lib/format-date';
 
 export function SystemMessagesPanel() {
   const { show } = useToast();
@@ -159,8 +160,7 @@ export function SystemMessagesPanel() {
             <h3>{item.title}</h3>
             <p className="whitespace-pre-wrap text-sm">{item.body}</p>
             <p className="text-xs text-neutral-500">
-              {item.audience} ·{' '}
-              {new Date(item.createdAt).toLocaleString('en-US')}
+              {item.audience} · {formatDateTime(item.createdAt)}
             </p>
             <Button
               type="button"

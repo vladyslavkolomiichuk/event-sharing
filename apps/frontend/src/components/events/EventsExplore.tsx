@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   EventSearchQuery,
@@ -28,6 +27,7 @@ import { useExploreRoute } from './useExploreRoute';
 import { Button } from '@/components/ui/button';
 import { ExplorePageSkeleton } from '@/components/feedback/Skeletons';
 import { PublicLanding } from './PublicLanding';
+import { CreateEventLink } from './CreateEventLink';
 
 const worldCenter: MapPoint = { latitude: 20, longitude: 0 };
 
@@ -720,9 +720,7 @@ export function EventsExplore() {
             splitAvailable={splitAvailable}
             onChange={setView}
           />
-          <Button asChild size="sm">
-            <Link href="/events/new">Create event</Link>
-          </Button>
+          <CreateEventLink size="sm" />
         </div>
       </header>
       {view !== 'map' && <ExploreSearchPanel {...searchProps} />}
@@ -775,7 +773,7 @@ export function EventsExplore() {
             exploreLayout
             visible={view !== 'list'}
             selectedPopup={
-              selectedEvent && selectedMarker
+              selectedEvent && selectedMarker && !routePlanner.destination
                 ? {
                     id: selectedEvent.id,
                     title: selectedEvent.title,

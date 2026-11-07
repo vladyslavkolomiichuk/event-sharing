@@ -37,6 +37,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    const recheck = () => void refresh();
+    window.addEventListener('auth:expired', recheck);
+    return () => window.removeEventListener('auth:expired', recheck);
+  }, [refresh]);
+
   const signOut = useCallback(async () => {
     await authClient.signOut();
     setUser(null);

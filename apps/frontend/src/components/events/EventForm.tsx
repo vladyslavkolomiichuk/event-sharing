@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { eventLocalTime, eventUtcTime } from '@/lib/event-time';
+import { eventLocalTime, eventUtcTime, timeZoneLabel } from '@/lib/event-time';
 import { InviteParticipants } from './InviteParticipants';
 import { invitationClient } from '@/lib/api/InvitationClient';
 import { useToast } from '@/contexts/ToastContext';
@@ -35,6 +35,7 @@ import { messagesClient } from '@/lib/api/MessagesClient';
 import { EVENT_FORM_STEPS, EventStepNavigation } from './EventStepNavigation';
 import { storageClient, type EventImageSlot } from '@/lib/api/StorageClient';
 import { EventImage } from './EventImage';
+import { focusFirstInvalid } from '@/lib/form-validation';
 
 const timeZones = [
   'UTC',
@@ -313,6 +314,13 @@ export function EventForm({
     return null;
   }
 
+  function showStepError(index: number, message: string) {
+    setValidationAttempted((current) => ({ ...current, [index]: true }));
+    setStep(index);
+    setError(message);
+    window.requestAnimationFrame(() => focusFirstInvalid(stepContent.current));
+  }
+
   function goToStep(next: number) {
     if (next < 0 || next >= EVENT_FORM_STEPS.length || next > reachedStep + 1)
       return;
@@ -320,10 +328,7 @@ export function EventForm({
       for (let index = 0; index < next; index++) {
         const message = validateStep(index);
         if (message) {
-          setValidationAttempted((current) => ({ ...current, [index]: true }));
-          setStep(index);
-          setError(message);
-          show(message, 'error');
+          showStepError(index, message);
           return;
         }
       }
@@ -345,10 +350,7 @@ export function EventForm({
     for (let index = 0; index < EVENT_FORM_STEPS.length - 1; index++) {
       const message = validateStep(index);
       if (message) {
-        setValidationAttempted((current) => ({ ...current, [index]: true }));
-        setStep(index);
-        setError(message);
-        show(message, 'error');
+        showStepError(index, message);
         return;
       }
     }
@@ -435,10 +437,9 @@ export function EventForm({
       }
       router.refresh();
     } catch (cause) {
-      const message =
-        cause instanceof Error ? cause.message : 'Could not save event.';
-      setError(message);
-      show(message, 'error');
+      setError(
+        cause instanceof Error ? cause.message : 'Could not save event.',
+      );
     } finally {
       submitLock.current = false;
       setBusy(false);
@@ -517,7 +518,7 @@ export function EventForm({
     venuePoint.longitude <= 180;
 
   return (
-    <div className="grid gap-7 lg:grid-cols-[13rem_minmax(0,1fr)]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-7 lg:grid-cols-[13rem_minmax(0,1fr)]">
       <EventStepNavigation
         current={step}
         reached={reachedStep}
@@ -677,7 +678,7 @@ export function EventForm({
                   value={categoryId}
                   onChange={(event) => setCategoryId(event.target.value)}
                 >
-                  <option value="">No category</option>
+                  <option value="">Uncategorized</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
@@ -747,7 +748,7 @@ export function EventForm({
                 >
                   {timeZones.map((zone) => (
                     <option key={zone} value={zone}>
-                      {zone}
+                      {timeZoneLabel(zone)}
                     </option>
                   ))}
                 </select>
@@ -991,7 +992,8 @@ export function EventForm({
                   after the registration event is processed. Public search uses
                   an approximate map point around the nearby streets for private
                   venues. This may reveal the general area and does not
-                  guarantee anonymity.
+                  guarantee anonymity. Only events with a public location appear
+                  on the map for signed-out visitors.
                 </p>
               </div>
               <p className="text-xs leading-5 text-neutral-500">
@@ -1023,7 +1025,7 @@ export function EventForm({
                 Check the details before saving.
               </p>
             </div>
-            <dl className="grid gap-4 text-sm sm:grid-cols-2">
+            <dl className="grid gap-4 text-sm [overflow-wrap:anywhere] sm:grid-cols-2">
               <div>
                 <dt className="font-semibold">Title</dt>
                 <dd>{title}</dd>
@@ -1032,7 +1034,7 @@ export function EventForm({
                 <dt className="font-semibold">Category</dt>
                 <dd>
                   {categories.find((category) => category.id === categoryId)
-                    ?.name ?? 'No category'}
+                    ?.name ?? 'Uncategorized'}
                 </dd>
               </div>
               <div className="sm:col-span-2">
@@ -1042,13 +1044,13 @@ export function EventForm({
               <div>
                 <dt className="font-semibold">Start</dt>
                 <dd>
-                  {startTime.replace('T', ' ')} · {timeZone}
+                  {startTime.replace('T', ' ')} · {timeZoneLabel(timeZone)}
                 </dd>
               </div>
               <div>
                 <dt className="font-semibold">End</dt>
                 <dd>
-                  {endTime.replace('T', ' ')} · {timeZone}
+                  {endTime.replace('T', ' ')} · {timeZoneLabel(timeZone)}
                 </dd>
               </div>
               <div>

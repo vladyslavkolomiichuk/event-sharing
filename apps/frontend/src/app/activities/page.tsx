@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import { RequireAuth } from '@/components/auth/RequireAuth';
 import { PersonalActivities } from '@/components/activity/PersonalActivities';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { CreateEventLink } from '@/components/events/CreateEventLink';
 
 export const metadata: Metadata = { title: 'Activities' };
 
@@ -18,9 +17,7 @@ export default function ActivitiesPage() {
               Browse events you joined or organized.
             </p>
           </div>
-          <Button asChild>
-            <Link href="/events/new">Create event</Link>
-          </Button>
+          <CreateEventLink />
         </div>
         <PersonalActivities />
       </div>

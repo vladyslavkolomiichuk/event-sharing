@@ -1,5 +1,17 @@
 type ValidatedElement = HTMLInputElement | HTMLTextAreaElement;
 
+const INVALID_FIELDS = 'input:invalid, textarea:invalid, select:invalid';
+
+export function focusFirstInvalid(root: HTMLElement | null): void {
+  const fields = root?.querySelectorAll<HTMLElement>(INVALID_FIELDS) ?? [];
+  [...fields].find((field) => field.offsetParent !== null)?.focus();
+}
+
+// Calling preventDefault on invalid also stops the browser focusing it.
+export function focusIfFirstInvalid(element: ValidatedElement): void {
+  if (element.form?.querySelector(INVALID_FIELDS) === element) element.focus();
+}
+
 export function nativeFieldError(element: ValidatedElement): string {
   const { validity } = element;
   if (validity.valueMissing) return 'This field is required.';

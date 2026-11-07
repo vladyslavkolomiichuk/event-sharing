@@ -1,3 +1,8 @@
+// Browsers still report the old spelling of this zone.
+export function timeZoneLabel(timeZone: string): string {
+  return timeZone === 'Europe/Kiev' ? 'Europe/Kyiv' : timeZone;
+}
+
 export function eventLocalTime(iso: string, timeZone: string): string {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone,
