@@ -1,6 +1,6 @@
 import type { SearchEvent } from '@event-sharing/contracts';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/feedback/Loading';
+import { ExploreResultsSkeleton } from '@/components/feedback/Skeletons';
 import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { ExploreEventItem } from './ExploreEventItem';
 
@@ -39,7 +39,11 @@ export function ExploreResultsPanel({
       <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
         <h2 className="text-base font-semibold">Events</h2>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-neutral-500">{items.length} shown</span>
+          {!(loading && !items.length) && (
+            <span className="text-xs text-neutral-500">
+              {items.length} shown
+            </span>
+          )}
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
@@ -52,7 +56,7 @@ export function ExploreResultsPanel({
           </div>
         )}
         {loading && !items.length ? (
-          <Loading label="Searching events…" />
+          <ExploreResultsSkeleton grid={grid} />
         ) : items.length ? (
           <div
             className={`grid gap-2 ${grid ? 'sm:grid-cols-2 2xl:grid-cols-3' : ''}`}

@@ -1,5 +1,6 @@
 'use client';
 
+import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import { useEffect, useState } from 'react';
 import { authClient } from '@/lib/api/AuthClient';
 import { useToast } from '@/contexts/ToastContext';
@@ -12,7 +13,7 @@ type PrivacyRequest = Awaited<
 export function PrivacyRequests() {
   const { show } = useToast();
   const [requests, setRequests] = useState<PrivacyRequest[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
@@ -51,7 +52,9 @@ export function PrivacyRequests() {
         Review requests and coordinate data removal or anonymization across
         services.
       </p>
-      {requests.length === 0 ? (
+      {loading && requests.length === 0 ? (
+        <RowsSkeleton label="Loading requests" rows={3} />
+      ) : requests.length === 0 ? (
         <p className="text-sm text-neutral-600">No pending requests.</p>
       ) : (
         <ul className="divide-y divide-neutral-200">

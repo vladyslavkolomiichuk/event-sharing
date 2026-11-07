@@ -12,7 +12,11 @@ export function ProfileAvatar({
   size?: 'md' | 'lg';
 }) {
   const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [avatarUrl]);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    setFailed(false);
+    setLoaded(false);
+  }, [avatarUrl]);
   const dimension = size === 'lg' ? 'h-24 w-24 text-3xl' : 'h-10 w-10 text-sm';
 
   return avatarUrl && !failed ? (
@@ -20,7 +24,8 @@ export function ProfileAvatar({
       src={avatarUrl}
       alt={`${name}'s avatar`}
       loading="lazy"
-      className={`${dimension} shrink-0 rounded-full border border-neutral-200 object-cover`}
+      className={`${dimension} shrink-0 rounded-full border border-neutral-200 object-cover ${loaded ? '' : 'animate-pulse bg-neutral-200 motion-reduce:animate-none'}`}
+      onLoad={() => setLoaded(true)}
       onError={() => setFailed(true)}
     />
   ) : (

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loading } from '@/components/feedback/Loading';
+import { PageSkeleton } from '@/components/feedback/Skeletons';
 import { Button } from '@/components/ui/button';
 import { OrganizerRoleRequestDialog } from './OrganizerRoleRequestDialog';
 
@@ -14,7 +14,7 @@ export function RequireAuth({
   role?: 'ADMIN' | 'ORGANIZER';
 }) {
   const { user, loading } = useAuth();
-  if (loading) return <Loading />;
+  if (loading) return <PageSkeleton />;
   if (!user)
     return (
       <div className="space-y-5 py-16">

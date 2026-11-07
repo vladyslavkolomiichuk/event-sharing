@@ -1,5 +1,6 @@
 'use client';
 
+import { TextSkeleton } from '@/components/feedback/Skeletons';
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import type { UserProfilePublic } from '@event-sharing/contracts';
@@ -33,6 +34,7 @@ export function InviteParticipants({
   const [names, setNames] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [outgoingLoaded, setOutgoingLoaded] = useState(false);
   async function refreshOutgoing() {
     if (!eventId) return;
     const invites = await invitationClient.outgoing(eventId);
@@ -51,7 +53,9 @@ export function InviteParticipants({
   }
 
   useEffect(() => {
-    void refreshOutgoing().catch(() => setOutgoing([]));
+    void refreshOutgoing()
+      .catch(() => setOutgoing([]))
+      .finally(() => setOutgoingLoaded(true));
   }, [eventId]);
 
   async function search(event: FormEvent) {
@@ -214,7 +218,8 @@ export function InviteParticipants({
       {eventId && (
         <div className="space-y-2">
           <h3>Sent invitations</h3>
-          {outgoing.length === 0 && (
+          {!outgoingLoaded && <TextSkeleton label="Loading sent invitations" />}
+          {outgoingLoaded && outgoing.length === 0 && (
             <p className="text-sm text-neutral-500">No invitations yet.</p>
           )}
           {outgoing.map((invite) => (

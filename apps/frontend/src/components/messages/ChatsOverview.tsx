@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useChatUnread } from '@/contexts/ChatUnreadContext';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/feedback/Loading';
+import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { UnreadCountBadge } from './UnreadCountBadge';
 
@@ -27,7 +27,7 @@ export function ChatsOverview() {
       </div>
       {error && <InlineFeedback message={error} tone="error" />}
       {loading ? (
-        <Loading label="Loading chats…" />
+        <RowsSkeleton label="Loading chats" avatar framed />
       ) : events.length === 0 && !error ? (
         <div className="rounded-xl border border-neutral-200 bg-white p-8 text-neutral-600">
           No event chats are available yet.

@@ -9,7 +9,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EventCard } from '@/components/events/EventCard';
-import { Loading } from '@/components/feedback/Loading';
+import { EventCardsSkeleton } from '@/components/feedback/Skeletons';
 
 type ActivityCategory =
   'ALL' | 'UPCOMING' | 'JOINED' | 'ORGANIZED' | 'COMPLETED' | 'CANCELLED';
@@ -193,11 +193,13 @@ export function PersonalActivities() {
             </select>
           </div>
         </div>
-        <p className="text-sm text-neutral-600">
-          {events.length} loaded events shown
-        </p>
+        {!(loading && !owned.length && !joined.length) && (
+          <p className="text-sm text-neutral-600">
+            {events.length} loaded events shown
+          </p>
+        )}
         {loading && !owned.length && !joined.length ? (
-          <Loading label="Loading your activities…" />
+          <EventCardsSkeleton label="Loading your activities" />
         ) : events.length ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {events.map(({ event, organized, joined }) => (

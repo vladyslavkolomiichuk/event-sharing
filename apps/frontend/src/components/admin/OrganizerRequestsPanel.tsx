@@ -1,5 +1,6 @@
 'use client';
 
+import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { AdminOrganizerRequest } from '@event-sharing/contracts';
@@ -98,7 +99,7 @@ export function OrganizerRequestsPanel({
         </Button>
       </div>
       {loading ? (
-        <p className="text-sm text-neutral-600">Loading requests…</p>
+        <RowsSkeleton label="Loading requests" rows={3} action />
       ) : requests.length === 0 ? (
         <p className="text-sm text-neutral-600">No pending requests.</p>
       ) : (

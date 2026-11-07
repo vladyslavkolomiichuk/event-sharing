@@ -1,5 +1,7 @@
 'use client';
 
+import { Skeleton } from '@/components/ui/skeleton';
+import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import { useState, type FormEvent } from 'react';
 import type {
   ChatRoom,
@@ -13,6 +15,7 @@ import { ChatMemberPicker, type ChatPerson } from './ChatMemberPicker';
 
 export function ChatRoomList({
   rooms,
+  loading,
   selectedId,
   canManage,
   busy,
@@ -21,6 +24,7 @@ export function ChatRoomList({
   mobileHidden,
 }: {
   rooms: ChatRoom[];
+  loading: boolean;
   selectedId: string;
   canManage: boolean;
   busy: boolean;
@@ -68,10 +72,14 @@ export function ChatRoomList({
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold">Chats</h2>
-            <p className="mt-1 text-xs text-neutral-500">
-              {rooms.length} {rooms.length === 1 ? 'room' : 'rooms'}
-              {totalUnread > 0 ? `, ${totalUnread} unread` : ''}
-            </p>
+            {loading ? (
+              <Skeleton className="mt-1 h-4 w-16" />
+            ) : (
+              <p className="mt-1 text-xs text-neutral-500">
+                {rooms.length} {rooms.length === 1 ? 'room' : 'rooms'}
+                {totalUnread > 0 ? `, ${totalUnread} unread` : ''}
+              </p>
+            )}
           </div>
           {canManage && (
             <Button
@@ -122,6 +130,9 @@ export function ChatRoomList({
         />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
+        {loading && (
+          <RowsSkeleton label="Loading chat rooms" avatar className="px-5" />
+        )}
         {visible.map((room) => (
           <button
             key={room.id}
@@ -166,7 +177,7 @@ export function ChatRoomList({
             </span>
           </button>
         ))}
-        {visible.length === 0 && (
+        {!loading && visible.length === 0 && (
           <p className="p-5 text-sm text-neutral-500">
             No rooms match your search.
           </p>

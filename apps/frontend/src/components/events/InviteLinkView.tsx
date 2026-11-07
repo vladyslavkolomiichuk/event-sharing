@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { invitationClient } from '@/lib/api/InvitationClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/feedback/Loading';
+import { CardSkeleton } from '@/components/feedback/Skeletons';
 import { Notice } from '@/components/feedback/Notice';
 
 export function InviteLinkView({ token }: { token: string }) {
@@ -47,7 +47,8 @@ export function InviteLinkView({ token }: { token: string }) {
     }
   }
 
-  if (authLoading) return <Loading label="Checking invitation…" />;
+  if (authLoading)
+    return <CardSkeleton label="Checking invitation" className="max-w-xl" />;
   if (!user)
     return (
       <div className="space-y-4">
@@ -68,7 +69,8 @@ export function InviteLinkView({ token }: { token: string }) {
         <Notice message={error} tone="error" />
       </div>
     );
-  if (!preview) return <Loading label="Checking invitation…" />;
+  if (!preview)
+    return <CardSkeleton label="Checking invitation" className="max-w-xl" />;
   return (
     <section className="max-w-xl space-y-5 rounded-xl border border-neutral-200 bg-white p-7">
       <h1>{preview.title}</h1>

@@ -1,5 +1,7 @@
 'use client';
 
+import { LoadingRegion } from '@/components/feedback/Skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -258,20 +260,24 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       </form>
       <div className="mt-5 space-y-3 rounded-xl border border-neutral-200 bg-white p-7">
         <p className="text-sm text-neutral-600">Sign in or create an account</p>
-        {(['google', 'github'] as const).map((provider) => (
-          <Button
-            key={provider}
-            type="button"
-            variant="outline"
-            className="w-full"
-            disabled={busy || !social[provider]}
-            onClick={() => void startSocial(provider)}
-          >
-            Continue with {provider === 'google' ? 'Google' : 'GitHub'}
-          </Button>
-        ))}
-        {socialStatus === 'loading' && (
-          <InlineFeedback message="Checking social sign-in availability…" />
+        {socialStatus === 'loading' ? (
+          <LoadingRegion label="Checking social sign-in" className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </LoadingRegion>
+        ) : (
+          (['google', 'github'] as const).map((provider) => (
+            <Button
+              key={provider}
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={busy || !social[provider]}
+              onClick={() => void startSocial(provider)}
+            >
+              Continue with {provider === 'google' ? 'Google' : 'GitHub'}
+            </Button>
+          ))
         )}
         {socialStatus === 'error' && (
           <InlineFeedback

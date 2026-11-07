@@ -13,7 +13,7 @@ import { ParticipantsList } from './ParticipantsList';
 import { Button } from '@/components/ui/button';
 import { EventStatusBadge } from './EventStatusBadge';
 import { InlineFeedback } from '@/components/feedback/InlineFeedback';
-import { Loading } from '@/components/feedback/Loading';
+import { EventDetailSkeleton } from '@/components/feedback/Skeletons';
 import { UserProfileLink } from '@/components/profile/UserProfileLink';
 import { EventAnnouncementForm } from './EventAnnouncementForm';
 import { EventChats } from './EventChats';
@@ -92,7 +92,7 @@ export function EventDetailView({
   useEffect(() => {
     if (event) document.title = `${event.title} | Event Sharing`;
   }, [event?.title]);
-  if (authLoading || loading) return <Loading label="Loading event…" />;
+  if (authLoading || loading) return <EventDetailSkeleton />;
   if (error && !event)
     return (
       <div className="space-y-4">

@@ -26,7 +26,7 @@ import { ExploreSplitDivider } from './ExploreSplitDivider';
 import { ExploreRouteControls } from './ExploreRouteControls';
 import { useExploreRoute } from './useExploreRoute';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/feedback/Loading';
+import { ExplorePageSkeleton } from '@/components/feedback/Skeletons';
 import { PublicLanding } from './PublicLanding';
 
 const worldCenter: MapPoint = { latitude: 20, longitude: 0 };
@@ -75,7 +75,7 @@ export function EventsExplore() {
   const [viewportPoint, setViewportPoint] = useState<MapPoint | null>(null);
   const [routeControlsOpen, setRouteControlsOpen] = useState(true);
   const areaRef = useRef<HTMLDivElement>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [mapPickMode, setMapPickMode] = useState<'search' | 'route-origin'>(
     'search',
@@ -646,7 +646,7 @@ export function EventsExplore() {
     Math.max(320, areaWidth - 332),
   );
 
-  if (authLoading) return <Loading />;
+  if (authLoading) return <ExplorePageSkeleton />;
   if (!user) return <PublicLanding />;
 
   const searchProps = {

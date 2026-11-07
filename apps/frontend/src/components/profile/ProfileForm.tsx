@@ -8,7 +8,7 @@ import {
 } from '@event-sharing/contracts';
 import { usersClient } from '@/lib/api/UsersClient';
 import { storageClient } from '@/lib/api/StorageClient';
-import { Loading } from '@/components/feedback/Loading';
+import { FormSkeleton } from '@/components/feedback/Skeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -130,7 +130,10 @@ export function ProfileForm() {
     }
   }
 
-  if (loading) return <Loading label="Loading profile…" />;
+  if (loading)
+    return (
+      <FormSkeleton label="Loading profile" fields={5} className="max-w-3xl" />
+    );
   if (!profile)
     return (
       <div className="space-y-4">

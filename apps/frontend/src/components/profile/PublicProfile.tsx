@@ -16,7 +16,10 @@ import { ApiError } from '@/lib/api/GatewayClient';
 import { useToast } from '@/contexts/ToastContext';
 import { EventCard } from '@/components/events/EventCard';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/feedback/Loading';
+import {
+  EventCardsSkeleton,
+  ProfileSkeleton,
+} from '@/components/feedback/Skeletons';
 import { Notice } from '@/components/feedback/Notice';
 import { ProfileAvatar } from './ProfileAvatar';
 
@@ -155,7 +158,7 @@ export function PublicProfile({ userId }: { userId: string }) {
         </Button>
       </div>
     );
-  if (!profile) return <Loading label="Loading profile…" />;
+  if (!profile) return <ProfileSkeleton />;
   return (
     <div className="space-y-8">
       <section className="space-y-7 rounded-xl border border-neutral-200 bg-white p-8">
@@ -264,7 +267,7 @@ export function PublicProfile({ userId }: { userId: string }) {
       <section className="space-y-5">
         <h2>Organized events</h2>
         {eventsLoading ? (
-          <Loading label="Loading events…" />
+          <EventCardsSkeleton count={3} />
         ) : events.length ? (
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {events.map((event) => (

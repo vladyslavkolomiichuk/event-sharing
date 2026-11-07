@@ -1,5 +1,6 @@
 'use client';
 
+import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
@@ -13,17 +14,22 @@ export function InvitationsWorkspace() {
   const [items, setItems] = useState<PersonalInvite[]>([]);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   async function load() {
     setItems(await invitationClient.incoming());
   }
 
   useEffect(() => {
-    void load().catch((cause) =>
-      setError(
-        cause instanceof Error ? cause.message : 'Could not load invitations.',
-      ),
-    );
+    void load()
+      .catch((cause) =>
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : 'Could not load invitations.',
+        ),
+      )
+      .finally(() => setLoaded(true));
   }, []);
 
   async function decide(invite: PersonalInvite, action: 'accept' | 'decline') {
@@ -46,7 +52,10 @@ export function InvitationsWorkspace() {
     <div className="space-y-6">
       <h1>Event invitations</h1>
       {error && <Notice message={error} tone="error" />}
-      {items.length === 0 && (
+      {!loaded && (
+        <RowsSkeleton label="Loading invitations" rows={3} action framed />
+      )}
+      {loaded && items.length === 0 && (
         <p className="rounded-xl border border-neutral-200 bg-white p-7 text-neutral-600">
           No invitations yet.
         </p>

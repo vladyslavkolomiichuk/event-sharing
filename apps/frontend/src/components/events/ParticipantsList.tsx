@@ -1,5 +1,6 @@
 'use client';
 
+import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import { useEffect, useState } from 'react';
 import type { Membership, UserProfilePublic } from '@event-sharing/contracts';
 import { participationClient } from '@/lib/api/ParticipationClient';
@@ -15,7 +16,7 @@ export function ParticipantsList({ eventId }: { eventId: string }) {
   );
   const [cursor, setCursor] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
 
   async function load(next?: string) {
     setBusy(true);
@@ -50,9 +51,13 @@ export function ParticipantsList({ eventId }: { eventId: string }) {
   return (
     <div className="space-y-4">
       <h3>Participants</h3>
-      <p className="text-sm text-neutral-600">
-        {items.length ? `${items.length} shown` : 'No participants yet.'}
-      </p>
+      {busy && !items.length ? (
+        <RowsSkeleton label="Loading participants" rows={3} avatar />
+      ) : (
+        <p className="text-sm text-neutral-600">
+          {items.length ? `${items.length} shown` : 'No participants yet.'}
+        </p>
+      )}
       {items.length > 0 && (
         <ul className="divide-y divide-neutral-200 text-sm">
           {items.map((item) => (

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usersClient } from '@/lib/api/UsersClient';
-import { Loading } from '@/components/feedback/Loading';
+import { ProfileSkeleton } from '@/components/feedback/Skeletons';
 import { Notice } from '@/components/feedback/Notice';
 import { PublicProfile } from './PublicProfile';
 
@@ -24,6 +24,6 @@ export function PublicProfileByUsername({ username }: { username: string }) {
   }, [username]);
 
   if (error) return <Notice message={error} tone="error" />;
-  if (!userId) return <Loading label="Loading profile…" />;
+  if (!userId) return <ProfileSkeleton />;
   return <PublicProfile userId={userId} />;
 }

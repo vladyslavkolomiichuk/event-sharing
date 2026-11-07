@@ -1,5 +1,6 @@
 'use client';
 
+import { ChatMessagesSkeleton } from '@/components/feedback/Skeletons';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ChatMessage, ChatRoom } from '@event-sharing/contracts';
 import { messagesClient } from '@/lib/api/MessagesClient';
@@ -370,11 +371,7 @@ export function ChatConversation({
             </Button>
           </div>
         )}
-        {loading && (
-          <p className="text-center text-sm text-neutral-600">
-            Loading messages…
-          </p>
-        )}
+        {loading && <ChatMessagesSkeleton />}
         {!loading && messages.length === 0 && (
           <p className="mx-auto w-fit rounded-lg bg-white px-4 py-2 text-sm text-neutral-600 shadow-sm">
             Start the conversation.

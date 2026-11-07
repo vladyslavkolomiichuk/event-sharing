@@ -1,5 +1,6 @@
 'use client';
 
+import { TextSkeleton } from '@/components/feedback/Skeletons';
 import { useEffect, useState } from 'react';
 import type {
   EventDetail,
@@ -196,7 +197,7 @@ export function EventRoutePlanner({ event }: { event: EventDetail }) {
         }}
         className="h-[420px]"
       />
-      {loading && <p className="text-sm text-neutral-600">Building route…</p>}
+      {loading && <TextSkeleton label="Building route" lines={2} />}
       {error && (
         <InlineFeedback
           message={`${error} Try another starting point or travel mode, then build the route again.`}

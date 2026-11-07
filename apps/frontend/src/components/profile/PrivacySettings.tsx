@@ -6,7 +6,7 @@ import { PersonalDataActions } from './PersonalDataActions';
 import { usersClient } from '@/lib/api/UsersClient';
 import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/feedback/Loading';
+import { FormSkeleton } from '@/components/feedback/Skeletons';
 import { Switch } from '@/components/ui/switch';
 
 type Preferences = UserProfilePrivate['preferences'];
@@ -63,7 +63,14 @@ export function PrivacySettings() {
         </Button>
       </section>
     );
-  if (!preferences) return <Loading label="Loading privacy settings…" />;
+  if (!preferences)
+    return (
+      <FormSkeleton
+        label="Loading privacy settings"
+        fields={5}
+        className="max-w-3xl"
+      />
+    );
 
   return (
     <div className="max-w-3xl space-y-8">

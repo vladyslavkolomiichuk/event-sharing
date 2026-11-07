@@ -1,5 +1,6 @@
 'use client';
 
+import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { EventDetail, UserProfilePublic } from '@event-sharing/contracts';
@@ -127,7 +128,7 @@ export function ModerationQueue({
         </Button>
       </div>
       {loading && events.length === 0 ? (
-        <p className="text-sm text-neutral-600">Loading queue…</p>
+        <RowsSkeleton label="Loading queue" rows={3} action />
       ) : events.length === 0 ? (
         <p className="text-sm text-neutral-600">No events awaiting review.</p>
       ) : (

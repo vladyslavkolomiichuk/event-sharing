@@ -6,7 +6,8 @@ import type { Membership } from '@event-sharing/contracts';
 import { participationClient } from '@/lib/api/ParticipationClient';
 import { eventsClient } from '@/lib/api/EventsClient';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/feedback/Loading';
+import { RowsSkeleton } from '@/components/feedback/Skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Notice } from '@/components/feedback/Notice';
 import { EventUnreadBadge } from '@/components/messages/EventUnreadBadge';
 
@@ -53,7 +54,8 @@ export function JoinedEvents() {
   useEffect(() => {
     void load();
   }, []);
-  if (!loaded && busy) return <Loading label="Loading joined events…" />;
+  if (!loaded && busy)
+    return <RowsSkeleton label="Loading joined events" action framed />;
   return (
     <div className="space-y-5">
       {items.length ? (
@@ -67,9 +69,10 @@ export function JoinedEvents() {
                 <div className="flex items-center gap-2">
                   <Link
                     href={`/events/${item.eventId}`}
+                    aria-label={titles[item.eventId] ? undefined : 'Open event'}
                     className="font-semibold hover:underline"
                   >
-                    {titles[item.eventId] || 'Loading event…'}
+                    {titles[item.eventId] || <Skeleton className="h-5 w-48" />}
                   </Link>
                   <EventUnreadBadge eventId={item.eventId} />
                 </div>

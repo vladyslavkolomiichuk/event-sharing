@@ -1,5 +1,6 @@
 'use client';
 
+import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -49,6 +50,7 @@ export function AdminWorkspace({
   );
   const [role, setRole] = useState<UserRole>('ORGANIZER');
   const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [moderationCount, setModerationCount] = useState<number | null>(null);
   const [roleRequestCount, setRoleRequestCount] = useState<number | null>(null);
 
@@ -65,6 +67,8 @@ export function AdminWorkspace({
         cause instanceof Error ? cause.message : 'Could not load admin data.',
         'error',
       );
+    } finally {
+      setLoaded(true);
     }
   }
 
@@ -219,6 +223,7 @@ export function AdminWorkspace({
               </Button>
             </div>
             <div className="divide-y divide-neutral-200">
+              {!loaded && <RowsSkeleton label="Loading services" rows={5} />}
               {services?.services.map((service) => (
                 <div
                   key={service.service}
@@ -261,6 +266,7 @@ export function AdminWorkspace({
               </div>
               <Button disabled={busy}>Add</Button>
             </form>
+            {!loaded && <RowsSkeleton label="Loading categories" rows={4} />}
             <ul className="divide-y divide-neutral-200 text-sm">
               {categories.map((category) => (
                 <li key={category.id} className="py-2">

@@ -1,5 +1,7 @@
 'use client';
 
+import { LoadingRegion } from '@/components/feedback/Skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useRef, useState } from 'react';
 import {
   GeoJSONSource,
@@ -387,9 +389,12 @@ export function MapView({
         aria-label="Interactive map"
       />
       {!ready && !error && (
-        <p className="absolute left-4 top-4 rounded bg-white px-3 py-2 text-sm">
-          Loading map…
-        </p>
+        <LoadingRegion
+          label="Loading map"
+          className="pointer-events-none absolute inset-0"
+        >
+          <Skeleton className="h-full w-full rounded-none" />
+        </LoadingRegion>
       )}
       {error && <Notice message={error} tone="error" />}
     </div>

@@ -11,7 +11,7 @@ import { eventLogClient } from '@/lib/api/EventLogClient';
 import { usersClient } from '@/lib/api/UsersClient';
 import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/feedback/Loading';
+import { AnalyticsSkeleton } from '@/components/feedback/Skeletons';
 import { AnalyticsOverview } from './AnalyticsOverview';
 import { ActivityTrend } from './ActivityTrend';
 import { CategoryActivity } from './CategoryActivity';
@@ -31,7 +31,7 @@ export function ActivityWorkspace() {
     {},
   );
   const [cursor, setCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [historyFailed, setHistoryFailed] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const requestId = useRef(0);
@@ -200,7 +200,7 @@ export function ActivityWorkspace() {
           <EventStatusActivity data={analytics} />
         </>
       ) : analyticsLoading ? (
-        <Loading label="Loading analytics…" />
+        <AnalyticsSkeleton />
       ) : (
         <p className="rounded-xl border border-neutral-200 bg-white p-5 text-sm text-neutral-600">
           Analytics are unavailable. Refresh to try again.

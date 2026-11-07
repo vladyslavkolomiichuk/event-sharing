@@ -1,5 +1,6 @@
 'use client';
 
+import { TextSkeleton } from '@/components/feedback/Skeletons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SystemMessage } from '@event-sharing/contracts';
 import { notificationsClient } from '@/lib/api/NotificationsClient';
@@ -75,13 +76,12 @@ export function SystemMessages() {
           </p>
         </article>
       ))}
-      {!items.length && (
+      {!items.length && loading && (
+        <TextSkeleton label="Loading system messages" lines={3} />
+      )}
+      {!items.length && !loading && (
         <p className="text-sm text-neutral-600">
-          {loading
-            ? 'Loading system messages…'
-            : failed
-              ? 'System messages are unavailable.'
-              : 'No system messages.'}
+          {failed ? 'System messages are unavailable.' : 'No system messages.'}
         </p>
       )}
       {failed && (

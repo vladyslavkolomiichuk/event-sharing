@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { MapView, type MapPoint } from '@/components/map/MapView';
 import { PlaceAutocomplete } from '@/components/map/PlaceAutocomplete';
 import { Notice } from '@/components/feedback/Notice';
-import { Loading } from '@/components/feedback/Loading';
+import { FormSkeleton } from '@/components/feedback/Skeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -445,7 +445,8 @@ export function EventForm({
     }
   }
 
-  if (loading) return <Loading label="Loading event form…" />;
+  if (loading)
+    return <FormSkeleton label="Loading event form" fields={5} sidebar />;
   if (eventId && !existing)
     return (
       <div className="space-y-4">

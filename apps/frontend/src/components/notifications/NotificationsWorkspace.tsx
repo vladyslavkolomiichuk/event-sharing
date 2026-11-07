@@ -10,7 +10,7 @@ import type {
 } from '@event-sharing/contracts';
 import { notificationsClient } from '@/lib/api/NotificationsClient';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/feedback/Loading';
+import { NotificationsSkeleton } from '@/components/feedback/Skeletons';
 import { useToast } from '@/contexts/ToastContext';
 import { NotificationItem } from './NotificationItem';
 import { SystemMessages } from './SystemMessages';
@@ -228,7 +228,7 @@ export function NotificationsWorkspace({ messageId }: { messageId?: string }) {
         </section>
       )}
       {loading ? (
-        <Loading label="Loading notifications…" />
+        <NotificationsSkeleton />
       ) : items.length === 0 ? (
         <p className="rounded-xl border border-neutral-200 bg-white p-6 text-neutral-600">
           {failed

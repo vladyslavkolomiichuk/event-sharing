@@ -7,7 +7,7 @@ import { eventsClient } from '@/lib/api/EventsClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { EventCard } from './EventCard';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/feedback/Loading';
+import { EventCardsSkeleton } from '@/components/feedback/Skeletons';
 import { Notice } from '@/components/feedback/Notice';
 
 export function EventList({
@@ -20,7 +20,7 @@ export function EventList({
   const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState<EventDetail[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   async function load(next?: string) {
@@ -46,7 +46,13 @@ export function EventList({
   useEffect(() => {
     if (!authLoading && user) void load();
   }, [authLoading, user, mine]);
-  if (authLoading) return <Loading />;
+  const skeleton = (
+    <EventCardsSkeleton
+      count={compact ? 3 : 6}
+      className={compact ? 'md:grid-cols-3' : undefined}
+    />
+  );
+  if (authLoading) return skeleton;
   if (!user)
     return (
       <div className="rounded-xl border border-neutral-200 bg-white p-8">
@@ -63,7 +69,7 @@ export function EventList({
     <div className="space-y-6">
       {error && <Notice message={error} tone="error" />}
       {loading && items.length === 0 ? (
-        <Loading label="Loading events…" />
+        skeleton
       ) : items.length === 0 && !error ? (
         <div className="rounded-xl border border-neutral-200 bg-white p-8 text-neutral-600">
           {mine

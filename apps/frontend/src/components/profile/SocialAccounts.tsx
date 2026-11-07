@@ -1,5 +1,7 @@
 'use client';
 
+import { LoadingRegion } from '@/components/feedback/Skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useState } from 'react';
 import { authClient, type SocialProvider } from '@/lib/api/AuthClient';
 import { Button } from '@/components/ui/button';
@@ -14,6 +16,7 @@ export function SocialAccounts() {
   });
   const [connected, setConnected] = useState<SocialProvider[]>([]);
   const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -29,7 +32,8 @@ export function SocialAccounts() {
         setError(
           'Could not load connected accounts. Reload the page to try again.',
         ),
-      );
+      )
+      .finally(() => setLoaded(true));
     if (new URLSearchParams(window.location.search).has('error')) {
       setError(
         'The provider could not be connected. Check that its email matches this account and it is not linked elsewhere.',
@@ -70,7 +74,11 @@ export function SocialAccounts() {
           className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 pt-3"
         >
           <span>{provider === 'google' ? 'Google' : 'GitHub'}</span>
-          {connected.includes(provider) ? (
+          {!loaded ? (
+            <LoadingRegion label="Loading connection status">
+              <Skeleton className="h-10 w-24" />
+            </LoadingRegion>
+          ) : connected.includes(provider) ? (
             <span className="text-sm text-green-700">Connected</span>
           ) : (
             <Button

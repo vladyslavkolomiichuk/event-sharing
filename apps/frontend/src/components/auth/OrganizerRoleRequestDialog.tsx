@@ -1,5 +1,6 @@
 'use client';
 
+import { TextSkeleton } from '@/components/feedback/Skeletons';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useEffect, useState, type FormEvent } from 'react';
 import type { OrganizerRequest } from '@event-sharing/contracts';
@@ -72,7 +73,7 @@ export function OrganizerRoleRequestDialog() {
             Tell the moderators why you want to organize events.
           </Dialog.Description>
           {loading ? (
-            <p className="text-sm text-neutral-600">Loading request…</p>
+            <TextSkeleton label="Loading request" lines={2} />
           ) : request?.status === 'PENDING' ? (
             <p className="text-sm text-neutral-700">
               Your request is pending review. You will receive a notification

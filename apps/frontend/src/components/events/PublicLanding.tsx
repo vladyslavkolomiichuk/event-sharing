@@ -1,5 +1,6 @@
 'use client';
 
+import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -147,9 +148,11 @@ export function PublicLanding() {
               keep this first look approximate.
             </p>
           </div>
-          <span className="text-sm tabular-nums text-neutral-600">
-            {events.length} {events.length === 1 ? 'event' : 'events'} shown
-          </span>
+          {!loading && (
+            <span className="text-sm tabular-nums text-neutral-600">
+              {events.length} {events.length === 1 ? 'event' : 'events'} shown
+            </span>
+          )}
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="relative h-[440px] overflow-hidden rounded-2xl sm:h-[560px]">
@@ -221,11 +224,7 @@ export function PublicLanding() {
               Events around the world
             </div>
             <div className="max-h-[360px] space-y-2 overflow-y-auto p-3 lg:max-h-[510px]">
-              {loading && (
-                <p className="p-3 text-sm text-neutral-600">
-                  Loading public events…
-                </p>
-              )}
+              {loading && <RowsSkeleton label="Loading public events" avatar />}
               {error && (
                 <p
                   role="status"

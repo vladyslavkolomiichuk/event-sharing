@@ -1,3 +1,4 @@
+import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import Link from 'next/link';
 import type {
   EventLogEntry,
@@ -25,7 +26,9 @@ export function ActivityFeed({
     <section className="rounded-xl border border-neutral-200 bg-white p-5">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="text-xl font-semibold">Event history</h2>
-        <span className="text-xs text-neutral-500">{items.length} shown</span>
+        {!(loading && !items.length) && (
+          <span className="text-xs text-neutral-500">{items.length} shown</span>
+        )}
       </div>
       <div className="max-h-[680px] divide-y divide-neutral-200 overflow-y-auto">
         {items.map((item) => (
@@ -71,6 +74,9 @@ export function ActivityFeed({
             )}
           </article>
         ))}
+        {!items.length && loading && (
+          <RowsSkeleton label="Loading event history" rows={5} />
+        )}
         {!items.length && !loading && (
           <p className="py-8 text-sm text-neutral-600">
             {failed

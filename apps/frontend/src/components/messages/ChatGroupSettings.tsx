@@ -1,5 +1,6 @@
 'use client';
 
+import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import { useEffect, useState } from 'react';
 import type {
   ChatRoom,
@@ -28,6 +29,7 @@ export function ChatGroupSettings({
   const [selected, setSelected] = useState<ChatPerson[]>([]);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [membersLoaded, setMembersLoaded] = useState(false);
 
   useEffect(() => {
     setName(room.name);
@@ -40,7 +42,9 @@ export function ChatGroupSettings({
   }
 
   useEffect(() => {
-    void refresh().catch(() => setNotice('Could not load group members.'));
+    void refresh()
+      .catch(() => setNotice('Could not load group members.'))
+      .finally(() => setMembersLoaded(true));
     const changed = (signal: Event) => {
       const detail = (
         signal as CustomEvent<{ eventId?: string; roomId?: string }>
@@ -168,6 +172,9 @@ export function ChatGroupSettings({
         {room.access === 'SELECTED_MEMBERS' && (
           <div className="space-y-3">
             <h4 className="text-sm font-semibold">Members</h4>
+            {!membersLoaded && (
+              <RowsSkeleton label="Loading group members" rows={2} action />
+            )}
             {members.map((member) => (
               <div
                 key={member.userId}

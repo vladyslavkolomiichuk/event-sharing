@@ -1,5 +1,6 @@
 'use client';
 
+import { TextSkeleton } from '@/components/feedback/Skeletons';
 import { useEffect, useState, type FormEvent } from 'react';
 import { z } from 'zod';
 import { authClient } from '@/lib/api/AuthClient';
@@ -119,7 +120,7 @@ export function AccountSecurity() {
             />
           </div>
           {emailCapability === 'loading' && (
-            <InlineFeedback message="Checking email availability…" />
+            <TextSkeleton label="Checking email availability" />
           )}
           {emailCapability === 'unavailable' && (
             <InlineFeedback

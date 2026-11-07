@@ -1,5 +1,6 @@
 'use client';
 
+import { TextSkeleton } from '@/components/feedback/Skeletons';
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import { authClient } from '@/lib/api/AuthClient';
@@ -72,7 +73,7 @@ export function ForgotPasswordForm() {
           />
         </div>
         {capability === 'loading' && (
-          <InlineFeedback message="Checking email availability…" />
+          <TextSkeleton label="Checking email availability" />
         )}
         {capability === 'unavailable' && (
           <InlineFeedback

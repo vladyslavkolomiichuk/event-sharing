@@ -1,5 +1,7 @@
 'use client';
 
+import { LoadingRegion } from '@/components/feedback/Skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useState } from 'react';
 import type { Availability } from '@event-sharing/contracts';
 import { participationClient } from '@/lib/api/ParticipationClient';
@@ -113,11 +115,14 @@ export function RegistrationPanel({
             </Button>
           )}
         </>
+      ) : loading ? (
+        <LoadingRegion label="Loading registration" className="space-y-3">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-10 w-28" />
+        </LoadingRegion>
       ) : (
         <p className="text-sm text-neutral-600">
-          {loading
-            ? 'Loading registration…'
-            : 'Registration has not opened yet.'}
+          Registration has not opened yet.
         </p>
       )}
       {notice && <InlineFeedback message={notice} tone="success" />}

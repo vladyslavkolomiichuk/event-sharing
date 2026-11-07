@@ -1,5 +1,6 @@
 'use client';
 
+import { RowsSkeleton } from '@/components/feedback/Skeletons';
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import {
@@ -234,6 +235,9 @@ export function FriendsWorkspace({
           {section === 'received' && (
             <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
               <h2>Received requests</h2>
+              {!list && !error && (
+                <RowsSkeleton label="Loading requests" rows={3} action />
+              )}
               {list?.received.length === 0 && <p>No requests.</p>}
               {list?.received.map(
                 (request) =>
@@ -274,6 +278,9 @@ export function FriendsWorkspace({
           {section === 'sent' && (
             <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
               <h2>Sent requests</h2>
+              {!list && !error && (
+                <RowsSkeleton label="Loading requests" rows={3} action />
+              )}
               {list?.sent.length === 0 && <p>No pending requests.</p>}
               {list?.sent.map(
                 (request) =>
@@ -322,11 +329,15 @@ export function FriendsWorkspace({
                   <option value="username">Sort by username</option>
                 </select>
               </div>
-              <p className="text-sm text-neutral-600" role="status">
-                {friendPage
-                  ? `${friendPage.items.length} friends shown${friendPage.nextPage !== null ? '; more results available' : ''}.`
-                  : 'Loading friends…'}
-              </p>
+              {friendPage ? (
+                <p className="text-sm text-neutral-600" role="status">
+                  {`${friendPage.items.length} friends shown${friendPage.nextPage !== null ? '; more results available' : ''}.`}
+                </p>
+              ) : (
+                !friends.error && (
+                  <RowsSkeleton label="Loading friends" avatar action />
+                )
+              )}
               {friendPage && shownFriends.length === 0 && (
                 <p>
                   {friendFilter ? 'No matching friends.' : 'No friends yet.'}
@@ -397,6 +408,9 @@ export function FriendsWorkspace({
           {section === 'blocked' && (
             <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
               <h2>Blocked users</h2>
+              {!list && !error && (
+                <RowsSkeleton label="Loading blocked users" rows={3} action />
+              )}
               {list?.blocked.length === 0 && <p>No blocked users.</p>}
               {list?.blocked.map((person) => (
                 <div

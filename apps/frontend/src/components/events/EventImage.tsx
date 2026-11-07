@@ -16,6 +16,7 @@ export function EventImage({
   publicImage?: boolean;
 }) {
   const [unavailable, setUnavailable] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   if (unavailable)
     return (
       <div
@@ -38,7 +39,11 @@ export function EventImage({
       alt=""
       decoding="async"
       loading={slot === 'cover' ? 'eager' : 'lazy'}
-      className={className}
+      className={cn(
+        className,
+        !loaded && 'animate-pulse bg-neutral-200 motion-reduce:animate-none',
+      )}
+      onLoad={() => setLoaded(true)}
       onError={() => setUnavailable(true)}
     />
   );

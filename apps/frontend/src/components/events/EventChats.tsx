@@ -1,5 +1,6 @@
 'use client';
 
+import { ChatMessagesSkeleton } from '@/components/feedback/Skeletons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChatRoom, CreateChatRoom } from '@event-sharing/contracts';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,6 +35,7 @@ export function EventChats({
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [roomsLoaded, setRoomsLoaded] = useState(false);
   const [desktop, setDesktop] = useState(false);
   const roomsRequest = useRef(0);
   const appliedRoomId = useRef('');
@@ -90,6 +92,8 @@ export function EventChats({
       setError(
         cause instanceof Error ? cause.message : 'Could not load event chats.',
       );
+    } finally {
+      setRoomsLoaded(true);
     }
   }, [eventId, initialRoomId]);
 
@@ -195,6 +199,7 @@ export function EventChats({
       <div className="flex flex-col lg:h-[42rem] lg:flex-row">
         <ChatRoomList
           rooms={rooms}
+          loading={!roomsLoaded}
           selectedId={selectedId}
           canManage={canManage}
           busy={busy}
@@ -219,6 +224,8 @@ export function EventChats({
             onArchive={archiveRoom}
             onBack={() => setMobileOpen(false)}
           />
+        ) : desktop && !roomsLoaded ? (
+          <ChatMessagesSkeleton className="min-h-96 flex-1 bg-neutral-100 p-6" />
         ) : desktop ? (
           <div className="grid min-h-96 flex-1 place-items-center bg-neutral-100 p-8 text-center text-sm text-neutral-600">
             {rooms.length > 0
