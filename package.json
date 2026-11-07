@@ -14,8 +14,11 @@
     "start:frontend": "pnpm --filter @event-sharing/contracts build && pnpm --filter @event-sharing/frontend start",
     "env:services": "tsx scripts/setup-service-envs.ts",
     "server:status": "docker compose ps",
-    "docker:up": "docker compose --profile tools --profile backup up -d --build",
-    "docker:stop": "docker compose --profile tools --profile backup stop"
+    "docker:up": "docker compose --profile tools --profile backup up -d --build --remove-orphans",
+    "docker:stop": "docker compose --profile tools --profile backup stop",
+    "docker:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d",
+    "docker:dev:build": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build",
+    "docker:dev:stop": "docker compose -f docker-compose.yml -f docker-compose.dev.yml stop"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
