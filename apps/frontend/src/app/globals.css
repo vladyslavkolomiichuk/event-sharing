@@ -161,6 +161,14 @@ main:has(.events-explore-fullscreen) + footer {
   font-size: 10px;
   font-weight: 700;
 }
+.event-map-marker-cluster {
+  width: 42px;
+  height: 42px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
 .event-map-marker-approximate.event-map-marker-selected {
   box-shadow:
     0 0 0 4px var(--accent-strong),

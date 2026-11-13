@@ -28,5 +28,24 @@ export const EventSearchResultSchema = z.strictObject({
   nextCursor: z.string().nullable(),
 });
 
+// Upper bound that keeps one map response small.
+export const EVENT_MAP_POINT_LIMIT = 2000;
+
+export const EventMapPointSchema = z.strictObject({
+  id: z.uuid(),
+  title: z.string(),
+  region: z.string().nullable(),
+  visibility: z.enum(['PUBLIC', 'PARTICIPANTS_ONLY']),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+});
+
+export const EventMapResultSchema = z.strictObject({
+  points: z.array(EventMapPointSchema).max(EVENT_MAP_POINT_LIMIT),
+  total: z.number().int().nonnegative(),
+});
+
 export type SearchEvent = z.infer<typeof SearchEventSchema>;
 export type EventSearchResult = z.infer<typeof EventSearchResultSchema>;
+export type EventMapPoint = z.infer<typeof EventMapPointSchema>;
+export type EventMapResult = z.infer<typeof EventMapResultSchema>;

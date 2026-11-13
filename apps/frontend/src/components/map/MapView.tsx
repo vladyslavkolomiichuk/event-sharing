@@ -27,12 +27,14 @@ export type MapMarker = MapPoint & {
   draggable?: boolean;
   kind?: 'search' | 'route';
   avatarUrl?: string;
+  cluster?: boolean;
 };
 
 export function MapView({
   center,
   zoom,
   markers,
+  clusteredMarkers,
   route,
   radius,
   onPick,
@@ -50,6 +52,8 @@ export function MapView({
   center: MapPoint;
   zoom: number;
   markers: MapMarker[];
+  // Event pins grouped into count bubbles when they crowd together.
+  clusteredMarkers?: MapMarker[];
   route?: MapPoint[];
   radius?: MapRadius;
   onPick?: (point: MapPoint) => void;
@@ -72,6 +76,7 @@ export function MapView({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Map | null>(null);
   const markerRef = useRef<Marker[]>([]);
+  const clusterRef = useRef<Record<string, Marker>>({});
   const onPickRef = useRef(onPick);
   const onMarkerClickRef = useRef(onMarkerClick);
   const onMarkerDragRef = useRef(onMarkerDrag);
@@ -260,34 +265,9 @@ export function MapView({
     if (!map || !ready) return;
     markerRef.current.forEach((marker) => marker.remove());
     markerRef.current = markers.map((item) => {
-      const element = item.user
-        ? document.createElement('div')
-        : document.createElement('button');
-      if (!item.user) (element as HTMLButtonElement).type = 'button';
-      element.className = `event-map-marker${item.selected ? ' event-map-marker-selected' : ''}${item.approximate ? ' event-map-marker-approximate' : ''}${item.user ? ' event-map-marker-user' : ''}${item.draggable ? ' event-map-marker-draggable' : ''}${item.kind ? ` event-map-marker-${item.kind}` : ''}`;
-      element.setAttribute('aria-label', item.label);
-      element.title = item.label;
-      if (item.count && item.count > 1)
-        element.textContent = String(item.count);
-      else if (item.avatarUrl) {
-        const avatar = document.createElement('img');
-        avatar.src = item.avatarUrl;
-        avatar.alt = '';
-        avatar.loading = 'lazy';
-        avatar.className = 'event-map-marker-avatar';
-        avatar.onerror = () => avatar.remove();
-        element.appendChild(avatar);
-      } else if (item.kind === 'search' || item.kind === 'route') {
-        const symbol = document.createElement('span');
-        symbol.className = 'event-map-marker-symbol';
-        symbol.textContent = item.kind === 'search' ? '+' : '↗';
-        element.appendChild(symbol);
-      }
-      if (!item.user)
-        element.addEventListener('click', (event) => {
-          event.stopPropagation();
-          if (!item.draggable) onMarkerClickRef.current?.(item.id);
-        });
+      const element = markerElement(item, () => {
+        if (!item.draggable) onMarkerClickRef.current?.(item.id);
+      });
       const marker = new Marker({
         element,
         anchor: 'bottom',
@@ -307,6 +287,111 @@ export function MapView({
       return marker;
     });
   }, [markers, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const items = clusteredMarkers ?? [];
+    const byId = Object.fromEntries(items.map((item) => [item.id, item]));
+    const data = {
+      type: 'FeatureCollection' as const,
+      features: items.map((item) => ({
+        type: 'Feature' as const,
+        properties: { id: item.id },
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [item.longitude, item.latitude],
+        },
+      })),
+    };
+    const source = map.getSource('event-points') as GeoJSONSource | undefined;
+    if (source) source.setData(data);
+    else {
+      map.addSource('event-points', {
+        type: 'geojson',
+        data,
+        cluster: true,
+        clusterRadius: 50,
+        clusterMaxZoom: 14,
+      });
+      // Invisible layer that pins are read back from.
+      map.addLayer({
+        id: 'event-points-anchor',
+        type: 'circle',
+        source: 'event-points',
+        paint: {
+          'circle-radius': 1,
+          'circle-opacity': 0,
+          'circle-stroke-width': 0,
+        },
+      });
+    }
+    const clear = () => {
+      Object.values(clusterRef.current).forEach((marker) => marker.remove());
+      clusterRef.current = {};
+    };
+    clear();
+    // Rendered features skip stale tiles from other zoom levels.
+    const update = () => {
+      if (!map.getLayer('event-points-anchor')) return;
+      const next: Record<string, Marker> = {};
+      const features = map.queryRenderedFeatures({
+        layers: ['event-points-anchor'],
+      });
+      for (const feature of features) {
+        if (feature.geometry.type !== 'Point') continue;
+        const [longitude, latitude] = feature.geometry.coordinates;
+        const properties = feature.properties ?? {};
+        const clusterId = Number(properties.cluster_id);
+        const key = properties.cluster
+          ? `cluster:${clusterId}`
+          : String(properties.id);
+        if (next[key]) continue;
+        let marker = clusterRef.current[key];
+        if (!marker) {
+          const item: MapMarker | undefined = properties.cluster
+            ? {
+                id: key,
+                label: `${properties.point_count} events. Select to zoom in.`,
+                latitude,
+                longitude,
+                count: Number(properties.point_count),
+                cluster: true,
+              }
+            : byId[key];
+          if (!item) continue;
+          const element = markerElement(item, () => {
+            if (!item.cluster) return onMarkerClickRef.current?.(item.id);
+            const clustered = map.getSource('event-points') as GeoJSONSource;
+            void clustered
+              .getClusterExpansionZoom(clusterId)
+              .then((zoom) =>
+                map.easeTo({ center: [longitude, latitude], zoom }),
+              )
+              .catch(() => {});
+          });
+          marker = new Marker({
+            element,
+            anchor: item.cluster ? 'center' : 'bottom',
+          })
+            .setLngLat([longitude, latitude])
+            .addTo(map);
+        }
+        next[key] = marker;
+      }
+      for (const [key, marker] of Object.entries(clusterRef.current))
+        if (!next[key]) marker.remove();
+      clusterRef.current = next;
+    };
+    map.on('idle', update);
+    map.on('moveend', update);
+    update();
+    return () => {
+      map.off('idle', update);
+      map.off('moveend', update);
+      clear();
+    };
+  }, [clusteredMarkers, ready]);
 
   useEffect(() => {
     markerRef.current.forEach((marker, index) => {
@@ -427,4 +512,35 @@ function radiusCoordinates({
     ]);
   }
   return points;
+}
+
+function markerElement(item: MapMarker, onSelect: () => void): HTMLElement {
+  const element = item.user
+    ? document.createElement('div')
+    : document.createElement('button');
+  if (!item.user) (element as HTMLButtonElement).type = 'button';
+  element.className = `event-map-marker${item.selected ? ' event-map-marker-selected' : ''}${item.approximate ? ' event-map-marker-approximate' : ''}${item.user ? ' event-map-marker-user' : ''}${item.draggable ? ' event-map-marker-draggable' : ''}${item.kind ? ` event-map-marker-${item.kind}` : ''}${item.cluster ? ' event-map-marker-cluster' : ''}`;
+  element.setAttribute('aria-label', item.label);
+  element.title = item.label;
+  if (item.count && item.count > 1) element.textContent = String(item.count);
+  else if (item.avatarUrl) {
+    const avatar = document.createElement('img');
+    avatar.src = item.avatarUrl;
+    avatar.alt = '';
+    avatar.loading = 'lazy';
+    avatar.className = 'event-map-marker-avatar';
+    avatar.onerror = () => avatar.remove();
+    element.appendChild(avatar);
+  } else if (item.kind === 'search' || item.kind === 'route') {
+    const symbol = document.createElement('span');
+    symbol.className = 'event-map-marker-symbol';
+    symbol.textContent = item.kind === 'search' ? '+' : '↗';
+    element.appendChild(symbol);
+  }
+  if (!item.user)
+    element.addEventListener('click', (event) => {
+      event.stopPropagation();
+      onSelect();
+    });
+  return element;
 }

@@ -20,6 +20,12 @@ export class GeoSearchController {
     response.status(200).json(await this.service.search(userId, query));
   };
 
+  map: RequestHandler = async (request, response) => {
+    const userId = this.userId(request.authenticatedUser?.id);
+    const query = EventSearchQuerySchema.parse(request.body);
+    response.status(200).json(await this.service.map(userId, query));
+  };
+
   route: RequestHandler = async (request, response) => {
     this.userId(request.authenticatedUser?.id);
     const input = EventRouteRequestSchema.parse(request.body);

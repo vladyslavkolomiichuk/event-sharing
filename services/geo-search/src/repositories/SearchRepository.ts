@@ -1,6 +1,9 @@
 import {
+  EVENT_MAP_POINT_LIMIT,
+  EventMapResultSchema,
   EventSearchResultSchema,
   SEARCHABLE_EVENT_STATUSES,
+  type EventMapResult,
   type EventSearchQuery,
   type EventSearchResult,
 } from '@event-sharing/contracts';
@@ -32,59 +35,19 @@ type SearchRow = {
   rank: number;
 };
 
+type MapRow = {
+  id: string;
+  title: string;
+  region: string | null;
+  visibility: string;
+  latitude: number | null;
+  longitude: number | null;
+  total: number;
+};
+
 export class SearchRepository {
   async search(query: EventSearchQuery): Promise<EventSearchResult> {
-    const conditions: Prisma.Sql[] = query.status
-      ? [Prisma.sql`p.status = ${query.status}`]
-      : [
-          Prisma.sql`p.status IN (${Prisma.join([...SEARCHABLE_EVENT_STATUSES])})`,
-          Prisma.sql`p."endTime" > NOW()`,
-        ];
-    conditions.push(Prisma.sql`p."eventVisibility" = 'PUBLIC'`);
-    if (query.status === 'PUBLISHED' || query.status === 'ONGOING') {
-      conditions.push(Prisma.sql`p."endTime" > NOW()`);
-    }
-    if (query.categoryId === 'uncategorized')
-      conditions.push(Prisma.sql`p."categoryId" IS NULL`);
-    else if (query.categoryId)
-      conditions.push(Prisma.sql`p."categoryId" = ${query.categoryId}::uuid`);
-    if (query.organizerId)
-      conditions.push(Prisma.sql`p."organizerId" = ${query.organizerId}::uuid`);
-    if (query.startFrom)
-      conditions.push(
-        Prisma.sql`p."startTime" >= ${new Date(query.startFrom)}`,
-      );
-    if (query.startTo)
-      conditions.push(Prisma.sql`p."startTime" <= ${new Date(query.startTo)}`);
-
-    const term = query.text?.trim();
-    if (term) {
-      const pattern = `%${term.replace(/[\\%_]/g, '\\$&')}%`;
-      conditions.push(Prisma.sql`(
-        p.title ILIKE ${pattern} OR p.description ILIKE ${pattern}
-        OR p.region ILIKE ${pattern} OR p."categoryName" ILIKE ${pattern}
-      )`);
-    }
-
-    const hasLocation =
-      query.latitude !== undefined && query.longitude !== undefined;
-    const origin = hasLocation
-      ? Prisma.sql`ST_SetSRID(ST_MakePoint(${query.longitude}, ${query.latitude}), 4326)::geography`
-      : Prisma.sql`NULL::geography`;
-    if (hasLocation && query.radiusMeters !== undefined) {
-      conditions.push(
-        Prisma.sql`ST_DWithin(
-          p.location,
-          ${origin},
-          ${query.radiusMeters}::double precision,
-          false
-        )`,
-      );
-    }
-
-    const distance = hasLocation
-      ? Prisma.sql`ST_Distance(p.location, ${origin}, false)`
-      : Prisma.sql`NULL::double precision`;
+    const { conditions, term, distance } = this.filters(query);
     const rank = term
       ? Prisma.sql`CASE
           WHEN lower(p.title) = ${term.toLowerCase()} THEN 3
@@ -161,5 +124,87 @@ export class SearchRepository {
             )
           : null,
     });
+  }
+
+  // Every matching point up to the limit, nearest or soonest first.
+  async map(query: EventSearchQuery): Promise<EventMapResult> {
+    const { conditions, distance, hasLocation } = this.filters(query);
+    const order = hasLocation
+      ? Prisma.sql`"distanceMeters" ASC, p."startTime" ASC, p.id ASC`
+      : Prisma.sql`p."startTime" ASC, p.id ASC`;
+    const rows = await prisma.$queryRaw<MapRow[]>(Prisma.sql`
+      SELECT p.id, p.title, p.region, p.visibility, p.latitude, p.longitude,
+        ${distance} AS "distanceMeters", COUNT(*) OVER ()::int AS total
+      FROM "event_projection" p
+      WHERE ${Prisma.join(conditions, ' AND ')}
+      ORDER BY ${order}
+      LIMIT ${EVENT_MAP_POINT_LIMIT}
+    `);
+    return EventMapResultSchema.parse({
+      points: rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        region: row.region,
+        visibility: row.visibility,
+        latitude: row.latitude,
+        longitude: row.longitude,
+      })),
+      total: rows[0]?.total ?? 0,
+    });
+  }
+
+  private filters(query: EventSearchQuery) {
+    const conditions: Prisma.Sql[] = query.status
+      ? [Prisma.sql`p.status = ${query.status}`]
+      : [
+          Prisma.sql`p.status IN (${Prisma.join([...SEARCHABLE_EVENT_STATUSES])})`,
+          Prisma.sql`p."endTime" > NOW()`,
+        ];
+    conditions.push(Prisma.sql`p."eventVisibility" = 'PUBLIC'`);
+    if (query.status === 'PUBLISHED' || query.status === 'ONGOING') {
+      conditions.push(Prisma.sql`p."endTime" > NOW()`);
+    }
+    if (query.categoryId === 'uncategorized')
+      conditions.push(Prisma.sql`p."categoryId" IS NULL`);
+    else if (query.categoryId)
+      conditions.push(Prisma.sql`p."categoryId" = ${query.categoryId}::uuid`);
+    if (query.organizerId)
+      conditions.push(Prisma.sql`p."organizerId" = ${query.organizerId}::uuid`);
+    if (query.startFrom)
+      conditions.push(
+        Prisma.sql`p."startTime" >= ${new Date(query.startFrom)}`,
+      );
+    if (query.startTo)
+      conditions.push(Prisma.sql`p."startTime" <= ${new Date(query.startTo)}`);
+
+    const term = query.text?.trim();
+    if (term) {
+      const pattern = `%${term.replace(/[\\%_]/g, '\\$&')}%`;
+      conditions.push(Prisma.sql`(
+        p.title ILIKE ${pattern} OR p.description ILIKE ${pattern}
+        OR p.region ILIKE ${pattern} OR p."categoryName" ILIKE ${pattern}
+      )`);
+    }
+
+    const hasLocation =
+      query.latitude !== undefined && query.longitude !== undefined;
+    const origin = hasLocation
+      ? Prisma.sql`ST_SetSRID(ST_MakePoint(${query.longitude}, ${query.latitude}), 4326)::geography`
+      : Prisma.sql`NULL::geography`;
+    if (hasLocation && query.radiusMeters !== undefined) {
+      conditions.push(
+        Prisma.sql`ST_DWithin(
+          p.location,
+          ${origin},
+          ${query.radiusMeters}::double precision,
+          false
+        )`,
+      );
+    }
+
+    const distance = hasLocation
+      ? Prisma.sql`ST_Distance(p.location, ${origin}, false)`
+      : Prisma.sql`NULL::double precision`;
+    return { conditions, term, distance, hasLocation };
   }
 }

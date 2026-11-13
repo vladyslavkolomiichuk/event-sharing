@@ -25,12 +25,7 @@ export class GeoSearchService {
   }
 
   async search(userId: string, query: EventSearchQuery) {
-    if (
-      query.locationSource &&
-      (await this.preferences.get(userId)) !== query.locationSource
-    ) {
-      throw new LocationPreferenceRequiredError();
-    }
+    await this.checkLocationSource(userId, query);
     const result = await this.repository.search(query);
     try {
       await prisma.outboxEvent.create({
@@ -48,5 +43,20 @@ export class GeoSearchService {
       console.error('Search telemetry could not be queued.');
     }
     return result;
+  }
+
+  // Skips telemetry; the list request already counts this search.
+  async map(userId: string, query: EventSearchQuery) {
+    await this.checkLocationSource(userId, query);
+    return this.repository.map(query);
+  }
+
+  private async checkLocationSource(userId: string, query: EventSearchQuery) {
+    if (
+      query.locationSource &&
+      (await this.preferences.get(userId)) !== query.locationSource
+    ) {
+      throw new LocationPreferenceRequiredError();
+    }
   }
 }

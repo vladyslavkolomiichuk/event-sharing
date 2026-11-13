@@ -1,4 +1,5 @@
 import type {
+  EventMapResult,
   EventSearchQuery,
   EventSearchResult,
   SearchMode,
@@ -17,6 +18,10 @@ export class SearchClient {
 
   events(query: EventSearchQuery): Promise<EventSearchResult> {
     return gateway.post('/api/search/events', query);
+  }
+
+  mapPoints(query: EventSearchQuery): Promise<EventMapResult> {
+    return gateway.post('/api/search/events/map', query);
   }
 }
 

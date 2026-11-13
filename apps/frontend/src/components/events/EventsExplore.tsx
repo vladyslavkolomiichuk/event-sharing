@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
+  EventMapPoint,
   EventSearchQuery,
   SearchEvent,
   SearchLocationSource,
@@ -38,6 +39,8 @@ export function EventsExplore() {
     useSearchPreference();
   const [items, setItems] = useState<SearchEvent[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
+  const [mapPoints, setMapPoints] = useState<EventMapPoint[] | null>(null);
+  const [mapTotal, setMapTotal] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [text, setText] = useState('');
   const [searchText, setSearchText] = useState('');
@@ -82,6 +85,7 @@ export function EventsExplore() {
   );
   const routePlanner = useExploreRoute(user?.id, requestPosition);
   const requestId = useRef(0);
+  const mapRequestId = useRef(0);
   const locationRequestId = useRef(0);
   const locationSelected = useRef(false);
   const needsLocation = mode !== 'UNSET' && mode !== 'ANYWHERE' && !anchor;
@@ -211,10 +215,50 @@ export function EventsExplore() {
     void requestPosition().catch(() => {});
   }, [user?.id, mode, permission, position, requestPosition]);
 
+  // One query feeds both the list pages and the map.
+  const query = useMemo<EventSearchQuery | null>(() => {
+    if (!user || needsLocation) return null;
+    return {
+      sort: sort === 'distance' && !anchor ? 'start_time' : sort,
+      limit: 20,
+      ...(searchText ? { text: searchText } : {}),
+      ...(categoryId ? { categoryId } : {}),
+      ...(organizerId ? { organizerId } : {}),
+      ...(status ? { status: status as EventSearchQuery['status'] } : {}),
+      ...(startFrom
+        ? { startFrom: new Date(`${startFrom}T00:00:00`).toISOString() }
+        : {}),
+      ...(startTo
+        ? { startTo: new Date(`${startTo}T23:59:59.999`).toISOString() }
+        : {}),
+      ...(anchor && anchorSource
+        ? {
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            radiusMeters: radiusKm * 1000,
+            locationSource: anchorSource,
+          }
+        : {}),
+    };
+  }, [
+    user?.id,
+    searchText,
+    categoryId,
+    organizerId,
+    status,
+    startFrom,
+    startTo,
+    sort,
+    anchor,
+    anchorSource,
+    radiusKm,
+    needsLocation,
+  ]);
+
   const load = useCallback(
     async (next?: string) => {
       if (!user) return;
-      if (needsLocation) {
+      if (!query) {
         setLoading(false);
         setError('');
         return;
@@ -222,31 +266,10 @@ export function EventsExplore() {
       const current = ++requestId.current;
       setLoading(true);
       setError('');
-      const query: EventSearchQuery = {
-        sort: sort === 'distance' && !anchor ? 'start_time' : sort,
-        limit: 20,
-        ...(searchText ? { text: searchText } : {}),
-        ...(categoryId ? { categoryId } : {}),
-        ...(organizerId ? { organizerId } : {}),
-        ...(status ? { status: status as EventSearchQuery['status'] } : {}),
-        ...(startFrom
-          ? { startFrom: new Date(`${startFrom}T00:00:00`).toISOString() }
-          : {}),
-        ...(startTo
-          ? { startTo: new Date(`${startTo}T23:59:59.999`).toISOString() }
-          : {}),
-        ...(anchor && anchorSource
-          ? {
-              latitude: anchor.latitude,
-              longitude: anchor.longitude,
-              radiusMeters: radiusKm * 1000,
-              locationSource: anchorSource,
-            }
-          : {}),
-        ...(next ? { cursor: next } : {}),
-      };
       try {
-        const page = await searchClient.events(query);
+        const page = await searchClient.events(
+          next ? { ...query, cursor: next } : query,
+        );
         if (current !== requestId.current) return;
         setItems((previous) =>
           next ? [...previous, ...page.items] : page.items,
@@ -261,21 +284,7 @@ export function EventsExplore() {
         if (current === requestId.current) setLoading(false);
       }
     },
-    [
-      user?.id,
-      searchText,
-      categoryId,
-      organizerId,
-      status,
-      startFrom,
-      startTo,
-      sort,
-      anchor,
-      anchorSource,
-      radiusKm,
-      needsLocation,
-      show,
-    ],
+    [user?.id, query],
   );
 
   useEffect(() => {
@@ -287,13 +296,52 @@ export function EventsExplore() {
     };
   }, [load]);
 
+  const mapVisible = view !== 'list';
+  // The map loads every match, not only the listed pages.
+  useEffect(() => {
+    if (!query || !mapVisible) {
+      mapRequestId.current++;
+      setMapPoints(null);
+      setMapTotal(0);
+      return;
+    }
+    const current = ++mapRequestId.current;
+    searchClient
+      .mapPoints(query)
+      .then((result) => {
+        if (current !== mapRequestId.current) return;
+        setMapPoints(result.points);
+        setMapTotal(result.total);
+      })
+      .catch(() => {
+        if (current !== mapRequestId.current) return;
+        setMapPoints(null);
+        setMapTotal(0);
+      });
+  }, [query, mapVisible]);
+
+  // Listed results stand in until the map points arrive.
+  const mapSource = useMemo<EventMapPoint[]>(
+    () =>
+      mapPoints ??
+      items.map((item) => ({
+        id: item.id,
+        title: item.title,
+        region: item.location.region,
+        visibility: item.location.visibility,
+        latitude: item.location.latitude,
+        longitude: item.location.longitude,
+      })),
+    [mapPoints, items],
+  );
+
   useEffect(() => {
     let cancelled = false;
     const regions = [
       ...new Set(
-        items
-          .filter((item) => item.location.latitude === null)
-          .map((item) => item.location.region)
+        mapSource
+          .filter((item) => item.latitude === null)
+          .map((item) => item.region)
           .filter((region): region is string => Boolean(region)),
       ),
     ];
@@ -319,34 +367,39 @@ export function EventsExplore() {
     return () => {
       cancelled = true;
     };
-  }, [items, cityCenters]);
+  }, [mapSource, cityCenters]);
+
+  const eventMarkers = useMemo<MapMarker[]>(
+    () =>
+      mapSource
+        .filter(
+          (item) =>
+            item.latitude !== null &&
+            item.longitude !== null &&
+            item.id !== routePlanner.destination?.id,
+        )
+        .map((item) => ({
+          id: item.id,
+          label:
+            item.visibility === 'PUBLIC'
+              ? item.title
+              : `${item.title}; approximate location`,
+          latitude: item.latitude!,
+          longitude: item.longitude!,
+          selected: selectedId === item.id,
+          approximate: item.visibility !== 'PUBLIC',
+          avatarUrl: `/backend/api/storage/events/${item.id}/avatar`,
+        })),
+    [mapSource, selectedId, routePlanner.destination?.id],
+  );
 
   const markers = useMemo<MapMarker[]>(() => {
-    const publicPins = items
-      .filter(
-        (item) =>
-          item.location.latitude !== null &&
-          item.location.longitude !== null &&
-          item.id !== routePlanner.destination?.id,
-      )
-      .map((item) => ({
-        id: item.id,
-        label:
-          item.location.visibility === 'PUBLIC'
-            ? item.title
-            : `${item.title}; approximate location`,
-        latitude: item.location.latitude!,
-        longitude: item.location.longitude!,
-        selected: selectedId === item.id,
-        approximate: item.location.visibility !== 'PUBLIC',
-        avatarUrl: `/backend/api/storage/events/${item.id}/avatar`,
-      }));
     const privateRegions = new Map<string, number>();
-    for (const item of items) {
-      if (item.location.latitude === null && item.location.region)
+    for (const item of mapSource) {
+      if (item.latitude === null && item.region)
         privateRegions.set(
-          item.location.region,
-          (privateRegions.get(item.location.region) ?? 0) + 1,
+          item.region,
+          (privateRegions.get(item.region) ?? 0) + 1,
         );
     }
     const approximatePins = [...privateRegions].flatMap(([region, count]) =>
@@ -364,7 +417,6 @@ export function EventsExplore() {
         : [],
     );
     return [
-      ...publicPins,
       ...approximatePins,
       ...(userLocation
         ? [
@@ -414,9 +466,8 @@ export function EventsExplore() {
         : []),
     ];
   }, [
-    items,
+    mapSource,
     cityCenters,
-    selectedId,
     selectedRegion,
     userLocation,
     anchor,
@@ -627,7 +678,7 @@ export function EventsExplore() {
       })),
     [routePlanner.route],
   );
-  const selectedEvent = items.find((item) => item.id === selectedId);
+  const selectedEvent = mapSource.find((item) => item.id === selectedId);
   const locationLabel = anchor
     ? anchorSource === 'DEVICE'
       ? 'GPS'
@@ -639,7 +690,7 @@ export function EventsExplore() {
       : 'Anywhere';
 
   const selectedMarker = selectedEvent
-    ? markers.find((marker) => marker.id === selectedEvent.id)
+    ? eventMarkers.find((marker) => marker.id === selectedEvent.id)
     : undefined;
   const listWidth = Math.min(
     Math.max(320, preferredListWidth ?? Math.min(440, areaWidth * 0.35)),
@@ -764,6 +815,7 @@ export function EventsExplore() {
             center={center}
             zoom={zoom}
             markers={markers}
+            clusteredMarkers={eventMarkers}
             radius={
               anchor
                 ? { center: anchor, radiusMeters: radiusKm * 1000 }
@@ -819,6 +871,16 @@ export function EventsExplore() {
           >
             My location
           </Button>
+          {mapPoints && mapTotal > mapPoints.length && (
+            <p
+              role="status"
+              className="pointer-events-none absolute bottom-3 left-3 z-10 max-w-[min(360px,calc(100%-24px))] rounded-lg bg-neutral-900 px-3 py-2 text-xs text-white"
+            >
+              The map shows the {anchor ? 'nearest' : 'soonest'}{' '}
+              {mapPoints.length} of {mapTotal} events. Narrow the search to see
+              the rest.
+            </p>
+          )}
           {mapPickMode === 'route-origin' && (
             <p
               role="status"
