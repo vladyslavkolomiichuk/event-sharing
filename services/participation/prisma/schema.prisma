@@ -29,6 +29,11 @@ model RegistrationPolicy {
   visibility    String             @default("PUBLIC")
   title         String             @default("Event")
   occupied      Int                @default(0)
+  startTime     DateTime?          @db.Timestamptz(3)
+  pricingMode   String             @default("FREE")
+  priceCents    Int                @default(0)
+  currency      String             @default("EUR")
+  refundHoursBeforeStart Int?
   updatedAt     DateTime           @updatedAt @db.Timestamptz(3)
 
   memberships Membership[]
@@ -83,6 +88,51 @@ model Membership {
   @@id([eventId, userId])
   @@index([userId, status])
   @@map("membership")
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  REFUND_PENDING
+  REFUNDED
+}
+
+model Payment {
+  id                String        @id @default(uuid()) @db.Uuid
+  eventId           String        @db.Uuid
+  userId            String        @db.Uuid
+  organizerId       String        @db.Uuid
+  amountCents       Int
+  currency          String
+  status            PaymentStatus @default(PENDING)
+  held              Boolean       @default(true)
+  expiresAt         DateTime      @db.Timestamptz(3)
+  inviteId          String?       @db.Uuid
+  inviteLinkId      String?       @db.Uuid
+  providerSessionId String?       @unique
+  providerPaymentId String?
+  checkoutUrl       String?
+  refundAttempts    Int           @default(0)
+  paidAt            DateTime?     @db.Timestamptz(3)
+  refundedAt        DateTime?     @db.Timestamptz(3)
+  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
+
+  @@index([eventId, userId, status])
+  @@index([status, expiresAt])
+  @@map("payment")
+}
+
+model PayoutAccount {
+  userId            String   @id @db.Uuid
+  providerAccountId String   @unique
+  chargesEnabled    Boolean  @default(false)
+  detailsSubmitted  Boolean  @default(false)
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("payout_account")
 }
 
 model InboxEvent {

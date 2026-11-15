@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { EventLocationSchema } from './event-location.schema.js';
 import { EventTimeZoneSchema } from './event-time-zone.schema.js';
 import { EventVisibilitySchema } from './event-visibility.schema.js';
+import {
+  EventPricingSchema,
+  FREE_EVENT_PRICING,
+} from './event-pricing.schema.js';
 
 export const CreateEventSchema = z
   .strictObject({
@@ -15,6 +19,7 @@ export const CreateEventSchema = z
     participantLimit: z.number().int().positive(),
     chatEnabled: z.boolean().default(false),
     visibility: EventVisibilitySchema.default('PUBLIC'),
+    pricing: EventPricingSchema.default(FREE_EVENT_PRICING),
   })
   .refine((event) => Date.parse(event.endTime) > Date.parse(event.startTime), {
     message: 'End time must be after start time.',

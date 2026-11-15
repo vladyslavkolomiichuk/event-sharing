@@ -29,6 +29,13 @@ enum LocationVisibility {
   PARTICIPANTS_ONLY
 }
 
+enum PricingMode {
+  FREE
+  ONLINE
+  ON_SITE
+  DONATION
+}
+
 enum EventVisibility {
   PUBLIC
   UNLISTED
@@ -67,6 +74,10 @@ model Event {
   participantLimit          Int
   chatEnabled               Boolean            @default(false)
   visibility                EventVisibility    @default(PUBLIC)
+  pricingMode               PricingMode        @default(FREE)
+  priceCents                Int                @default(0)
+  currency                  String             @default("EUR")
+  refundHoursBeforeStart    Int?
   version                   Int                @default(1)
   lastSnapshotEventId       String?            @db.Uuid
   policyVersion             Int                @default(0)

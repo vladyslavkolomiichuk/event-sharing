@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { EVENT_TYPES, RPC_OPERATIONS } from '@event-sharing/contracts';
+import {
+  EVENT_TYPES,
+  FREE_EVENT_PRICING,
+  RPC_OPERATIONS,
+} from '@event-sharing/contracts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { membershipRow, policyRow, prisma, serviceBus } from './mocks.js';
 
@@ -333,6 +337,7 @@ describe('RegistrationPolicyRepository', () => {
     endTime: new Date(Date.now() + 86400000).toISOString(),
     visibility: 'PUBLIC' as const,
     title: 'Jazz',
+    pricing: FREE_EVENT_PRICING,
     ...overrides,
   });
   let current: any;

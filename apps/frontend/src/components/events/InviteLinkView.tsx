@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { eventsClient } from '@/lib/api/EventsClient';
 import { invitationClient } from '@/lib/api/InvitationClient';
+import { joinOrPay } from '@/lib/api/PaymentsClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { CardSkeleton } from '@/components/feedback/Skeletons';
@@ -51,9 +52,15 @@ export function InviteLinkView({ token }: { token: string }) {
   async function accept() {
     setBusy(true);
     try {
-      await invitationClient.acceptLink(token);
-      if (preview) await waitForEventAccess(preview.eventId);
-      router.push(`/events/${preview?.eventId}`);
+      if (!preview) return;
+      const result = await joinOrPay(
+        preview.eventId,
+        () => invitationClient.acceptLink(token),
+        { token },
+      );
+      if (result === 'checkout') return;
+      await waitForEventAccess(preview.eventId);
+      router.push(`/events/${preview.eventId}`);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : 'Could not accept invitation.',

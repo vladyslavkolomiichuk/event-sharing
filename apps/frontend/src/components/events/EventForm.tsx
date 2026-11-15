@@ -36,6 +36,14 @@ import { EVENT_FORM_STEPS, EventStepNavigation } from './EventStepNavigation';
 import { storageClient, type EventImageSlot } from '@/lib/api/StorageClient';
 import { EventImage } from './EventImage';
 import { focusFirstInvalid } from '@/lib/form-validation';
+import { EventPricingFields } from '@/components/payments/EventPricingFields';
+import {
+  FREE_PRICING_DRAFT,
+  draftPricing,
+  pricingDraft,
+  pricingLabel,
+  type PricingDraft,
+} from '@/lib/event-pricing';
 
 const timeZones = [
   'UTC',
@@ -92,6 +100,7 @@ export function EventForm({
   );
   const [participantLimit, setParticipantLimit] = useState('20');
   const [chatEnabled, setChatEnabled] = useState(false);
+  const [pricing, setPricing] = useState<PricingDraft>(FREE_PRICING_DRAFT);
   const [chatGroups, setChatGroups] = useState<ChatGroupDraft[]>([]);
   const [eventVisibility, setEventVisibility] =
     useState<EventVisibility>('PUBLIC');
@@ -185,6 +194,7 @@ export function EventForm({
           setParticipantLimit(String(event.participantLimit));
           setEventVisibility(event.visibility);
           setChatEnabled(event.chatEnabled);
+          setPricing(pricingDraft(event.pricing));
         }
       } catch (cause) {
         setError(
@@ -282,6 +292,8 @@ export function EventForm({
         Number(participantLimit) < 1
       )
         return 'Enter a whole number of participants greater than zero.';
+      const priced = draftPricing(pricing);
+      if (typeof priced === 'string') return priced;
       try {
         const start = eventUtcTime(startTime, timeZone);
         const end = eventUtcTime(endTime, timeZone);
@@ -378,6 +390,7 @@ export function EventForm({
         participantLimit: Number(participantLimit),
         chatEnabled,
         visibility: eventVisibility,
+        pricing: draftPricing(pricing),
       };
       if (eventId) {
         const patch = UpdateEventSchema.parse({
@@ -789,6 +802,16 @@ export function EventForm({
                   <option value="INVITE_ONLY">Invitation required</option>
                 </select>
               </div>
+              <EventPricingFields
+                value={pricing}
+                onChange={setPricing}
+                disabled={Boolean(
+                  existing &&
+                  existing.status !== 'DRAFT' &&
+                  existing.status !== 'REJECTED' &&
+                  existing.status !== 'APPROVED',
+                )}
+              />
               <div className="flex items-center justify-between gap-3 text-sm">
                 <label htmlFor="event-chat-enabled" className="mb-0">
                   Enable event chats for registered participants
@@ -1082,6 +1105,17 @@ export function EventForm({
               <div>
                 <dt className="font-semibold">Participants</dt>
                 <dd>Up to {participantLimit}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold">Price</dt>
+                <dd>
+                  {(() => {
+                    const priced = draftPricing(pricing);
+                    return typeof priced === 'string'
+                      ? priced
+                      : pricingLabel(priced);
+                  })()}
+                </dd>
               </div>
               <div>
                 <dt className="font-semibold">Chats</dt>

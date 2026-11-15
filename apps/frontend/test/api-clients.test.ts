@@ -9,6 +9,7 @@ import { invitationClient } from '@/lib/api/InvitationClient';
 import { messagesClient } from '@/lib/api/MessagesClient';
 import { notificationsClient } from '@/lib/api/NotificationsClient';
 import { participationClient } from '@/lib/api/ParticipationClient';
+import { joinOrPay, paymentsClient } from '@/lib/api/PaymentsClient';
 import { placesClient } from '@/lib/api/PlacesClient';
 import { searchClient } from '@/lib/api/SearchClient';
 import { storageClient } from '@/lib/api/StorageClient';
@@ -591,6 +592,45 @@ const cases: [string, () => Promise<unknown>, string, string, unknown?][] = [
     `/api/notifications/messages/${E}`,
   ],
   [
+    'payments checkout',
+    () => paymentsClient.checkout(E, { amountCents: 700 }),
+    'POST',
+    `/api/participation/events/${E}/checkout`,
+    { amountCents: 700 },
+  ],
+  [
+    'payments checkout at the event price',
+    () => paymentsClient.checkout(E),
+    'POST',
+    `/api/participation/events/${E}/checkout`,
+    {},
+  ],
+  [
+    'payments mine',
+    () => paymentsClient.mine(E),
+    'GET',
+    `/api/participation/events/${E}/payments/me`,
+  ],
+  [
+    'payments for event',
+    () => paymentsClient.forEvent(E),
+    'GET',
+    `/api/participation/events/${E}/payments`,
+  ],
+  [
+    'payments account',
+    () => paymentsClient.account(),
+    'GET',
+    '/api/participation/payments/account',
+  ],
+  [
+    'payments onboarding',
+    () => paymentsClient.onboarding(),
+    'POST',
+    '/api/participation/payments/account/onboarding',
+    {},
+  ],
+  [
     'participation hide',
     () => participationClient.hideHistory(E),
     'DELETE',
@@ -832,6 +872,47 @@ describe('StorageClient', () => {
     expect(await storageClient.images(E)).toEqual({
       avatar: true,
       cover: false,
+    });
+  });
+});
+
+describe('joinOrPay', () => {
+  it('joins free events directly', async () => {
+    const join = vi.fn(async () => ({}));
+    expect(await joinOrPay(E, join, { inviteId: R })).toBe('joined');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('opens checkout with the invitation when payment is required', async () => {
+    const assign = vi.fn();
+    vi.stubGlobal('window', { dispatchEvent, location: { assign } });
+    fetch.mockResolvedValue(
+      Response.json({
+        paymentId: R,
+        url: 'https://checkout.stripe.test/cs',
+        expiresAt: '2026-11-14T12:00:00.000Z',
+      }),
+    );
+    const join = vi.fn(async () => {
+      throw new ApiError(402, 'PAYMENT_REQUIRED', 'Pay first.');
+    });
+    expect(await joinOrPay(E, join, { token: 'secret-token' })).toBe(
+      'checkout',
+    );
+    expect(lastCall()).toMatchObject({
+      url: `/backend/api/participation/events/${E}/checkout`,
+      method: 'POST',
+      body: { token: 'secret-token' },
+    });
+    expect(assign).toHaveBeenCalledWith('https://checkout.stripe.test/cs');
+  });
+
+  it('rethrows other failures', async () => {
+    const join = vi.fn(async () => {
+      throw new ApiError(404, 'INVITATION_INVALID', 'Gone.');
+    });
+    await expect(joinOrPay(E, join, {})).rejects.toMatchObject({
+      code: 'INVITATION_INVALID',
     });
   });
 });

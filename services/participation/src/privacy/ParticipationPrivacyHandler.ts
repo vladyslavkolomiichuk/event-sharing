@@ -13,6 +13,16 @@ export class ParticipationPrivacyHandler extends ServicePrivacyHandler {
       query:
         'SELECT * FROM personal_invite WHERE "recipientId" = $1 OR "senderId" = $1 ORDER BY id',
     },
+    {
+      name: 'payments',
+      query:
+        'SELECT id, "eventId", "amountCents", currency, status, "paidAt", "refundedAt", "createdAt" FROM payment WHERE "userId" = $1 ORDER BY "createdAt"',
+    },
+    {
+      name: 'payoutAccounts',
+      query:
+        'SELECT "userId", "chargesEnabled", "detailsSubmitted", "createdAt" FROM payout_account WHERE "userId" = $1',
+    },
   ];
 
   protected async erase(tx: PoolClient, work: PrivacyWork) {
@@ -42,6 +52,26 @@ export class ParticipationPrivacyHandler extends ServicePrivacyHandler {
       [work.userId],
     );
     await tx.query('DELETE FROM membership WHERE "userId" = $1', [work.userId]);
+    // Payment records stay for accounting, without the person.
+    await tx.query(
+      `UPDATE registration_policy policy SET occupied = GREATEST(0, occupied - 1) FROM payment held WHERE held."userId" = $1 AND held.status = 'PENDING' AND held.held AND policy."eventId" = held."eventId"`,
+      [work.userId],
+    );
+    await tx.query(
+      `UPDATE payment SET status = 'EXPIRED', held = false WHERE "userId" = $1 AND status = 'PENDING'`,
+      [work.userId],
+    );
+    await tx.query(
+      'UPDATE payment SET "userId" = $2, "checkoutUrl" = NULL WHERE "userId" = $1',
+      [work.userId, ANONYMOUS_USER_ID],
+    );
+    await tx.query(
+      'UPDATE payment SET "organizerId" = $2 WHERE "organizerId" = $1',
+      [work.userId, ANONYMOUS_USER_ID],
+    );
+    await tx.query('DELETE FROM payout_account WHERE "userId" = $1', [
+      work.userId,
+    ]);
     await tx.query('DELETE FROM personal_invite WHERE "recipientId" = $1', [
       work.userId,
     ]);

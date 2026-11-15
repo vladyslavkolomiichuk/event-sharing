@@ -118,6 +118,11 @@ const participationSettings = {
   AUTH_JWT_ISSUER: 'http://127.0.0.1:8000',
   AUTH_JWT_AUDIENCE: 'event-sharing-services',
   KAFKA_BROKERS: '127.0.0.1:9092',
+  // Fill both Stripe test keys to enable online payments.
+  STRIPE_SECRET_KEY: '',
+  STRIPE_WEBHOOK_SECRET: '',
+  STRIPE_ACCOUNT_COUNTRY: 'NL',
+  PAYMENT_PLATFORM_FEE_PERCENT: '0',
 };
 
 const eventsSettings = {

@@ -23,6 +23,7 @@
     "jose": "^6.2.13",
     "kafkajs": "^2.2.4",
     "pg": "^8.23.0",
+    "stripe": "23.0.1",
     "zod": "^4.5.4"
   },
   "devDependencies": {

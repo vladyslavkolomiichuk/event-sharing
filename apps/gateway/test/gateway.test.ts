@@ -52,6 +52,7 @@ const proxies = () => ({
   storage: echo('storage'),
   publicEvents: echo('publicEvents'),
   publicEventImages: echo('publicEventImages'),
+  paymentWebhooks: echo('paymentWebhooks'),
 });
 let identity: { role: string; complete: boolean } | null;
 const authenticate: RequestHandler = (request, _response, next) => {
@@ -98,6 +99,19 @@ describe('routing', () => {
     ] as const) {
       expect((await send(server, 'GET', path)).body.proxied, path).toBe(name);
     }
+  });
+
+  it('passes signed payment webhooks without a session', async () => {
+    identity = null;
+    const response = await send(
+      app(),
+      'POST',
+      '/api/public/payments/webhook',
+      '{}',
+    );
+    expect(response.body.proxied).toBe('paymentWebhooks');
+    const read = await send(app(), 'GET', '/api/public/payments/webhook');
+    expect(read.body?.proxied).toBeUndefined();
   });
 
   it('blocks the public token endpoint and unknown routes', async () => {

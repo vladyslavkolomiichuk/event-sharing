@@ -44,7 +44,12 @@ async function proxy(
   }
 
   const trustedOrigin = process.env.FRONTEND_ORIGIN ?? 'http://127.0.0.1:3001';
+  // Stripe calls this server to server and signs the body.
+  const paymentWebhook =
+    request.method === 'POST' &&
+    path.join('/') === 'api/public/payments/webhook';
   if (
+    !paymentWebhook &&
     !['GET', 'HEAD'].includes(request.method) &&
     request.headers.get('origin') !== trustedOrigin
   ) {
@@ -71,6 +76,7 @@ async function proxy(
     'x-privacy-receipt',
     'x-request-id',
     'x-forwarded-for',
+    ...(paymentWebhook ? ['stripe-signature'] : []),
   ]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);

@@ -8,6 +8,10 @@ import {
   EVENT_ROUTES,
   EVENT_TYPES,
   EventEnvelopeSchema,
+  EventPricingSchema,
+  CheckoutRequestSchema,
+  RegistrationPolicyRequestedPayloadSchema,
+  FREE_EVENT_PRICING,
   EventMapResultSchema,
   EventSearchQuerySchema,
   EventTimeZoneSchema,
@@ -157,6 +161,50 @@ describe('event schemas', () => {
   it('validates IANA time zones', () => {
     expect(EventTimeZoneSchema.safeParse('Europe/Kyiv').success).toBe(true);
     expect(EventTimeZoneSchema.safeParse('Mars/Olympus').success).toBe(false);
+  });
+});
+
+describe('event pricing', () => {
+  const pricing = (overrides: Record<string, unknown>) => ({
+    ...FREE_EVENT_PRICING,
+    ...overrides,
+  });
+
+  it('defaults events and policies to free', () => {
+    expect(CreateEventSchema.parse(event).pricing).toEqual(FREE_EVENT_PRICING);
+    expect(
+      RegistrationPolicyRequestedPayloadSchema.parse({
+        eventId: '7d1f5b8e-2c4a-4f6e-9b3d-1a2b3c4d5e6f',
+        organizerId: '1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d',
+        policyVersion: 1,
+        status: 'OPEN',
+        capacity: 5,
+      }).pricing,
+    ).toEqual(FREE_EVENT_PRICING);
+  });
+
+  it('checks the price for each mode', () => {
+    const valid = (value: Record<string, unknown>) =>
+      EventPricingSchema.safeParse(pricing(value)).success;
+    expect(valid({ priceCents: 100 })).toBe(false);
+    expect(valid({ mode: 'ONLINE', priceCents: 49 })).toBe(false);
+    expect(valid({ mode: 'ONLINE', priceCents: 1500 })).toBe(true);
+    expect(valid({ mode: 'ON_SITE', priceCents: 0 })).toBe(false);
+    expect(valid({ mode: 'DONATION', priceCents: 0 })).toBe(true);
+    expect(valid({ mode: 'ONLINE', priceCents: 1500, currency: 'GBP' })).toBe(
+      false,
+    );
+    expect(
+      valid({ mode: 'ONLINE', priceCents: 1500, refundHoursBeforeStart: 721 }),
+    ).toBe(false);
+  });
+
+  it('limits checkout requests', () => {
+    expect(CheckoutRequestSchema.safeParse({}).success).toBe(true);
+    expect(CheckoutRequestSchema.safeParse({ amountCents: 0 }).success).toBe(
+      false,
+    );
+    expect(CheckoutRequestSchema.safeParse({ price: 1 }).success).toBe(false);
   });
 });
 

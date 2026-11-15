@@ -43,6 +43,18 @@ export default function PrivacyPolicyPage() {
         </p>
       </section>
       <section>
+        <h2>Payments</h2>
+        <p>
+          Paid tickets and donations are processed by Stripe. Card details go
+          directly to Stripe and never reach Event Sharing. Participation keeps
+          the amount, currency, status, and Stripe payment reference of each
+          payment for refunds and accounting. Organizers who accept payments
+          connect a Stripe account; Stripe collects their identity and payout
+          details. If you delete your account, payment records stay without your
+          account ID.
+        </p>
+      </section>
+      <section>
         <h2>Visibility and access</h2>
         <p>
           You can restrict who opens your profile and independently control

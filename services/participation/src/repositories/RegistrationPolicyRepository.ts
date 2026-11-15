@@ -9,6 +9,16 @@ import {
 import type { Prisma, RegistrationPolicy } from '../generated/prisma/client.js';
 import { prisma } from '../database/client.js';
 
+function policyPricing(request: RegistrationPolicyRequestedPayload) {
+  return {
+    startTime: request.startTime ? new Date(request.startTime) : null,
+    pricingMode: request.pricing.mode,
+    priceCents: request.pricing.priceCents,
+    currency: request.pricing.currency,
+    refundHoursBeforeStart: request.pricing.refundHoursBeforeStart,
+  };
+}
+
 export type PolicyApplyResult =
   'applied' | 'rejected' | 'duplicate' | 'ignored' | 'pending';
 
@@ -141,6 +151,14 @@ export class RegistrationPolicyRepository {
             where: { eventId: request.eventId, status: 'JOINED' },
             data: { status: 'CANCELLED', leftAt: new Date() },
           });
+          await transaction.payment.updateMany({
+            where: { eventId: request.eventId, status: 'PAID' },
+            data: { status: 'REFUND_PENDING' },
+          });
+          await transaction.payment.updateMany({
+            where: { eventId: request.eventId, status: 'PENDING' },
+            data: { held: false },
+          });
         }
         await transaction.registrationPolicy.update({
           where: { eventId: request.eventId },
@@ -152,6 +170,7 @@ export class RegistrationPolicyRepository {
             endTime: request.endTime ? new Date(request.endTime) : null,
             visibility: request.visibility,
             title: request.title,
+            ...policyPricing(request),
             occupied: request.status === 'CANCELLED' ? 0 : current.occupied,
           },
         });
@@ -166,6 +185,7 @@ export class RegistrationPolicyRepository {
             endTime: request.endTime ? new Date(request.endTime) : null,
             visibility: request.visibility,
             title: request.title,
+            ...policyPricing(request),
           },
         });
       }

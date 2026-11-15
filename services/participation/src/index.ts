@@ -7,6 +7,7 @@ import { RegistrationPolicyConsumer } from './consumers/RegistrationPolicyConsum
 import { connectDatabase, disconnectDatabase } from './database/client.js';
 import { RegistrationPolicyRepository } from './repositories/RegistrationPolicyRepository.js';
 import { ParticipationOutboxWorker } from './workers/ParticipationOutboxWorker.js';
+import { PaymentWorker } from './workers/PaymentWorker.js';
 
 const brokers = env.KAFKA_BROKERS.split(',').map((broker) => broker.trim());
 await connectDatabase();
@@ -18,8 +19,10 @@ const consumer = new RegistrationPolicyConsumer(
   new RegistrationPolicyRepository(),
 );
 const outboxWorker = new ParticipationOutboxWorker(brokers);
+const paymentWorker = new PaymentWorker();
 await consumer.start();
 await outboxWorker.start();
+paymentWorker.start();
 
 const app = createApp(new PostgresReadinessCheck(env.DATABASE_URL));
 const server = app.listen(env.PORT, env.HOST, () => {
@@ -32,6 +35,7 @@ async function shutdown(): Promise<void> {
   server.close(async () => {
     await consumer.stop();
     await outboxWorker.stop();
+    await paymentWorker.stop();
     await disconnectDatabase();
   });
 }

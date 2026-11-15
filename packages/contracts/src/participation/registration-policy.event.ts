@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { EventVisibilitySchema } from '../events/event-visibility.schema.js';
+import {
+  EventPricingSchema,
+  FREE_EVENT_PRICING,
+} from '../events/event-pricing.schema.js';
 
 export const RegistrationPolicyRequestedPayloadSchema = z.strictObject({
   eventId: z.uuid(),
@@ -10,6 +14,8 @@ export const RegistrationPolicyRequestedPayloadSchema = z.strictObject({
   endTime: z.iso.datetime().optional(),
   visibility: EventVisibilitySchema.default('PUBLIC'),
   title: z.string().min(1).default('Event'),
+  startTime: z.iso.datetime().optional(),
+  pricing: EventPricingSchema.default(FREE_EVENT_PRICING),
 });
 
 export const RegistrationPolicyAppliedPayloadSchema = z.strictObject({

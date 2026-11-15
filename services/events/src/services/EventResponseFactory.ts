@@ -6,6 +6,7 @@ import {
 } from '@event-sharing/contracts';
 import type { EventWithCategory } from '../models/EventWithCategory.js';
 import { approximateLocation } from '../lib/approximate-location.js';
+import { eventPricing } from '../lib/event-pricing.js';
 
 export class EventResponseFactory {
   detail(event: EventWithCategory, revealLocation: boolean): EventDetail {
@@ -29,6 +30,7 @@ export class EventResponseFactory {
       participantLimit: event.participantLimit,
       chatEnabled: event.chatEnabled,
       visibility: event.visibility,
+      pricing: eventPricing(event),
       version: event.version,
       pendingStatus: event.pendingStatus,
       pendingRegistrationStatus: event.pendingRegistrationStatus,

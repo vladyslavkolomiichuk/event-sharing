@@ -82,6 +82,11 @@ const app = createApp({
       '/api/public/events',
       'Storage',
     ).create(),
+    paymentWebhooks: new ServiceProxy(
+      env.PARTICIPATION_SERVICE_URL,
+      '/api/public/payments/webhook',
+      'Participation',
+    ).create(),
   },
 });
 

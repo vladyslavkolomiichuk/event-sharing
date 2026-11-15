@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  EventPricingSchema,
+  FREE_EVENT_PRICING,
+} from '../events/event-pricing.schema.js';
 
 export const AvailabilitySchema = z.strictObject({
   eventId: z.uuid(),
@@ -7,6 +11,7 @@ export const AvailabilitySchema = z.strictObject({
   occupied: z.number().int().nonnegative(),
   available: z.number().int().nonnegative(),
   policyVersion: z.number().int().positive(),
+  pricing: EventPricingSchema.default(FREE_EVENT_PRICING),
 });
 
 export type Availability = z.infer<typeof AvailabilitySchema>;

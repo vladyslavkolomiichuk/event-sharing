@@ -259,10 +259,15 @@ services:
     env_file: ./services/participation/.env
     environment:
       <<: *service-environment
+      # Listen only on the gateway network, not the internet one.
+      HOST: ${NETWORK_PREFIX:-10.77}.2.78
       DATABASE_URL: postgresql://participation_service:${PARTICIPATION_DB_PASSWORD}@postgres:5432/participation_db
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://127.0.0.1:3001}
     networks:
-      - participation-gateway
-      - participation-data
+      participation-gateway:
+        ipv4_address: ${NETWORK_PREFIX:-10.77}.2.78
+      participation-data:
+      participation-internet:
 
   notifications:
     <<: *service

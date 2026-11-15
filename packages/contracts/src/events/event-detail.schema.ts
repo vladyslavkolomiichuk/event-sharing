@@ -3,6 +3,10 @@ import { EventStatusSchema } from './event-status.schema.js';
 import { RegistrationStatusSchema } from './registration-status.schema.js';
 import { EventTimeZoneSchema } from './event-time-zone.schema.js';
 import { EventVisibilitySchema } from './event-visibility.schema.js';
+import {
+  EventPricingSchema,
+  FREE_EVENT_PRICING,
+} from './event-pricing.schema.js';
 
 export const EventDetailSchema = z.strictObject({
   id: z.uuid(),
@@ -19,6 +23,7 @@ export const EventDetailSchema = z.strictObject({
   participantLimit: z.number().int().positive(),
   chatEnabled: z.boolean().default(false),
   visibility: EventVisibilitySchema.default('PUBLIC'),
+  pricing: EventPricingSchema.default(FREE_EVENT_PRICING),
   version: z.number().int().positive(),
   pendingStatus: EventStatusSchema.nullable(),
   pendingRegistrationStatus: RegistrationStatusSchema.nullable(),

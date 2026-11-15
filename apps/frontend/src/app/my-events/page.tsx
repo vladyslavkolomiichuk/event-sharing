@@ -19,9 +19,14 @@ export default function MyEventsPage() {
               Manage drafts, moderation, and registration.
             </p>
           </div>
-          <Button asChild>
-            <Link href="/events/new">Create event</Link>
-          </Button>
+          <div className="flex gap-3">
+            <Button asChild variant="outline">
+              <Link href="/payouts">Payouts</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/events/new">Create event</Link>
+            </Button>
+          </div>
         </div>
         <EventList mine />
       </div>

@@ -1,13 +1,20 @@
 import { Router } from 'express';
 import type { ParticipationController } from '../controllers/ParticipationController.js';
 import { InvitationController } from '../controllers/InvitationController.js';
+import type { PaymentController } from '../controllers/PaymentController.js';
 import { PrivacyExportController } from '../controllers/PrivacyExportController.js';
 import { ParticipationHistoryController } from '../controllers/ParticipationHistoryController.js';
 
 export function participationRoutes(
   controller: ParticipationController,
+  payments: PaymentController,
 ): Router {
   const router = Router();
+  router.get('/payments/account', payments.account);
+  router.post('/payments/account/onboarding', payments.onboarding);
+  router.post('/events/:eventId/checkout', payments.checkout);
+  router.get('/events/:eventId/payments/me', payments.mine);
+  router.get('/events/:eventId/payments', payments.forEvent);
   const invitations = new InvitationController();
   router.delete(
     '/me/history/:eventId',

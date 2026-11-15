@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { EventLocationSchema } from './event-location.schema.js';
 import { EventTimeZoneSchema } from './event-time-zone.schema.js';
 import { EventVisibilitySchema } from './event-visibility.schema.js';
+import { EventPricingSchema } from './event-pricing.schema.js';
 
 export const UpdateEventSchema = z
   .strictObject({
@@ -15,6 +16,7 @@ export const UpdateEventSchema = z
     participantLimit: z.number().int().positive().optional(),
     chatEnabled: z.boolean().optional(),
     visibility: EventVisibilitySchema.optional(),
+    pricing: EventPricingSchema.optional(),
   })
   .refine((event) => Object.keys(event).length > 0, {
     message: 'At least one event field is required.',

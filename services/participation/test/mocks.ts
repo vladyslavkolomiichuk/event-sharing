@@ -20,6 +20,11 @@ export function policyRow(overrides: Record<string, unknown> = {}): any {
     visibility: 'PUBLIC',
     title: 'Jazz night',
     occupied: 2,
+    startTime: new Date(Date.now() + 43200000),
+    pricingMode: 'FREE',
+    priceCents: 0,
+    currency: 'EUR',
+    refundHoursBeforeStart: null,
     updatedAt: new Date(),
     ...overrides,
   };
@@ -34,6 +39,40 @@ export function membershipRow(overrides: Record<string, unknown> = {}): any {
     leftAt: null,
     hiddenAt: null,
     lastMembershipEventId: null,
+    ...overrides,
+  };
+}
+
+export const provider = {
+  createAccount: vi.fn(),
+  onboardingLink: vi.fn(),
+  account: vi.fn(),
+  createCheckout: vi.fn(),
+  refund: vi.fn(),
+  parseWebhook: vi.fn(),
+};
+
+export function paymentRow(overrides: Record<string, unknown> = {}): any {
+  return {
+    id: randomUUID(),
+    eventId: randomUUID(),
+    userId: randomUUID(),
+    organizerId: randomUUID(),
+    amountCents: 1500,
+    currency: 'EUR',
+    status: 'PENDING',
+    held: true,
+    expiresAt: new Date(Date.now() + 1_800_000),
+    inviteId: null,
+    inviteLinkId: null,
+    providerSessionId: 'cs_test_1',
+    providerPaymentId: null,
+    checkoutUrl: 'https://checkout.stripe.test/cs_test_1',
+    refundAttempts: 0,
+    paidAt: null,
+    refundedAt: null,
+    createdAt: new Date('2026-11-14T10:00:00.000Z'),
+    updatedAt: new Date('2026-11-14T10:00:00.000Z'),
     ...overrides,
   };
 }

@@ -171,6 +171,19 @@ describe('EventResponseFactory', () => {
     expect(detail.categoryName).toBe('Music');
   });
 
+  it('shows the entry price', () => {
+    const detail = factory.detail(
+      eventRow({ pricingMode: 'ON_SITE', priceCents: 800, currency: 'UAH' }),
+      false,
+    );
+    expect(detail.pricing).toEqual({
+      mode: 'ON_SITE',
+      priceCents: 800,
+      currency: 'UAH',
+      refundHoursBeforeStart: null,
+    });
+  });
+
   it('builds a snapshot with an approximate private venue', () => {
     const snapshot = factory.publicSnapshot(
       eventRow({

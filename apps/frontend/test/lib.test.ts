@@ -15,6 +15,13 @@ import { PlaceSearchQuerySchema } from '@/lib/places/place.schema';
 import { selectPublicMapEvents } from '@/lib/public-event-map';
 import { connectRealtime } from '@/lib/realtime/connectRealtime';
 import { cn, sentenceCase } from '@/lib/utils';
+import { formatMoney, parseMoney } from '@/lib/format-money';
+import {
+  FREE_PRICING_DRAFT,
+  draftPricing,
+  pricingDraft,
+  pricingLabel,
+} from '@/lib/event-pricing';
 import { FrontendRealtimeProxy } from '@/realtime/FrontendRealtimeProxy';
 
 afterEach(() => {
@@ -32,6 +39,79 @@ describe('utils', () => {
     expect(formatDate('2026-12-01T12:00:00.000Z')).toBe('Dec 1, 2026');
     expect(formatDateTime(Date.UTC(2026, 11, 1, 12))).toMatch(
       /^Dec 1, 2026, \d{1,2}:00/,
+    );
+  });
+});
+
+describe('money', () => {
+  it('parses typed amounts into cents', () => {
+    expect(parseMoney('15')).toBe(1500);
+    expect(parseMoney(' 15,5 ')).toBe(1550);
+    expect(parseMoney('0.07')).toBe(7);
+    for (const bad of ['', '1.234', '-3', 'ten', '1e3']) {
+      expect(parseMoney(bad), bad).toBeNull();
+    }
+  });
+
+  it('formats cents in the currency', () => {
+    expect(formatMoney(1500, 'EUR')).toMatch(/15[.,]00/);
+    expect(formatMoney(1500, 'EUR')).toContain('€');
+  });
+});
+
+describe('event pricing drafts', () => {
+  const ticket = {
+    mode: 'ONLINE' as const,
+    priceCents: 1500,
+    currency: 'EUR' as const,
+    refundHoursBeforeStart: 24,
+  };
+
+  it('round-trips saved pricing unchanged', () => {
+    for (const pricing of [
+      ticket,
+      { ...ticket, refundHoursBeforeStart: null },
+      { ...ticket, mode: 'ON_SITE' as const, refundHoursBeforeStart: null },
+      {
+        mode: 'DONATION' as const,
+        priceCents: 0,
+        currency: 'UAH' as const,
+        refundHoursBeforeStart: null,
+      },
+      {
+        mode: 'FREE' as const,
+        priceCents: 0,
+        currency: 'USD' as const,
+        refundHoursBeforeStart: null,
+      },
+    ]) {
+      expect(draftPricing(pricingDraft(pricing))).toEqual(pricing);
+    }
+  });
+
+  it('explains invalid drafts', () => {
+    const draft = { ...FREE_PRICING_DRAFT, mode: 'ONLINE' as const };
+    expect(draftPricing({ ...draft, price: 'abc' })).toMatch(/number/);
+    expect(draftPricing({ ...draft, price: '0.20' })).toMatch(/at least/);
+    expect(draftPricing({ ...draft, price: '5', refundHours: '1000' })).toMatch(
+      /720/,
+    );
+    expect(draftPricing({ ...draft, mode: 'ON_SITE', price: '' })).toMatch(
+      /venue/,
+    );
+  });
+
+  it('labels each mode', () => {
+    expect(pricingLabel(ticket)).toMatch(/paid online$/);
+    expect(pricingLabel({ ...ticket, mode: 'ON_SITE' })).toMatch(/venue$/);
+    expect(pricingLabel({ ...ticket, mode: 'DONATION' })).toMatch(
+      /^Free, donation suggested/,
+    );
+    expect(pricingLabel({ ...ticket, mode: 'DONATION', priceCents: 0 })).toBe(
+      'Free, donations welcome',
+    );
+    expect(pricingLabel({ ...ticket, mode: 'FREE', priceCents: 0 })).toBe(
+      'Free',
     );
   });
 });

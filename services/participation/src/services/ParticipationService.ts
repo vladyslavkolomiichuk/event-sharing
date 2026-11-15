@@ -9,6 +9,7 @@ import {
 } from '@event-sharing/contracts';
 import { ForbiddenError } from '../domain/errors/ForbiddenError.js';
 import { PolicyNotFoundError } from '../domain/errors/PolicyNotFoundError.js';
+import { policyPricing } from '../domain/policy-pricing.js';
 import type { Membership } from '../generated/prisma/client.js';
 import { ParticipationRepository } from '../repositories/ParticipationRepository.js';
 import { RegistrationPolicyRepository } from '../repositories/RegistrationPolicyRepository.js';
@@ -40,6 +41,7 @@ export class ParticipationService {
           ? policy.capacity - policy.occupied
           : 0,
       policyVersion: policy.version,
+      pricing: policyPricing(policy),
     });
   }
 

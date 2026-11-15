@@ -20,6 +20,7 @@ import { EventNotFoundError } from '../domain/errors/EventNotFoundError.js';
 import { ForbiddenError } from '../domain/errors/ForbiddenError.js';
 import type { Event, Prisma } from '../generated/prisma/client.js';
 import { eventDetailsChanged } from '../lib/event-details-changed.js';
+import { eventPricing, pricingColumns } from '../lib/event-pricing.js';
 import type { EventWithCategory } from '../models/EventWithCategory.js';
 import type { EventListCursor } from '../lib/event-list-cursor.js';
 import { EventResponseFactory } from '../services/EventResponseFactory.js';
@@ -231,6 +232,7 @@ export class EventRepository {
           participantLimit: input.participantLimit,
           chatEnabled: input.chatEnabled,
           visibility: input.visibility,
+          ...pricingColumns(input.pricing),
         },
         include: { category: true },
       });
@@ -257,6 +259,17 @@ export class EventRepository {
         throw new EventConflictError(
           'VISIBILITY_LOCKED',
           'Event visibility cannot change after registration opens.',
+        );
+      }
+
+      if (
+        patch.pricing !== undefined &&
+        event.policyVersion > 0 &&
+        JSON.stringify(patch.pricing) !== JSON.stringify(eventPricing(event))
+      ) {
+        throw new EventConflictError(
+          'PRICING_LOCKED',
+          'Event pricing cannot change after registration opens.',
         );
       }
 
@@ -338,6 +351,8 @@ export class EventRepository {
         data.participantLimit = patch.participantLimit;
       if (patch.chatEnabled !== undefined) data.chatEnabled = patch.chatEnabled;
       if (patch.visibility !== undefined) data.visibility = patch.visibility;
+      if (patch.pricing !== undefined)
+        Object.assign(data, pricingColumns(patch.pricing));
       if (patch.location) {
         data.locationAddress = patch.location.address;
         data.locationRegion = patch.location.region ?? null;
@@ -700,6 +715,8 @@ export class EventRepository {
           endTime: event.endTime.toISOString(),
           visibility: event.visibility,
           title: event.title,
+          startTime: event.startTime.toISOString(),
+          pricing: eventPricing(event),
         }),
       },
     });

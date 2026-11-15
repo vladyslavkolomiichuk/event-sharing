@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { InlineFeedback } from '@/components/feedback/InlineFeedback';
 import { formatDate } from '@/lib/format-date';
 import { sentenceCase } from '@/lib/utils';
+import { joinOrPay } from '@/lib/api/PaymentsClient';
 
 export function InvitationsWorkspace() {
   const [items, setItems] = useState<PersonalInvite[]>([]);
@@ -38,8 +39,15 @@ export function InvitationsWorkspace() {
     setBusyId(invite.id);
     setError('');
     try {
-      if (action === 'accept') await invitationClient.accept(invite.id);
-      else await invitationClient.decline(invite.id);
+      if (action === 'decline') await invitationClient.decline(invite.id);
+      else if (
+        (await joinOrPay(
+          invite.eventId,
+          () => invitationClient.accept(invite.id),
+          { inviteId: invite.id },
+        )) === 'checkout'
+      )
+        return;
       await load();
     } catch (cause) {
       setError(

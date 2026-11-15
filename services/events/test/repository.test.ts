@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { EVENT_TYPES, EventEnvelopeSchema } from '@event-sharing/contracts';
+import {
+  EVENT_TYPES,
+  EventEnvelopeSchema,
+  FREE_EVENT_PRICING,
+} from '@event-sharing/contracts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { envelope } from '../../../test/fixtures.js';
 import { eventRow, prisma } from './rows.js';
@@ -108,6 +112,13 @@ describe('queries', () => {
   });
 });
 
+const ticket = {
+  mode: 'ONLINE' as const,
+  priceCents: 1500,
+  currency: 'EUR' as const,
+  refundHoursBeforeStart: 24,
+};
+
 describe('create', () => {
   const input = {
     title: 'Jazz',
@@ -124,6 +135,7 @@ describe('create', () => {
     participantLimit: 10,
     chatEnabled: false,
     visibility: 'PUBLIC' as const,
+    pricing: FREE_EVENT_PRICING,
   };
 
   it('creates an event after locking the organizer', async () => {
@@ -135,6 +147,17 @@ describe('create', () => {
       locationAddress: 'A',
       locationRegion: null,
       categoryId: null,
+    });
+  });
+
+  it('stores the entry price', async () => {
+    prisma.event.create.mockResolvedValue(stored);
+    await repository().create('o1', { ...input, pricing: ticket });
+    expect(prisma.event.create.mock.calls[0]![0].data).toMatchObject({
+      pricingMode: 'ONLINE',
+      priceCents: 1500,
+      currency: 'EUR',
+      refundHoursBeforeStart: 24,
     });
   });
 
@@ -157,6 +180,30 @@ describe('create', () => {
 });
 
 describe('update', () => {
+  it('changes the price before registration opens', async () => {
+    await repository().update(stored.id, stored.organizerId, 'ORGANIZER', {
+      pricing: ticket,
+    });
+    expect(updates()[0]).toMatchObject({
+      pricingMode: 'ONLINE',
+      priceCents: 1500,
+    });
+  });
+
+  it('locks the price once registration opened', async () => {
+    stored = eventRow({ status: 'PUBLISHED', policyVersion: 1 });
+    await expect(
+      repository().update(stored.id, stored.organizerId, 'ORGANIZER', {
+        pricing: ticket,
+      }),
+    ).rejects.toMatchObject({ code: 'PRICING_LOCKED' });
+    await repository().update(stored.id, stored.organizerId, 'ORGANIZER', {
+      title: 'Same price',
+      pricing: FREE_EVENT_PRICING,
+    });
+    expect(updates()[0]).toMatchObject({ title: 'Same price' });
+  });
+
   it('updates fields and bumps the version', async () => {
     await repository().update(stored.id, stored.organizerId, 'ORGANIZER', {
       title: 'New',
@@ -371,6 +418,20 @@ describe('transition', () => {
     });
     await expect(run('publish')).rejects.toMatchObject({
       code: 'EVENT_TIME_INVALID',
+    });
+  });
+
+  it('sends the price and start time with the policy', async () => {
+    stored = eventRow({
+      status: 'PUBLISHED',
+      pricingMode: 'ONLINE',
+      priceCents: 1500,
+      refundHoursBeforeStart: 24,
+    });
+    await run('open');
+    expect(outbox().at(-1)!.payload).toMatchObject({
+      startTime: stored.startTime.toISOString(),
+      pricing: ticket,
     });
   });
 

@@ -28,6 +28,7 @@ export type GatewayAppDependencies = {
     storage: RequestHandler;
     publicEvents: RequestHandler;
     publicEventImages: RequestHandler;
+    paymentWebhooks: RequestHandler;
   };
 };
 
@@ -77,6 +78,15 @@ export function createApp(dependencies: GatewayAppDependencies): Express {
         dependencies.serviceProxies.publicEventImages(request, response, next),
       );
     next();
+  });
+
+  // The payment provider signs these calls instead of a session.
+  const webhookRateLimiter = new GatewayRateLimiter(300, 60_000);
+  app.use('/api/public/payments/webhook', (request, response, next) => {
+    if (request.method !== 'POST') return next();
+    webhookRateLimiter.middleware()(request, response, () =>
+      dependencies.serviceProxies.paymentWebhooks(request, response, next),
+    );
   });
 
   const authenticate = dependencies.authenticateBrowserSession;
