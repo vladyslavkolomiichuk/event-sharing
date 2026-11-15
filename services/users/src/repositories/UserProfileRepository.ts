@@ -1,4 +1,6 @@
 import {
+  CITY_CHANGE_LIMIT,
+  CITY_CHANGE_WINDOW_DAYS,
   EVENT_TYPES,
   UserProfileUpdatedPayloadSchema,
   type UpdateUserProfile,
@@ -9,6 +11,7 @@ import type {
   UserProfile,
 } from '../generated/prisma/client.js';
 import { prisma } from '../database/client.js';
+import { CityChangeLimitError } from '../domain/errors/CityChangeLimitError.js';
 
 export type UserProfileSnapshot = {
   profile: UserProfile;
@@ -177,11 +180,16 @@ export class UserProfileRepository {
     patch: UpdateUserProfile,
   ): Promise<UserProfileSnapshot | null> {
     return prisma.$transaction(async (transaction) => {
+      // Serializes concurrent city changes of one user.
+      if (patch.city !== undefined)
+        await transaction.$executeRaw`SELECT 1 FROM user_profile WHERE "userId" = ${userId}::uuid FOR UPDATE`;
       const existing = await transaction.userProfile.findUnique({
         where: { userId },
-        select: { userId: true },
+        select: { userId: true, city: true },
       });
       if (!existing) return null;
+      if (patch.city && !sameCity(patch.city, existing.city))
+        await this.recordCityChange(transaction, userId);
 
       const profileData: Prisma.UserProfileUpdateInput = {
         version: { increment: 1 },
@@ -256,4 +264,25 @@ export class UserProfileRepository {
       return { profile, preferences };
     });
   }
+
+  // Clearing the city is always allowed and not counted.
+  private async recordCityChange(
+    transaction: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void> {
+    const windowMs = CITY_CHANGE_WINDOW_DAYS * 86_400_000;
+    const recent = await transaction.cityChange.findMany({
+      where: { userId, changedAt: { gt: new Date(Date.now() - windowMs) } },
+      orderBy: { changedAt: 'asc' },
+      select: { changedAt: true },
+    });
+    if (recent.length >= CITY_CHANGE_LIMIT) {
+      const oldest = recent[recent.length - CITY_CHANGE_LIMIT]!.changedAt;
+      throw new CityChangeLimitError(new Date(oldest.getTime() + windowMs));
+    }
+    await transaction.cityChange.create({ data: { userId } });
+  }
 }
+
+const sameCity = (next: string, current: string | null) =>
+  next.trim().toLowerCase() === current?.trim().toLowerCase();

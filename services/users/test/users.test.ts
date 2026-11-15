@@ -279,6 +279,7 @@ describe('UserProfileRepository', () => {
     });
     prisma.userProfile.update.mockResolvedValue(own.profile);
     prisma.userPreference.update.mockResolvedValue(own.preferences);
+    prisma.cityChange.findMany.mockResolvedValue([]);
     await repository.update(own.profile.userId, {
       city: 'Lviv',
       preferences: { showCity: false, profileVisibility: 'FRIENDS' },
@@ -295,6 +296,54 @@ describe('UserProfileRepository', () => {
       eventType: EVENT_TYPES.userProfileUpdated,
       payload: { profileVersion: 2, city: null },
     });
+  });
+
+  it('limits city changes to ten per ninety days', async () => {
+    const repository = new UserProfileRepository();
+    const own = snapshot();
+    const userId = own.profile.userId;
+    prisma.userProfile.findUnique.mockResolvedValue({ userId, city: 'Kyiv' });
+    prisma.userProfile.update.mockResolvedValue(own.profile);
+    prisma.userPreference.findUniqueOrThrow.mockResolvedValue(own.preferences);
+    const day = 86_400_000;
+    const changes = (count: number) =>
+      Array.from({ length: count }, (_, index) => ({
+        changedAt: new Date(Date.now() - (80 - index) * day),
+      }));
+
+    prisma.cityChange.findMany.mockResolvedValueOnce(changes(9));
+    await repository.update(userId, { city: 'Lviv' });
+    expect(prisma.$executeRaw).toHaveBeenCalled();
+    expect(prisma.cityChange.create).toHaveBeenCalledWith({
+      data: { userId },
+    });
+
+    prisma.cityChange.findMany.mockResolvedValueOnce(changes(10));
+    const limited = repository.update(userId, { city: 'Odesa' });
+    await expect(limited).rejects.toMatchObject({
+      code: 'CITY_CHANGE_LIMIT',
+      statusCode: 429,
+    });
+    const retryAt = Date.now() - 80 * day + 90 * day;
+    await expect(limited).rejects.toSatisfy(
+      (error: { retryAt: Date }) =>
+        Math.abs(error.retryAt.getTime() - retryAt) < 60_000,
+    );
+    expect(prisma.cityChange.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not count clearing or keeping the same city', async () => {
+    const repository = new UserProfileRepository();
+    const own = snapshot();
+    const userId = own.profile.userId;
+    prisma.userProfile.findUnique.mockResolvedValue({ userId, city: 'Kyiv' });
+    prisma.userProfile.update.mockResolvedValue(own.profile);
+    prisma.userPreference.findUniqueOrThrow.mockResolvedValue(own.preferences);
+    await repository.update(userId, { city: ' kyiv ' });
+    await repository.update(userId, { city: null });
+    await repository.update(userId, { bio: 'x' });
+    expect(prisma.cityChange.findMany).not.toHaveBeenCalled();
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2);
   });
 
   it('returns null for a missing profile update', async () => {

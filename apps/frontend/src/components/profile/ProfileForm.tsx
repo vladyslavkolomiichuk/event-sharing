@@ -2,6 +2,8 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import {
+  CITY_CHANGE_LIMIT,
+  CITY_CHANGE_WINDOW_DAYS,
   UpdateUserProfileSchema,
   profileAvatarPath,
   type UserProfilePrivate,
@@ -240,7 +242,8 @@ export function ProfileForm() {
           />
           <p className="mt-2 text-xs text-neutral-500">
             City suggestions use Photon. Your search text is sent to the place
-            provider.
+            provider. You can change your city {CITY_CHANGE_LIMIT} times in{' '}
+            {CITY_CHANGE_WINDOW_DAYS} days.
           </p>
         </div>
         <div>

@@ -9,6 +9,11 @@ export class UserPrivacyHandler extends ServicePrivacyHandler {
       query: 'SELECT * FROM user_profile WHERE "userId" = $1 ORDER BY "userId"',
     },
     {
+      name: 'cityChanges',
+      query:
+        'SELECT "changedAt" FROM city_change WHERE "userId" = $1 ORDER BY "changedAt"',
+    },
+    {
       name: 'preferences',
       query:
         'SELECT * FROM user_preference WHERE "userId" = $1 ORDER BY "userId"',

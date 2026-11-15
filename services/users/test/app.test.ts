@@ -89,6 +89,7 @@ describe('HTTP API', () => {
     });
     expect(exported.headers.get('cache-control')).toBe('no-store');
     const value = snapshot({ userId: sub, city: 'Lviv' });
+    prisma.cityChange.findMany.mockResolvedValue([]);
     prisma.userProfile.update.mockResolvedValue(value.profile);
     prisma.userPreference.findUniqueOrThrow.mockResolvedValue(
       value.preferences,

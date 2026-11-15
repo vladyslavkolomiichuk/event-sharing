@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { ProfileVisibilitySchema } from './profile-visibility.schema.js';
 import { AvatarUrlSchema } from './avatar-url.schema.js';
 
+// A user may change the city this often per rolling window.
+export const CITY_CHANGE_LIMIT = 10;
+export const CITY_CHANGE_WINDOW_DAYS = 90;
+
 const UserPreferencesPatchSchema = z.strictObject({
   showPhone: z.boolean().optional(),
   showCity: z.boolean().optional(),
