@@ -8,6 +8,7 @@ import { serviceBus, privacyDatabase } from './config/service-bus.js';
 import { ServiceRequestHandler } from './services/ServiceRequestHandler.js';
 import { PrivacyDeletionCoordinator } from './services/PrivacyDeletionCoordinator.js';
 import { PrivacyExportWorker } from './workers/PrivacyExportWorker.js';
+import { metrics } from './config/metrics.js';
 
 await connectDatabase();
 privacyDatabase.startCleanup();
@@ -37,6 +38,8 @@ if (outboxWorker) {
   );
 }
 
+metrics.listen(env.METRICS_PORT, env.METRICS_HOST ?? env.HOST);
+metrics.watchOutbox(env.DATABASE_URL);
 const app = createApp(new PostgresReadinessCheck(env.DATABASE_URL));
 let server: ReturnType<typeof app.listen>;
 await new Promise<void>((resolve, reject) => {
@@ -47,6 +50,7 @@ await new Promise<void>((resolve, reject) => {
 console.info(`Auth listening on ${env.HOST}:${env.PORT}.`);
 
 async function shutdown(): Promise<void> {
+  await metrics.close();
   await deletionCoordinator.close();
   await exportWorker.stop();
   await serviceBus.stop();

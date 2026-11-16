@@ -13,12 +13,13 @@
   "dependencies": {
     "@event-sharing/common": "workspace:*",
     "@event-sharing/contracts": "workspace:*",
+    "@event-sharing/messaging": "workspace:*",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "http-proxy-middleware": "^4.2.0",
+    "swagger-ui-dist": "^5.35.0",
     "ws": "8.18.3",
-    "zod": "^4.5.4",
-    "@event-sharing/messaging": "workspace:*"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

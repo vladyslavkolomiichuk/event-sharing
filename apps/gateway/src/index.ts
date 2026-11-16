@@ -7,6 +7,7 @@ import { createAuthenticateBrowserSession } from './middleware/authentication.js
 import { createAuthProxy } from './proxies/auth-service.proxy.js';
 import { ServiceProxy } from './proxies/ServiceProxy.js';
 import { GatewayRealtimeProxy } from './realtime/GatewayRealtimeProxy.js';
+import { metrics } from './config/metrics.js';
 
 const services = [
   ['Auth', 'auth'],
@@ -26,6 +27,7 @@ const clients = services.map(
 
 const authClient = new AuthServiceClient();
 const realtime = new GatewayRealtimeProxy(authClient);
+metrics.listen(env.METRICS_PORT, env.METRICS_HOST ?? '0.0.0.0');
 const app = createApp({
   clients,
   authProxy: createAuthProxy(env.AUTH_SERVICE_URL),
@@ -100,6 +102,7 @@ realtime.attach(server);
 console.info(`Gateway listening on port ${env.PORT}.`);
 
 async function shutdown(): Promise<void> {
+  await metrics.close();
   realtime.close();
   server.close();
   await serviceBus.stop();

@@ -244,6 +244,9 @@ const databasePasswords = [
   'EVENT_LOG',
   'STORAGE',
 ].map((name) => [`${name}_DB_PASSWORD`, randomBytes(24).toString('hex')]);
-ensureEnvKeys(rootEnvPath, Object.fromEntries(databasePasswords));
+ensureEnvKeys(rootEnvPath, {
+  ...Object.fromEntries(databasePasswords),
+  GRAFANA_ADMIN_PASSWORD: randomBytes(18).toString('base64url'),
+});
 
 await import('./setup-service-bus.js');

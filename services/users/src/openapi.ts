@@ -1,0 +1,160 @@
+import {
+  UpdateUserProfileSchema,
+  UserProfilePrivateSchema,
+  UserProfilePublicSchema,
+  UsernameSchema,
+  type ApiOperation,
+} from '@event-sharing/contracts';
+import { z } from 'zod';
+import { ListPublicProfilesQuerySchema } from './schemas/list-public-profiles.schema.js';
+import { SearchPublicProfilesQuerySchema } from './schemas/search-public-profiles.schema.js';
+
+const tag = 'Users';
+const friends = 'Friends';
+const page = z.coerce.number().int().min(0).max(1000).default(0);
+const username = { username: UsernameSchema };
+
+export const operations: ApiOperation[] = [
+  {
+    method: 'get',
+    path: '/api/users/me',
+    tag,
+    summary: 'Your profile and preferences',
+    access: 'user',
+    response: UserProfilePrivateSchema,
+  },
+  {
+    method: 'patch',
+    path: '/api/users/me',
+    tag,
+    summary: 'Update your profile',
+    access: 'user',
+    description:
+      'The city can change at most 10 times in 90 days (429 CITY_CHANGE_LIMIT).',
+    body: UpdateUserProfileSchema,
+    response: UserProfilePrivateSchema,
+  },
+  {
+    method: 'get',
+    path: '/api/users/me/export',
+    tag,
+    summary: 'Export your profile and friends data',
+    access: 'user',
+  },
+  {
+    method: 'get',
+    path: '/api/users',
+    tag,
+    summary: 'Public profiles by IDs',
+    access: 'user',
+    query: ListPublicProfilesQuerySchema,
+    response: z.array(UserProfilePublicSchema),
+  },
+  {
+    method: 'get',
+    path: '/api/users/search',
+    tag,
+    summary: 'Find users by username',
+    access: 'user',
+    query: SearchPublicProfilesQuerySchema,
+  },
+  {
+    method: 'get',
+    path: '/api/users/by-username/{username}',
+    tag,
+    summary: 'Public profile by username',
+    access: 'user',
+    params: username,
+    response: UserProfilePublicSchema,
+  },
+  {
+    method: 'get',
+    path: '/api/users/{userId}',
+    tag,
+    summary: 'Public profile',
+    access: 'user',
+    description: 'Hidden fields follow the profile owner privacy settings.',
+    response: UserProfilePublicSchema,
+  },
+  {
+    method: 'get',
+    path: '/api/users/{userId}/history-access',
+    tag,
+    summary: 'Whether you may see the participation history',
+    access: 'user',
+    response: z.object({ allowed: z.boolean() }),
+  },
+  {
+    method: 'get',
+    path: '/api/users/friends',
+    tag: friends,
+    summary: 'Your friends',
+    access: 'user',
+    query: z.object({ page }),
+  },
+  {
+    method: 'get',
+    path: '/api/users/friends/search',
+    tag: friends,
+    summary: 'Search your friends',
+    access: 'user',
+    query: z.object({
+      q: z.string().trim().max(100).default(''),
+      sort: z.enum(['name', 'username']).default('name'),
+      page,
+    }),
+  },
+  {
+    method: 'get',
+    path: '/api/users/invitation-target/{username}',
+    tag: friends,
+    summary: 'Check that a user can be invited',
+    access: 'user',
+    params: username,
+  },
+  {
+    method: 'post',
+    path: '/api/users/friends/requests',
+    tag: friends,
+    summary: 'Send a friend request',
+    access: 'user',
+    body: z.object({ username: UsernameSchema }),
+    status: 201,
+  },
+  {
+    method: 'patch',
+    path: '/api/users/friends/requests/{id}',
+    tag: friends,
+    summary: 'Accept, reject or cancel a friend request',
+    access: 'user',
+    params: { id: z.uuid() },
+    body: z.object({ action: z.enum(['ACCEPTED', 'REJECTED', 'CANCELLED']) }),
+  },
+  {
+    method: 'delete',
+    path: '/api/users/friends/{username}',
+    tag: friends,
+    summary: 'Remove a friend',
+    access: 'user',
+    params: username,
+    status: 204,
+  },
+  {
+    method: 'put',
+    path: '/api/users/blocks/{username}',
+    tag: friends,
+    summary: 'Block a user',
+    access: 'user',
+    params: username,
+    status: 204,
+  },
+  {
+    method: 'delete',
+    path: '/api/users/blocks/{username}',
+    tag: friends,
+    summary: 'Unblock a user',
+    access: 'user',
+    params: username,
+    status: 204,
+  },
+];

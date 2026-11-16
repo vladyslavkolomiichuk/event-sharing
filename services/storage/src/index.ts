@@ -5,6 +5,7 @@ import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { prisma } from './database/client.js';
 import { FileStorageService } from './services/FileStorageService.js';
+import { metrics } from './config/metrics.js';
 
 const storage = new FileStorageService();
 await storage.initialize();
@@ -18,6 +19,7 @@ const cleanup = setInterval(
       .catch(() => console.error('Storage cleanup failed.')),
   3600000,
 );
+metrics.listen(env.METRICS_PORT, env.METRICS_HOST ?? env.HOST);
 const server = createApp(
   new PostgresReadinessCheck(env.DATABASE_URL),
   storage,
@@ -25,6 +27,7 @@ const server = createApp(
   console.info(`Storage listening on ${env.HOST}:${env.PORT}.`),
 );
 async function shutdown() {
+  await metrics.close();
   await serviceBus.stop();
   await privacyDatabase.close();
   clearInterval(cleanup);

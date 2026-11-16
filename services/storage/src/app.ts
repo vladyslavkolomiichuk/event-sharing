@@ -6,6 +6,7 @@ import { FileController } from './controllers/FileController.js';
 import { StorageError } from './domain/StorageError.js';
 import { requireInternalJwt } from './middleware/require-internal-jwt.js';
 import { FileStorageService } from './services/FileStorageService.js';
+import { metrics } from './config/metrics.js';
 
 export function createApp(
   readiness: ReadinessCheck,
@@ -18,6 +19,7 @@ export function createApp(
     limit: env.STORAGE_MAX_FILE_BYTES,
   });
   app.disable('x-powered-by');
+  app.use(metrics.middleware());
   app.get(
     '/api/public/events/:eventId/avatar',
     (_request, response, next) => {

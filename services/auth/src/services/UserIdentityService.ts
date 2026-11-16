@@ -1,4 +1,7 @@
-import { usernameCandidates, type UpdateIdentity } from '@event-sharing/contracts';
+import {
+  usernameCandidates,
+  type UpdateIdentity,
+} from '@event-sharing/contracts';
 import { UserIdentityRepository } from '../repositories/UserIdentityRepository.js';
 
 export class UserIdentityService {

@@ -61,3 +61,4 @@ export * from './storage/stored-file.schema.js';
 export * from './privacy/data-export.schema.js';
 export * from './privacy/deletion-job.schema.js';
 export * from './common/service-rpc.schema.js';
+export * from './openapi/openapi.js';

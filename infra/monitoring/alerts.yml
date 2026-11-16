@@ -1,0 +1,58 @@
+# Grafana shows these under Alerting, with the Prometheus source.
+groups:
+  - name: event-sharing
+    rules:
+      - alert: ServiceDown
+        expr: up{job="services"} == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: '{{ $labels.instance }} does not answer metrics scrapes.'
+
+      - alert: HighErrorRate
+        expr: |
+          sum by (service) (rate(http_request_duration_seconds_count{status=~"5.."}[5m]))
+            / sum by (service) (rate(http_request_duration_seconds_count[5m])) > 0.05
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: 'More than 5% of {{ $labels.service }} requests fail with 5xx.'
+
+      - alert: SlowRequests
+        expr: |
+          histogram_quantile(0.95, sum by (service, le) (
+            rate(http_request_duration_seconds_bucket{route!~"/health|/ready"}[5m])
+          )) > 1
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: '{{ $labels.service }} p95 latency is above 1 s.'
+
+      - alert: OutboxStuck
+        expr: outbox_oldest_pending_age_seconds > 60
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: '{{ $labels.service }} has events waiting in the outbox for over a minute.'
+
+      - alert: ConsumerLag
+        # The exporter reports -1 for partitions without a commit.
+        expr: sum by (consumergroup) (clamp_min(kafka_consumergroup_lag, 0)) > 1000
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Kafka group {{ $labels.consumergroup }} is over 1000 messages behind.'
+
+      - alert: EventLoopBlocked
+        expr: nodejs_eventloop_lag_p99_seconds > 0.5
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: '{{ $labels.service }} event loop p99 lag is above 0.5 s.'
+
+      - alert: HighMemory
+        expr: process_resident_memory_bytes{job="services"} > 512 * 1024 * 1024
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: '{{ $labels.service }} uses more than 512 MiB of memory.'

@@ -14,6 +14,7 @@ import { EmailDeliveryWorker } from './workers/EmailDeliveryWorker.js';
 import { NotificationOutboxWorker } from './workers/NotificationOutboxWorker.js';
 import { NotificationEventService } from './services/NotificationEventService.js';
 import { NotificationRealtimeServer } from './realtime/NotificationRealtimeServer.js';
+import { metrics } from './config/metrics.js';
 
 await connectDatabase();
 privacyDatabase.startCleanup();
@@ -61,6 +62,8 @@ if (!deliveryWorker) {
   console.info('Email delivery is waiting for SMTP configuration.');
 }
 
+metrics.listen(env.METRICS_PORT, env.METRICS_HOST ?? env.HOST);
+metrics.watchOutbox(env.DATABASE_URL);
 const app = createApp(new PostgresReadinessCheck(env.DATABASE_URL), realtime);
 let server!: ReturnType<typeof app.listen>;
 await new Promise<void>((resolve, reject) => {
@@ -72,6 +75,7 @@ realtime.attach(server);
 console.info(`Notifications listening on ${env.HOST}:${env.PORT}.`);
 
 async function shutdown(): Promise<void> {
+  await metrics.close();
   await serviceBus.stop();
   await privacyDatabase.close();
   realtime.close();

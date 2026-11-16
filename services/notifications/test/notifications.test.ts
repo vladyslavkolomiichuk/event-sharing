@@ -10,6 +10,7 @@ import { fakeProducer, kafka, running } from '../../../test/fake-kafka.js';
 import { envelope } from '../../../test/fixtures.js';
 import { createTestJwt, send, type TestJwt } from '../../../test/helpers.js';
 import { jwks, prisma, privacyDatabase, sendMail } from './mocks.js';
+import { compareRoutes } from '../../../test/openapi-routes.js';
 
 vi.mock('../src/database/client.js', () => import('./mocks.js'));
 vi.mock('../src/config/service-bus.js', () => import('./mocks.js'));
@@ -606,5 +607,16 @@ describe('privacy and RPC', () => {
     ).rejects.toMatchObject({
       statusCode: 400,
     });
+  });
+});
+
+describe('OpenAPI', () => {
+  it('documents every route the service serves', async () => {
+    const { operations } = await import('../src/openapi.js');
+    expect(
+      compareRoutes(createApp({ check: async () => true }), operations, {
+        ignore: ['/health', '/ready'],
+      }),
+    ).toEqual({ missing: [], undocumented: [] });
   });
 });

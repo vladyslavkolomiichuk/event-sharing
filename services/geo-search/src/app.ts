@@ -7,10 +7,12 @@ import { notFound } from './middleware/not-found.js';
 import { requireInternalJwt } from './middleware/require-internal-jwt.js';
 import { searchRoutes } from './routes/search.routes.js';
 import { GeoSearchService } from './services/GeoSearchService.js';
+import { metrics } from './config/metrics.js';
 
 export function createApp(readinessCheck: ReadinessCheck): Express {
   const app = express();
   app.disable('x-powered-by');
+  app.use(metrics.middleware());
   app.use(express.json());
   app.use(
     '/api/search',

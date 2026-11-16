@@ -11,10 +11,12 @@ import { RegistrationPolicyRepository } from './repositories/RegistrationPolicyR
 import { participationRoutes } from './routes/participation.routes.js';
 import { ParticipationService } from './services/ParticipationService.js';
 import { PaymentService } from './services/PaymentService.js';
+import { metrics } from './config/metrics.js';
 
 export function createApp(readinessCheck: ReadinessCheck): Express {
   const app = express();
   app.disable('x-powered-by');
+  app.use(metrics.middleware());
   const payments = new PaymentController(new PaymentService());
   // Signature checks need the exact request bytes.
   app.post(

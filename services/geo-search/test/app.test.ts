@@ -8,6 +8,7 @@ import {
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestJwt, send, type TestJwt } from '../../../test/helpers.js';
 import { jwks, prisma, privacyDatabase } from './mocks.js';
+import { compareRoutes } from '../../../test/openapi-routes.js';
 
 vi.mock('../src/database/client.js', () => import('./mocks.js'));
 vi.mock('../src/config/service-bus.js', () => import('./mocks.js'));
@@ -247,5 +248,16 @@ describe('SearchPrivacyHandler', () => {
     );
     expect(query.mock.calls[1]![1]).toEqual([work.userId, ANONYMOUS_USER_ID]);
     expect(query.mock.calls[2]![1]).toEqual([work.removedEventIds]);
+  });
+});
+
+describe('OpenAPI', () => {
+  it('documents every route the service serves', async () => {
+    const { operations } = await import('../src/openapi.js');
+    expect(
+      compareRoutes(createApp({ check: async () => true }), operations, {
+        ignore: ['/health', '/ready'],
+      }),
+    ).toEqual({ missing: [], undocumented: [] });
   });
 });

@@ -9,6 +9,7 @@ import { connectDatabase, disconnectDatabase } from './database/client.js';
 import { ChatProjectionRepository } from './repositories/ChatProjectionRepository.js';
 import { MessageRealtimeServer } from './realtime/MessageRealtimeServer.js';
 import { ChatOutboxWorker } from './workers/ChatOutboxWorker.js';
+import { metrics } from './config/metrics.js';
 
 await connectDatabase();
 privacyDatabase.startCleanup();
@@ -34,12 +35,15 @@ const consumer = new ChatEventConsumer(
 await consumer.start();
 const outbox = new ChatOutboxWorker(brokers);
 await outbox.start();
+metrics.listen(env.METRICS_PORT, env.METRICS_HOST ?? env.HOST);
+metrics.watchOutbox(env.DATABASE_URL);
 const app = createApp(new PostgresReadinessCheck(env.DATABASE_URL), realtime);
 const server = app.listen(env.PORT, env.HOST, () =>
   console.info(`Messages listening on ${env.HOST}:${env.PORT}.`),
 );
 realtime.attach(server);
 async function shutdown() {
+  await metrics.close();
   await serviceBus.stop();
   await privacyDatabase.close();
   realtime.close();

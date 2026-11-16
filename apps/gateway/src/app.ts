@@ -11,7 +11,9 @@ import { notFound } from './middleware/not-found.js';
 import { assignRequestId } from './middleware/request-id.js';
 import { requireRole } from './middleware/require-role.js';
 import { requireCompleteProfile } from './middleware/require-complete-profile.js';
+import { docsRoutes } from './routes/docs.routes.js';
 import { systemRoutes } from './routes/system.routes.js';
+import { metrics } from './config/metrics.js';
 
 export type GatewayAppDependencies = {
   clients: ServiceHealthClient[];
@@ -35,6 +37,7 @@ export type GatewayAppDependencies = {
 export function createApp(dependencies: GatewayAppDependencies): Express {
   const app = express();
   app.disable('x-powered-by');
+  app.use(metrics.middleware());
   // Cloudflare adds the client, then Nginx adds its peer.
   app.set('trust proxy', 2);
   app.use(assignRequestId);
@@ -88,6 +91,11 @@ export function createApp(dependencies: GatewayAppDependencies): Express {
       dependencies.serviceProxies.paymentWebhooks(request, response, next),
     );
   });
+
+  // Public API reference, served before session checks.
+  const docsRateLimiter = new GatewayRateLimiter(120, 60_000);
+  app.use(['/api/openapi.json', '/api/docs'], docsRateLimiter.middleware());
+  app.use('/api', docsRoutes(new URL('../openapi.json', import.meta.url)));
 
   const authenticate = dependencies.authenticateBrowserSession;
   app.use('/api', authenticate, requireCompleteProfile);

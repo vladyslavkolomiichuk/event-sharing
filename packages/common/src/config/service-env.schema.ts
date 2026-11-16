@@ -8,6 +8,10 @@ export const BaseHttpEnvSchema = z.object({
     .enum(['development', 'test', 'production'])
     .default('development'),
   PORT: PortSchema,
+  // Prometheus scrapes this port; unset turns metrics off.
+  METRICS_PORT: PortSchema.optional(),
+  // Services that listen on one network pin metrics to another.
+  METRICS_HOST: z.string().min(1).optional(),
 });
 
 export const ServiceBusEnvSchema = z.object({

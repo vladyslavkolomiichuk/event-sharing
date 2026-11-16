@@ -26,6 +26,8 @@ export class UserIdentityController {
 
   readonly suggestions: RequestHandler = async (request, response) => {
     const name = DisplayNameSchema.parse(request.query.name);
-    response.status(200).json({ suggestions: await this.service.suggestions(name) });
+    response
+      .status(200)
+      .json({ suggestions: await this.service.suggestions(name) });
   };
 }

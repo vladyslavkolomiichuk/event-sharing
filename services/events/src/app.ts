@@ -8,10 +8,12 @@ import { requireInternalJwt } from './middleware/require-internal-jwt.js';
 import { eventRoutes } from './routes/event.routes.js';
 import { EventService } from './services/EventService.js';
 import { publicEventRoutes } from './routes/public-event.routes.js';
+import { metrics } from './config/metrics.js';
 
 export function createApp(readinessCheck: ReadinessCheck): Express {
   const app = express();
   app.disable('x-powered-by');
+  app.use(metrics.middleware());
   app.use(express.json());
   app.use('/api/public/events', publicEventRoutes());
   app.use(

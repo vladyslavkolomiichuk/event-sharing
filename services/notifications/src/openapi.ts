@@ -1,0 +1,115 @@
+import {
+  CreateSystemMessageSchema,
+  InAppMessageSchema,
+  InAppNotificationListSchema,
+  InAppNotificationSchema,
+  NotificationFilterSchema,
+  SendEventMessageSchema,
+  SystemMessageListSchema,
+  SystemMessageSchema,
+  type ApiOperation,
+} from '@event-sharing/contracts';
+import { z } from 'zod';
+
+const tag = 'Notifications';
+const base = '/api/notifications';
+const deleted = z.object({ deleted: z.literal(true) });
+
+export const operations: ApiOperation[] = [
+  {
+    method: 'get',
+    path: base,
+    tag,
+    summary: 'Your notifications',
+    access: 'user',
+    query: z.object({
+      cursor: z.uuid().optional(),
+      filter: NotificationFilterSchema.default('ALL'),
+    }),
+    response: InAppNotificationListSchema,
+  },
+  {
+    method: 'get',
+    path: `${base}/unread-count`,
+    tag,
+    summary: 'Number of unread notifications',
+    access: 'user',
+    response: z.object({ unreadCount: z.number().int() }),
+  },
+  {
+    method: 'patch',
+    path: `${base}/read-all`,
+    tag,
+    summary: 'Mark all notifications as read',
+    access: 'user',
+    response: z.object({ updatedCount: z.number().int() }),
+  },
+  {
+    method: 'patch',
+    path: `${base}/{notificationId}/read`,
+    tag,
+    summary: 'Mark a notification as read',
+    access: 'user',
+    response: InAppNotificationSchema,
+  },
+  {
+    method: 'delete',
+    path: `${base}/{notificationId}`,
+    tag,
+    summary: 'Delete a notification',
+    access: 'user',
+    response: deleted,
+  },
+  {
+    method: 'post',
+    path: `${base}/events/{eventId}/messages`,
+    tag,
+    summary: 'Send an announcement to event participants',
+    access: 'organizer',
+    body: SendEventMessageSchema,
+    status: 201,
+    response: InAppMessageSchema,
+  },
+  {
+    method: 'get',
+    path: `${base}/messages/{messageId}`,
+    tag,
+    summary: 'Read an announcement',
+    access: 'user',
+    response: InAppMessageSchema,
+  },
+  {
+    method: 'get',
+    path: `${base}/me/export`,
+    tag,
+    summary: 'Export your notifications',
+    access: 'user',
+  },
+  {
+    method: 'get',
+    path: `${base}/system`,
+    tag,
+    summary: 'System messages',
+    access: 'admin',
+    query: z.object({ cursor: z.uuid().optional() }),
+    response: SystemMessageListSchema,
+  },
+  {
+    method: 'post',
+    path: `${base}/system`,
+    tag,
+    summary: 'Send a system message',
+    access: 'admin',
+    body: CreateSystemMessageSchema,
+    status: 201,
+    response: SystemMessageSchema,
+  },
+  {
+    method: 'delete',
+    path: `${base}/system/{messageId}`,
+    tag,
+    summary: 'Delete a system message',
+    access: 'admin',
+    response: deleted,
+  },
+];

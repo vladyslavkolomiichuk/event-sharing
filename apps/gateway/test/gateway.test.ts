@@ -13,6 +13,8 @@ import {
   vi,
 } from 'vitest';
 import { send } from '../../../test/helpers.js';
+import { readFileSync } from 'node:fs';
+import { compareRoutes } from '../../../test/openapi-routes.js';
 
 const bus = vi.hoisted(() => ({ call: vi.fn() }));
 vi.mock('../src/config/service-bus.js', () => ({ serviceBus: bus }));
@@ -384,5 +386,41 @@ describe('proxies', () => {
     Object.defineProperty(response, 'headersSent', { value: true });
     sendProxyError(response, 'X', 'Y');
     expect(destroy).toHaveBeenCalled();
+  });
+});
+
+describe('OpenAPI', () => {
+  it('documents the routes Gateway serves itself', async () => {
+    const { operations } = await import('../src/openapi.js');
+    expect(
+      compareRoutes(app(), operations, { ignore: ['/health', '/ready'] }),
+    ).toEqual({ missing: [], undocumented: [] });
+  });
+
+  it('keeps openapi.json in step with the services', async () => {
+    const { openApiDocument, serialize, specPath } =
+      await import('../../../scripts/openapi.js');
+    expect(readFileSync(specPath, 'utf8')).toBe(serialize(openApiDocument()));
+  });
+
+  it('serves the document and the docs page without a session', async () => {
+    identity = { role: 'GUEST', complete: false };
+    const spec = await send(app(), 'GET', '/api/openapi.json');
+    expect(spec.status).toBe(200);
+    expect(spec.body).toMatchObject({ openapi: '3.1.0' });
+    const page = await send(app(), 'GET', '/api/docs');
+    expect(page.headers.get('content-type')).toMatch(/text\/html/);
+    expect(page.headers.get('content-security-policy')).toContain(
+      "script-src 'self'",
+    );
+    const bundle = await send(
+      app(),
+      'GET',
+      '/api/docs/assets/swagger-ui-bundle.js',
+    );
+    expect(bundle.status).toBe(200);
+    expect(
+      (await send(app(), 'GET', '/api/docs/assets/index.html')).status,
+    ).not.toBe(200);
   });
 });

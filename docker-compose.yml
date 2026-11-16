@@ -38,6 +38,8 @@ x-service-environment: &service-environment
   HOME: /tmp
   HOST: 0.0.0.0
   KAFKA_BROKERS: kafka:19092
+  # Prometheus reads this port over each service's own network.
+  METRICS_PORT: '9464'
 
 x-storage-environment: &storage-environment
   <<: *service-environment
@@ -130,6 +132,7 @@ services:
       - messages-data
       - event-log-data
       - storage-data
+      - monitoring-kafka
 
   kafka-init:
     image: apache/kafka:4.4.0
@@ -159,24 +162,28 @@ services:
       EVENT_LOG_SERVICE_URL: http://event-log:8007
       MESSAGES_SERVICE_URL: http://messages:8008
       STORAGE_SERVICE_URL: http://storage:8009
+      METRICS_HOST: ${NETWORK_PREFIX:-10.77}.4.14
     depends_on:
       kafka-init:
         condition: service_completed_successfully
     ports:
       - '127.0.0.1:${GATEWAY_PORT:-8000}:8000'
     networks:
-      - public_proxy
-      - frontend-gateway
-      - gateway-kafka
-      - auth-gateway
-      - users-gateway
-      - events-gateway
-      - geo-search-gateway
-      - participation-gateway
-      - notifications-gateway
-      - messages-gateway
-      - event-log-gateway
-      - storage-gateway
+      public_proxy:
+      frontend-gateway:
+      gateway-kafka:
+      auth-gateway:
+      users-gateway:
+      events-gateway:
+      geo-search-gateway:
+      participation-gateway:
+      notifications-gateway:
+      messages-gateway:
+      event-log-gateway:
+      storage-gateway:
+      # Metrics listen here only, off the proxy network.
+      gateway-monitoring:
+        ipv4_address: ${NETWORK_PREFIX:-10.77}.4.14
 
   frontend:
     <<: *app
@@ -208,10 +215,13 @@ services:
     environment:
       <<: *service-environment
       HOST: ${NETWORK_PREFIX:-10.77}.2.14
+      METRICS_HOST: ${NETWORK_PREFIX:-10.77}.4.30
       DATABASE_URL: postgresql://auth_service:${AUTH_DB_PASSWORD}@postgres:5432/auth_db
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://127.0.0.1:3001}
       BETTER_AUTH_PUBLIC_URL: ${FRONTEND_ORIGIN:-http://127.0.0.1:3001}/backend/auth
     networks:
+      auth-monitoring:
+        ipv4_address: ${NETWORK_PREFIX:-10.77}.4.30
       auth-gateway:
         ipv4_address: ${NETWORK_PREFIX:-10.77}.2.14
       auth-data:
@@ -227,6 +237,7 @@ services:
     networks:
       - users-gateway
       - users-data
+      - users-monitoring
 
   events:
     <<: *service
@@ -238,6 +249,7 @@ services:
     networks:
       - events-gateway
       - events-data
+      - events-monitoring
 
   geo-search:
     <<: *service
@@ -246,8 +258,11 @@ services:
     environment:
       <<: *service-environment
       HOST: ${NETWORK_PREFIX:-10.77}.2.62
+      METRICS_HOST: ${NETWORK_PREFIX:-10.77}.4.78
       DATABASE_URL: postgresql://geo_search_service:${GEO_SEARCH_DB_PASSWORD}@postgres:5432/geo_search_db
     networks:
+      geo-search-monitoring:
+        ipv4_address: ${NETWORK_PREFIX:-10.77}.4.78
       geo-search-gateway:
         ipv4_address: ${NETWORK_PREFIX:-10.77}.2.62
       geo-search-data:
@@ -261,9 +276,12 @@ services:
       <<: *service-environment
       # Listen only on the gateway network, not the internet one.
       HOST: ${NETWORK_PREFIX:-10.77}.2.78
+      METRICS_HOST: ${NETWORK_PREFIX:-10.77}.4.94
       DATABASE_URL: postgresql://participation_service:${PARTICIPATION_DB_PASSWORD}@postgres:5432/participation_db
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://127.0.0.1:3001}
     networks:
+      participation-monitoring:
+        ipv4_address: ${NETWORK_PREFIX:-10.77}.4.94
       participation-gateway:
         ipv4_address: ${NETWORK_PREFIX:-10.77}.2.78
       participation-data:
@@ -276,8 +294,11 @@ services:
     environment:
       <<: *service-environment
       HOST: ${NETWORK_PREFIX:-10.77}.2.94
+      METRICS_HOST: ${NETWORK_PREFIX:-10.77}.4.110
       DATABASE_URL: postgresql://notifications_service:${NOTIFICATIONS_DB_PASSWORD}@postgres:5432/notifications_db
     networks:
+      notifications-monitoring:
+        ipv4_address: ${NETWORK_PREFIX:-10.77}.4.110
       notifications-gateway:
         ipv4_address: ${NETWORK_PREFIX:-10.77}.2.94
       notifications-data:
@@ -293,6 +314,7 @@ services:
     networks:
       - messages-gateway
       - messages-data
+      - messages-monitoring
 
   event-log:
     <<: *service
@@ -304,6 +326,7 @@ services:
     networks:
       - event-log-gateway
       - event-log-data
+      - event-log-monitoring
 
   storage:
     <<: *service
@@ -323,6 +346,7 @@ services:
       - storage-gateway
       - storage-data
       - storage-clamav
+      - storage-monitoring
 
   storage-backup:
     <<: *storage-tool
@@ -360,6 +384,92 @@ services:
       storage-clamav:
         ipv4_address: ${NETWORK_PREFIX:-10.77}.1.110
       clamav-internet:
+
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    profiles: [monitoring]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=1GB
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:9090/-/ready']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - grafana-prometheus
+      - exporter-prometheus
+      - gateway-monitoring
+      - auth-monitoring
+      - users-monitoring
+      - events-monitoring
+      - geo-search-monitoring
+      - participation-monitoring
+      - notifications-monitoring
+      - messages-monitoring
+      - event-log-monitoring
+      - storage-monitoring
+
+  # Reads consumer group offsets, so lag needs no code in services.
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.10.0
+    profiles: [monitoring]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    command:
+      - --kafka.server=kafka:19092
+      - --kafka.version=3.9.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - monitoring-kafka
+      - exporter-prometheus
+
+  grafana:
+    # 12.x bundles the Prometheus plugin; 13.x downloads it.
+    image: grafana/grafana:12.4.15
+    profiles: [monitoring]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    tmpfs:
+      - /tmp
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_AUTH_ANONYMOUS_ENABLED: 'false'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: 'false'
+      GF_NEWS_NEWS_FEED_ENABLED: 'false'
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/event-sharing.json
+    ports:
+      - '127.0.0.1:${GRAFANA_PORT:-3003}:3000'
+    volumes:
+      - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    networks:
+      - grafana-public
+      - grafana-prometheus
 
   pgadmin:
     image: dpage/pgadmin4:9.18
@@ -407,6 +517,8 @@ services:
 
 volumes:
   postgres-data:
+  prometheus-data:
+  grafana-data:
   pgadmin-data:
   kafka-data:
   storage-data:

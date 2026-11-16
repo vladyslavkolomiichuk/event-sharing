@@ -141,9 +141,13 @@ export class InvitationService {
   }
 
   async acceptLink(token: string, userId: string) {
-    const link = await prisma.inviteLink.findUnique({ where: { tokenHash: this.hash(token) } });
+    const link = await prisma.inviteLink.findUnique({
+      where: { tokenHash: this.hash(token) },
+    });
     if (link) {
-      const existing = await prisma.membership.findUnique({ where: { eventId_userId: { eventId: link.eventId, userId } } });
+      const existing = await prisma.membership.findUnique({
+        where: { eventId_userId: { eventId: link.eventId, userId } },
+      });
       if (existing?.status === 'JOINED') return existing;
     }
     const preview = await this.previewLink(token);
@@ -222,39 +226,56 @@ export class InvitationService {
         });
         if (membership?.status === 'JOINED') continue;
         const existingInvite = await tx.personalInvite.findUnique({
-          where: { eventId_recipientId: { eventId, recipientId: target.userId } },
+          where: {
+            eventId_recipientId: { eventId, recipientId: target.userId },
+          },
         });
-        if (existingInvite?.status === 'PENDING' && existingInvite.expiresAt > new Date()) continue;
+        if (
+          existingInvite?.status === 'PENDING' &&
+          existingInvite.expiresAt > new Date()
+        )
+          continue;
         if (existingInvite) {
-          await tx.personalInvite.update({ where: { id: existingInvite.id }, data: {
-            status: 'PENDING', title: currentTitle, expiresAt: currentEndTime, notifiedAt: null,
-          } });
+          await tx.personalInvite.update({
+            where: { id: existingInvite.id },
+            data: {
+              status: 'PENDING',
+              title: currentTitle,
+              expiresAt: currentEndTime,
+              notifiedAt: null,
+            },
+          });
         } else {
-          await tx.personalInvite.create({ data: {
-            eventId, recipientId: target.userId, senderId: organizerId,
-            title: currentTitle, expiresAt: currentEndTime,
-          } });
+          await tx.personalInvite.create({
+            data: {
+              eventId,
+              recipientId: target.userId,
+              senderId: organizerId,
+              title: currentTitle,
+              expiresAt: currentEndTime,
+            },
+          });
         }
         sent.push(target);
         if (currentPolicy?.status === 'OPEN') {
-            await tx.outboxEvent.create({
-              data: {
-                aggregateId: eventId,
-                eventType: EVENT_TYPES.invitationSent,
-                payload: InvitationSentPayloadSchema.parse({
-                  eventId,
-                  recipientId: target.userId,
-                  organizerId,
-                  title: currentTitle,
-                }),
-              },
-            });
-            await tx.personalInvite.update({
-              where: {
-                eventId_recipientId: { eventId, recipientId: target.userId },
-              },
-              data: { notifiedAt: new Date() },
-            });
+          await tx.outboxEvent.create({
+            data: {
+              aggregateId: eventId,
+              eventType: EVENT_TYPES.invitationSent,
+              payload: InvitationSentPayloadSchema.parse({
+                eventId,
+                recipientId: target.userId,
+                organizerId,
+                title: currentTitle,
+              }),
+            },
+          });
+          await tx.personalInvite.update({
+            where: {
+              eventId_recipientId: { eventId, recipientId: target.userId },
+            },
+            data: { notifiedAt: new Date() },
+          });
         }
       }
       return {

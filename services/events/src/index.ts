@@ -9,6 +9,7 @@ import { EventRepository } from './repositories/EventRepository.js';
 import { ParticipantAccessRepository } from './repositories/ParticipantAccessRepository.js';
 import { EventOutboxWorker } from './workers/EventOutboxWorker.js';
 import { EventLifecycleWorker } from './workers/EventLifecycleWorker.js';
+import { metrics } from './config/metrics.js';
 
 const brokers = env.KAFKA_BROKERS.split(',').map((broker) => broker.trim());
 await connectDatabase();
@@ -25,12 +26,15 @@ await consumer.start();
 await outboxWorker.start();
 lifecycleWorker.start();
 
+metrics.listen(env.METRICS_PORT, env.METRICS_HOST ?? env.HOST);
+metrics.watchOutbox(env.DATABASE_URL);
 const app = createApp(new PostgresReadinessCheck(env.DATABASE_URL));
 const server = app.listen(env.PORT, env.HOST, () => {
   console.info(`Events listening on ${env.HOST}:${env.PORT}.`);
 });
 
 async function shutdown(): Promise<void> {
+  await metrics.close();
   await serviceBus.stop();
   await privacyDatabase.close();
   server.close(async () => {

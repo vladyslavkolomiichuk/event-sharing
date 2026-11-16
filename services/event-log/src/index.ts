@@ -7,6 +7,7 @@ import { EventLogConsumer } from './consumers/EventLogConsumer.js';
 import { connectDatabase, disconnectDatabase } from './database/client.js';
 import { EventLogRepository } from './repositories/EventLogRepository.js';
 import { EventLogRetentionWorker } from './workers/EventLogRetentionWorker.js';
+import { metrics } from './config/metrics.js';
 
 await connectDatabase();
 privacyDatabase.startCleanup();
@@ -24,12 +25,14 @@ const retention = new EventLogRetentionWorker(
 );
 await consumer.start();
 retention.start();
+metrics.listen(env.METRICS_PORT, env.METRICS_HOST ?? env.HOST);
 const app = createApp(new PostgresReadinessCheck(env.DATABASE_URL));
 const server = app.listen(env.PORT, env.HOST, () =>
   console.info(`Event Log listening on ${env.HOST}:${env.PORT}.`),
 );
 
 async function shutdown(): Promise<void> {
+  await metrics.close();
   await serviceBus.stop();
   await privacyDatabase.close();
   retention.stop();

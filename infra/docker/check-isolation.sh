@@ -63,9 +63,9 @@ probe_from() {
 ip_targets=()
 name_targets=()
 for service in "${services[@]}"; do
-  name_targets+=("$service:${ports[$service]}")
+  name_targets+=("$service:${ports[$service]}" "$service:9464")
   for ip in $(container_ips "$service"); do
-    ip_targets+=("$ip:${ports[$service]}")
+    ip_targets+=("$ip:${ports[$service]}" "$ip:9464")
   done
 done
 for ip in $(container_ips postgres); do ip_targets+=("$ip:5432"); done
@@ -127,8 +127,25 @@ expect_open 'public_proxy: reaches gateway' "$(probe_from_proxy gateway:8000)"
 expect_open 'public_proxy: reaches frontend' "$(probe_from_proxy frontend:3001)"
 expect_closed 'public_proxy: no services' \
   "$(probe_from_proxy "${name_targets[@]}" postgres:5432 kafka:19092)"
+expect_closed 'public_proxy: no gateway metrics' \
+  "$(probe_from_proxy gateway:9464)"
 
-for service in users events participation messages event-log storage; do
+# Only with the monitoring profile running.
+if [ -n "$("${compose[@]}" ps -q prometheus 2>/dev/null)" ]; then
+  targets=$("${compose[@]}" exec -T prometheus \
+    wget -qO- http://127.0.0.1:9090/api/v1/targets)
+  down=$(node -e '
+    const { data } = JSON.parse(process.argv[1]);
+    const bad = data.activeTargets.filter((target) => target.health !== "up");
+    console.log(bad.map((target) => target.labels.instance).join(" "));
+  ' "$targets")
+  [ "$(node -e 'console.log(JSON.parse(process.argv[1]).data.activeTargets.length)' "$targets")" -ge 12 ] \
+    && expect_closed 'prometheus: every target is up' "$down" \
+    || report fail 'prometheus: fewer targets than expected'
+fi
+
+# Participation keeps internet access for the payment provider.
+for service in users events messages event-log storage; do
   expect_closed "$service: no internet" "$(probe_from "$service" 1.1.1.1:443)"
 done
 

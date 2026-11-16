@@ -17,6 +17,7 @@ import {
   prisma,
   privacyDatabase,
 } from './mocks.js';
+import { compareRoutes } from '../../../test/openapi-routes.js';
 
 vi.mock('../src/database/client.js', () => import('./mocks.js'));
 vi.mock('../src/config/service-bus.js', () => import('./mocks.js'));
@@ -453,5 +454,16 @@ describe('ParticipationPrivacyHandler', () => {
       expect.stringContaining('INSERT INTO privacy_deleted_event'),
       [owned],
     );
+  });
+});
+
+describe('OpenAPI', () => {
+  it('documents every route the service serves', async () => {
+    const { operations } = await import('../src/openapi.js');
+    expect(
+      compareRoutes(createApp({ check: async () => true }), operations, {
+        ignore: ['/health', '/ready'],
+      }),
+    ).toEqual({ missing: [], undocumented: [] });
   });
 });

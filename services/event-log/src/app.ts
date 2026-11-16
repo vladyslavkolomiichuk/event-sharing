@@ -8,10 +8,12 @@ import { errorHandler } from './middleware/error-handler.js';
 import { notFound } from './middleware/not-found.js';
 import { eventLogRoutes } from './routes/event-log.routes.js';
 import { EventLogService } from './services/EventLogService.js';
+import { metrics } from './config/metrics.js';
 
 export function createApp(readinessCheck: ReadinessCheck): Express {
   const app = express();
   app.disable('x-powered-by');
+  app.use(metrics.middleware());
   app.use(express.json());
   app.get('/api/event-log/me/export', new PrivacyExportController().export);
   app.use(

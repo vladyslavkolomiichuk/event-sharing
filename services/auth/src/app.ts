@@ -21,10 +21,12 @@ import { UserRoleRepository } from './repositories/UserRoleRepository.js';
 import { userRoleRoutes } from './routes/user-role.routes.js';
 import { organizerRequestRoutes } from './routes/organizer-request.routes.js';
 import { UserRoleService } from './services/UserRoleService.js';
+import { metrics } from './config/metrics.js';
 
 export function createApp(readinessCheck: ReadinessCheck): Express {
   const app = express();
   app.disable('x-powered-by');
+  app.use(metrics.middleware());
   const roleController = new UserRoleController(
     new UserRoleService(new UserRoleRepository()),
   );

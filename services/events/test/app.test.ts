@@ -11,6 +11,7 @@ import { fakeProducer, kafka, running } from '../../../test/fake-kafka.js';
 import { envelope } from '../../../test/fixtures.js';
 import { createTestJwt, send, type TestJwt } from '../../../test/helpers.js';
 import { eventRow, jwks, prisma, privacyDatabase } from './rows.js';
+import { compareRoutes } from '../../../test/openapi-routes.js';
 
 vi.mock('../src/database/client.js', () => import('./rows.js'));
 vi.mock('../src/config/service-bus.js', () => import('./rows.js'));
@@ -478,5 +479,16 @@ describe('EventPrivacyHandler', () => {
       expect.stringContaining('UPDATE event SET "organizerId" = $2'),
       [input.userId, ANONYMOUS_USER_ID],
     ]);
+  });
+});
+
+describe('OpenAPI', () => {
+  it('documents every route the service serves', async () => {
+    const { operations } = await import('../src/openapi.js');
+    expect(
+      compareRoutes(createApp({ check: async () => true }), operations, {
+        ignore: ['/health', '/ready'],
+      }),
+    ).toEqual({ missing: [], undocumented: [] });
   });
 });

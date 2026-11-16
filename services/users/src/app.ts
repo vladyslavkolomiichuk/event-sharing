@@ -8,10 +8,12 @@ import { requireInternalJwt } from './middleware/require-internal-jwt.js';
 import { UserProfileRepository } from './repositories/UserProfileRepository.js';
 import { userProfileRoutes } from './routes/user-profile.routes.js';
 import { UserProfileService } from './services/UserProfileService.js';
+import { metrics } from './config/metrics.js';
 
 export function createApp(readinessCheck: ReadinessCheck): Express {
   const app = express();
   app.disable('x-powered-by');
+  app.use(metrics.middleware());
   app.use(express.json());
 
   const controller = new UserProfileController(

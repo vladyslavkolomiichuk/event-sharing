@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeProducer, kafka } from '../../../test/fake-kafka.js';
 import { send } from '../../../test/helpers.js';
 import { prisma, privacyDatabase, serviceBus } from './mocks.js';
+import { compareRoutes } from '../../../test/openapi-routes.js';
 
 const session = vi.hoisted(() => ({
   current: null as null | { user: { id: string; role: string } },
@@ -604,5 +605,17 @@ describe('PrivacyExportWorker', () => {
         String(call[0]).includes('attempts + 1'),
       ),
     ).toBe(true);
+  });
+});
+
+describe('OpenAPI', () => {
+  it('documents every route the service serves', async () => {
+    const { operations, rewrite } = await import('../src/openapi.js');
+    expect(
+      compareRoutes(createApp({ check: async () => true }), operations, {
+        rewrite,
+        ignore: ['/health', '/ready'],
+      }),
+    ).toEqual({ missing: [], undocumented: [] });
   });
 });

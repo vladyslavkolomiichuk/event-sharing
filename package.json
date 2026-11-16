@@ -15,14 +15,16 @@
     "dev:frontend": "pnpm --filter @event-sharing/contracts build && pnpm --filter @event-sharing/frontend dev",
     "start:frontend": "pnpm --filter @event-sharing/contracts build && pnpm --filter @event-sharing/frontend start",
     "env:services": "tsx scripts/setup-service-envs.ts",
+    "openapi": "pnpm --filter @event-sharing/contracts build && tsx scripts/openapi.ts",
     "server:status": "docker compose ps",
-    "docker:up": "docker compose --profile tools --profile backup up -d --build --remove-orphans",
-    "docker:stop": "docker compose --profile tools --profile backup stop",
+    "docker:up": "docker compose --profile tools --profile backup --profile monitoring up -d --build --remove-orphans",
+    "docker:stop": "docker compose --profile tools --profile backup --profile monitoring stop",
     "docker:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d",
     "docker:dev:build": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build",
     "docker:dev:stop": "docker compose -f docker-compose.yml -f docker-compose.dev.yml stop"
   },
   "devDependencies": {
+    "@event-sharing/contracts": "workspace:*",
     "@types/node": "^22.0.0",
     "dotenv": "^17.4.2",
     "jose": "^6.2.13",

@@ -11,6 +11,7 @@ import { requireInternalJwt } from './middleware/require-internal-jwt.js';
 import { chatRoutes } from './routes/chat.routes.js';
 import { ChatService } from './services/ChatService.js';
 import type { MessageRealtimeServer } from './realtime/MessageRealtimeServer.js';
+import { metrics } from './config/metrics.js';
 
 export function createApp(
   readinessCheck: ReadinessCheck,
@@ -18,6 +19,7 @@ export function createApp(
 ): Express {
   const app = express();
   app.disable('x-powered-by');
+  app.use(metrics.middleware());
   app.use(express.json());
   app.use(
     '/api/messages',

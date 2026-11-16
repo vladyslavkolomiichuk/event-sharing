@@ -7,6 +7,7 @@ import { IdentityEventConsumer } from './consumers/IdentityEventConsumer.js';
 import { connectDatabase, disconnectDatabase } from './database/client.js';
 import { UserProfileRepository } from './repositories/UserProfileRepository.js';
 import { UserProfileOutboxWorker } from './workers/UserProfileOutboxWorker.js';
+import { metrics } from './config/metrics.js';
 
 const brokers = env.KAFKA_BROKERS.split(',').map((broker) => broker.trim());
 await connectDatabase();
@@ -19,12 +20,15 @@ const outboxWorker = new UserProfileOutboxWorker(brokers);
 await consumer.start();
 await outboxWorker.start();
 
+metrics.listen(env.METRICS_PORT, env.METRICS_HOST ?? env.HOST);
+metrics.watchOutbox(env.DATABASE_URL);
 const app = createApp(new PostgresReadinessCheck(env.DATABASE_URL));
 const server = app.listen(env.PORT, env.HOST, () => {
   console.info(`Users listening on ${env.HOST}:${env.PORT}.`);
 });
 
 async function shutdown(): Promise<void> {
+  await metrics.close();
   await serviceBus.stop();
   await privacyDatabase.close();
   server.close(async () => {
